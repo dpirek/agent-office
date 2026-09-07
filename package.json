@@ -1,0 +1,25 @@
+{
+  "name": "agent-office",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "node --test",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dpirek/agent-office.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/dpirek/agent-office/issues"
+  },
+  "homepage": "https://github.com/dpirek/agent-office#readme"
+}

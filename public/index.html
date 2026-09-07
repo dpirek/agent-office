@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080c0e">
+  <title>AI Agent Office</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-frame">
+    <header class="topbar">
+      <div class="terminal-logo" aria-hidden="true"><span>›</span><i>_</i></div>
+      <div class="brand">
+        <h1>AI Agent Office</h1>
+        <p>ORCHESTRATE &nbsp;–&nbsp; MONITOR &nbsp;–&nbsp; COLLABORATE &nbsp;–&nbsp; GET THINGS DONE</p>
+      </div>
+      <div class="top-actions">
+        <div class="online-pill"><span class="status-dot" id="health-dot"></span><span id="health-text">CONNECTING</span></div>
+        <button class="square-button" id="refresh-button" aria-label="Refresh dashboard" title="Refresh dashboard">
+          <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M10 14v6"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <nav class="sidebar" aria-label="Primary navigation">
+        <div class="nav-items">
+          <a class="nav-item active" href="/dashboard" data-section="dashboard"><span class="nav-icon">▣</span>DASHBOARD</a>
+          <a class="nav-item" href="/agents" data-section="agents"><span class="nav-icon">♙</span>AGENTS</a>
+          <a class="nav-item" href="/tasks" data-section="tasks"><span class="nav-icon">▤</span>TASKS</a>
+          <a class="nav-item" href="/workflows" data-section="workflows"><span class="nav-icon">⌘</span>WORKFLOWS</a>
+          <a class="nav-item" href="/tools" data-section="tools"><span class="nav-icon">⌁</span>TOOLS</a>
+          <a class="nav-item" href="/memory" data-section="memory"><span class="nav-icon">◉</span>MEMORY</a>
+          <a class="nav-item" href="/knowledge" data-section="knowledge"><span class="nav-icon">▧</span>KNOWLEDGE</a>
+          <a class="nav-item" href="/logs" data-section="logs"><span class="nav-icon">▱</span>LOGS</a>
+          <a class="nav-item" href="/settings" data-section="settings"><span class="nav-icon">⚙</span>SETTINGS</a>
+        </div>
+      </nav>
+
+      <main class="main-content">
+        <section class="metrics" aria-label="System metrics">
+          <article class="metric"><span class="metric-icon">♙</span><div><label>AGENTS</label><strong id="metric-agents">0</strong><small id="metric-agents-sub">0 active</small></div></article>
+          <article class="metric"><span class="metric-icon">▤</span><div><label>TASKS</label><strong id="metric-tasks">0</strong><small id="metric-tasks-sub">0 running</small></div></article>
+          <article class="metric"><span class="metric-icon">⌘</span><div><label>WORKFLOWS</label><strong>3</strong><small id="metric-workflows-sub">1 active</small></div></article>
+          <article class="metric"><span class="metric-icon">⌁</span><div><label>TOOLS</label><strong id="metric-tools">0</strong><small>connected</small></div></article>
+          <article class="metric"><span class="metric-icon">◉</span><div><label>TOKENS (24H)</label><strong id="metric-tokens">0</strong><small id="metric-token-trend">↑ session</small></div></article>
+          <article class="metric"><span class="metric-icon bars">▥</span><div><label>UPTIME</label><strong id="metric-uptime">00:00</strong><small>this session</small></div></article>
+        </section>
+
+        <section class="operations-grid">
+          <section class="panel office-panel" data-view="agents">
+            <header class="panel-header"><div><span class="header-icon">▦</span><h2>AGENT OFFICE</h2></div><span class="panel-meta" id="office-meta">LIVE FLOOR</span></header>
+            <div class="office panel-body" id="agent-office">
+              <div class="windows"><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="agent-floor" id="agent-floor"></div>
+            </div>
+          </section>
+
+          <aside class="right-column">
+            <section class="panel selected-panel" data-view="dashboard agents">
+              <header class="panel-header"><div><span class="header-icon">⇆</span><h2>SELECTED AGENT</h2></div></header>
+              <div class="panel-body selected-body">
+                <div class="agent-summary">
+                  <div class="portrait" id="selected-portrait"><span>◉</span></div>
+                  <div class="agent-summary-copy"><strong id="selected-name">No agent selected</strong><span><i class="status-dot empty"></i><b id="selected-status">unregistered</b></span><small id="selected-description">Add an HTTP agent in Agent Registry</small></div>
+                  <div class="agent-controls"><button id="pause-button" title="Pause agent">Ⅱ</button><button id="stop-button" title="Clear run">■</button><button title="Agent actions">•••</button></div>
+                </div>
+                <div class="tabs" role="tablist"><button class="active" data-tab="details">DETAILS</button><button data-tab="tasks">TASKS</button><button data-tab="tools">TOOLS</button><button data-tab="memory">MEMORY</button><button data-tab="logs">LOGS</button></div>
+                <div class="detail-table" id="agent-details"></div>
+              </div>
+            </section>
+
+            <section class="panel activity-panel" data-view="dashboard agents logs">
+              <header class="panel-header"><div><span class="header-icon">ⓘ</span><h2>AGENT ACTIVITY</h2></div><span class="streaming" id="streaming-label">Standing by…</span></header>
+              <div class="activity-log panel-body" id="activity-log" aria-live="polite"></div>
+            </section>
+
+            <section class="panel agent-registry-panel" data-view="agents">
+              <header class="panel-header"><div><span class="header-icon">♙</span><h2>AGENT REGISTRY</h2></div><button class="header-action" id="add-agent-button" type="button">+ ADD AGENT</button></header>
+              <div class="panel-body registry-body">
+                <table class="registry-table"><thead><tr><th>NAME</th><th>HTTP URL</th><th>ACTIONS</th></tr></thead><tbody id="agent-registry-body"></tbody></table>
+              </div>
+            </section>
+
+            <section class="panel logs-panel" data-view="dashboard logs tools">
+              <header class="panel-header"><div><span class="header-icon">▤</span><h2>SYSTEM LOGS</h2></div></header>
+              <div class="system-log panel-body" id="system-log"></div>
+            </section>
+          </aside>
+        </section>
+
+        <section class="bottom-grid">
+          <section class="panel task-panel" data-view="dashboard tasks workflows">
+            <header class="panel-header"><div><span class="header-icon">▣</span><h2>TASK QUEUE</h2></div><button class="header-action" id="add-task-button" type="button">+ NEW TASK</button></header>
+            <div class="task-toolbar panel-body" id="task-filters" aria-label="Filter tasks"><button class="active" data-filter="all">ALL (0)</button><button data-filter="running">RUNNING (0)</button><button data-filter="pending">PENDING (0)</button><button data-filter="completed">COMPLETED (0)</button><button data-filter="failed">FAILED (0)</button></div>
+            <div class="task-table-wrap panel-body"><table class="task-table"><thead><tr><th>#</th><th>TASK</th><th>AGENT</th><th>STATUS</th><th>PRIORITY</th><th>PROGRESS</th><th>CREATED</th></tr></thead><tbody id="task-body"></tbody></table></div>
+          </section>
+        </section>
+
+        <section class="panel route-page-panel" data-view="memory knowledge settings" hidden>
+          <header class="panel-header"><div><span class="header-icon" id="route-page-icon">◉</span><h2 id="route-page-title">MEMORY</h2></div></header>
+          <div class="panel-body route-page-body"><strong id="route-page-heading">Agent memory</strong><p id="route-page-description">Session context and workspace state are managed by the active rig configuration.</p></div>
+        </section>
+      </main>
+    </div>
+
+  </div>
+  <dialog class="agent-dialog" id="agent-dialog" aria-labelledby="agent-dialog-title">
+    <form id="agent-form">
+      <header class="panel-header"><div><span class="header-icon">♙</span><h2 id="agent-dialog-title">ADD AGENT</h2></div><button class="dialog-close" id="close-agent-dialog" type="button" aria-label="Close">×</button></header>
+      <div class="agent-form-body">
+        <input type="hidden" id="agent-original-name">
+        <label for="agent-name">NAME</label>
+        <input id="agent-name" name="name" maxlength="64" pattern="[A-Za-z0-9_-]{1,64}" autocomplete="off" required placeholder="researcher">
+        <label for="agent-url">HTTP URL</label>
+        <input id="agent-url" name="url" type="url" required placeholder="http://127.0.0.1:3000">
+        <p>The worker endpoint may include <code>/a2a</code>; it is added automatically when omitted.</p>
+      </div>
+      <footer class="dialog-actions"><button id="cancel-agent" type="button">CANCEL</button><button class="primary" id="save-agent" type="submit">SAVE AGENT</button></footer>
+    </form>
+  </dialog>
+  <dialog class="agent-dialog task-dialog" id="task-dialog" aria-labelledby="task-dialog-title">
+    <form id="task-form">
+      <header class="panel-header"><div><span class="header-icon">▣</span><h2 id="task-dialog-title">CREATE TASK</h2></div><button class="dialog-close" id="close-task-dialog" type="button" aria-label="Close">×</button></header>
+      <div class="agent-form-body task-form-body">
+        <label for="task-title">INSTRUCTIONS</label>
+        <textarea id="task-title" name="title" maxlength="100000" required placeholder="Describe the result this agent should produce…"></textarea>
+        <label for="task-agent">ASSIGN TO</label>
+        <select id="task-agent" name="agent"><option value="auto">AUTO ASSIGN</option></select>
+        <p>Auto assign selects the registered agent with the lightest active workload.</p>
+        <label for="task-priority">PRIORITY</label>
+        <select id="task-priority" name="priority"><option value="medium">MEDIUM</option><option value="high">HIGH</option><option value="low">LOW</option></select>
+      </div>
+      <footer class="dialog-actions"><button id="cancel-task" type="button">CANCEL</button><button class="primary" id="save-task" type="submit">CREATE &amp; ASSIGN</button></footer>
+    </form>
+  </dialog>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="/app.mjs"></script>
+</body>
+</html>
