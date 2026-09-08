@@ -1,0 +1,67 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+import { createUiStateStore } from "../lib/ui-state.js";
+import { createOfficeTasksTool } from "../lib/tools/office-tasks.js";
+
+test("office tasks stay unassigned until the manager explicitly assigns them", async (context) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "agent-office-tasks-"));
+  const store = createUiStateStore(path.join(directory, "state.sqlite"));
+  context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+
+  let dispatchCount = 0;
+  let finishTask;
+  const completion = new Promise((resolve) => { finishTask = resolve; });
+  const subAgentManager = {
+    listWorkers: () => [{ name: "Dave", url: "http://127.0.0.1:8099/a2a" }],
+    queue({ agent, task, priority }) {
+      dispatchCount += 1;
+      assert.deepEqual({ agent, task, priority }, {
+        agent: "Dave",
+        task: "Prepare the release notes",
+        priority: "high",
+      });
+      return { task: { messageId: "message-1" }, completion };
+    },
+  };
+  const tool = createOfficeTasksTool({ uiStateStore: store, subAgentManager });
+
+  const created = await tool.execute({
+    action: "create",
+    title: "Prepare the release notes",
+    priority: "high",
+  });
+  assert.equal(created.ok, true);
+  assert.equal(created.task.status, "pending");
+  assert.equal(created.task.agent, null);
+  assert.equal(dispatchCount, 0, "creating a task must not dispatch it");
+
+  const queue = await tool.execute({ action: "read" });
+  assert.equal(queue.tasks[0].id, created.task.id);
+  assert.equal(queue.tasks[0].agent, null);
+  assert.equal(queue.workers[0].name, "Dave");
+
+  const assigned = await tool.execute({
+    action: "assign",
+    task_id: created.task.id,
+    agent: "Dave",
+  });
+  assert.equal(assigned.ok, true);
+  assert.equal(assigned.task.status, "running");
+  assert.equal(assigned.task.agent, "Dave");
+  assert.equal(dispatchCount, 1);
+
+  finishTask({
+    ok: true,
+    taskId: "worker-task-1",
+    text: "Release notes are ready.",
+    deliveredWork: [{ name: "release-notes.zip", uri: "https://worker.example/release-notes.zip" }],
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  const completed = store.getOfficeTasks()[0];
+  assert.equal(completed.status, "completed");
+  assert.equal(completed.result, "Release notes are ready.");
+  assert.equal(completed.deliveredWork[0].name, "release-notes.zip");
+});

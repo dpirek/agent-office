@@ -17,6 +17,7 @@ export function createSettingsApiHandlers({
   defaultWorkspace,
   environmentFileDetected = false,
   fileAccessDisabledByEnvironment = false,
+  appVersion = "0.0.0",
   onRigConfigurationsChanged = () => {},
 }) {
   async function handleHealthApi(req, res) {
@@ -24,6 +25,7 @@ export function createSettingsApiHandlers({
     const storedSettings = uiStateStore.getSelectedProvider() || {};
     json(res, 200, {
       ok: true,
+      version: appVersion,
       provider: envProvider,
       model: process.env.AI_MODEL || defaultModelForProvider(envProvider),
       ollamaModel: process.env.OLLAMA_MODEL || "llama3.1",
@@ -235,7 +237,17 @@ export function createSettingsApiHandlers({
       }
       return;
     }
-    methodNotAllowed(res, "GET, POST, PUT");
+    if (req.method === "DELETE") {
+      try {
+        const body = JSON.parse(await readRequestBody(req, 20_000) || "{}");
+        if (typeof body.skillId !== "string") throw new Error("Expected skill id.");
+        json(res, 200, { ok: true, ...uiStateStore.deleteSkill(body.skillId) });
+      } catch (error) {
+        json(res, 400, { ok: false, error: error.message });
+      }
+      return;
+    }
+    methodNotAllowed(res, "GET, POST, PUT, DELETE");
   }
 
   return {

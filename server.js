@@ -9,6 +9,7 @@ import { serveStatic } from "./lib/response.js";
 import { createTools } from "./lib/tools/index.js";
 import { loadMcpTools } from "./lib/mcp.js";
 import { SubAgentManager } from "./lib/sub-agents.js";
+import { PeriodicOperationScheduler } from "./lib/operations.js";
 import {
   createUiStateStore,
   normalizeStoredToolPermissions as normalizeToolPermissions,
@@ -27,6 +28,8 @@ import {
 } from "./lib/env-config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const packageMetadata = JSON.parse(await fs.readFile(path.join(__dirname, "package.json"), "utf8"));
+const appVersion = String(packageMetadata.version || "0.0.0");
 const environmentFilePath = path.join(__dirname, ".env");
 const environmentFileDetected = loadEnvironmentFile(environmentFilePath);
 const fileAccessDisabledByEnvironment = environmentFileDetected
@@ -50,6 +53,28 @@ const subAgentManager = new SubAgentManager({
     const localPort = typeof address === "object" ? address.port : defaultPort;
     const baseUrl = process.env.AI_HARNESS_PUBLIC_URL?.trim() || `http://127.0.0.1:${localPort}`;
     return new URL("/api/sub-agents/callback", baseUrl).href;
+  },
+  onTaskEvent(event, task) {
+    const summary = String(task.text || task.error || "").slice(0, 20_000);
+    uiStateStore.recordOfficeMemory({
+      kind: "task",
+      status: event,
+      title: task.title || "Delegated task",
+      summary,
+      agent: task.agent,
+      sourceId: task.taskId || task.messageId,
+      artifacts: task.deliveredWork || [],
+      occurredAt: task.finishedAt ? Date.parse(task.finishedAt) : Date.now(),
+      details: {
+        messageId: task.messageId,
+        taskId: task.taskId,
+        workerUrl: task.workerUrl,
+        priority: task.priority,
+        createdAt: task.createdAt,
+        startedAt: task.startedAt,
+        finishedAt: task.finishedAt,
+      },
+    });
   },
 });
 
@@ -123,6 +148,7 @@ async function createAgentSession({
     root,
     approve: async () => true,
     subAgentManager,
+    uiStateStore,
   }).filter((tool) => (
     toolPermissions[tool.name] === true &&
     (tool.name !== "delegate_to_sub_agent" || subAgentManager.listWorkers().length > 0)
@@ -185,6 +211,8 @@ if (environmentFileDetected) {
 }
 const initialRigConfigurations = uiStateStore.getRigConfigurations();
 syncSubAgentWorkers(initialRigConfigurations);
+const periodicOperationScheduler = new PeriodicOperationScheduler({ uiStateStore, subAgentManager });
+periodicOperationScheduler.start();
 
 server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
@@ -194,6 +222,7 @@ server = http.createServer(async (req, res) => {
     resolveWorkspace,
     environmentFileDetected,
     fileAccessDisabledByEnvironment,
+    appVersion,
     subAgentManager,
     onRigConfigurationsChanged: syncSubAgentWorkers,
   });

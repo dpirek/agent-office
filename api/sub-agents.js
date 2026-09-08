@@ -1,4 +1,5 @@
 import { json, methodNotAllowed, readRequestBody } from "./http.js";
+import { discoverSubAgentWorker } from "../lib/sub-agents.js";
 
 export function createSubAgentApiHandlers({
   subAgentManager,
@@ -59,26 +60,28 @@ export function createSubAgentApiHandlers({
       const body = JSON.parse(await readRequestBody(req, 20_000) || "{}");
       let workers;
       if (req.method === "POST") {
+        const discovered = await discoverSubAgentWorker(body.url);
         workers = updateActiveWorkers((current) => {
-          if (current.some((worker) => worker.name === body.name)) {
-            throw new Error(`An agent named ${body.name} already exists.`);
+          if (current.some((worker) => worker.name === discovered.name)) {
+            throw new Error(`An agent named ${discovered.name} already exists.`);
           }
-          return [...current, { name: body.name, url: body.url }];
+          return [...current, discovered];
         });
-        json(res, 201, { ok: true, workers });
+        json(res, 201, { ok: true, worker: discovered, workers });
         return;
       }
       if (req.method === "PUT") {
+        const discovered = await discoverSubAgentWorker(body.url);
         workers = updateActiveWorkers((current) => {
           const index = current.findIndex((worker) => worker.name === body.originalName);
           if (index < 0) throw new Error(`Unknown agent: ${body.originalName || "(empty)"}`);
-          if (current.some((worker, workerIndex) => workerIndex !== index && worker.name === body.name)) {
-            throw new Error(`An agent named ${body.name} already exists.`);
+          if (current.some((worker, workerIndex) => workerIndex !== index && worker.name === discovered.name)) {
+            throw new Error(`An agent named ${discovered.name} already exists.`);
           }
-          current[index] = { name: body.name, url: body.url };
+          current[index] = discovered;
           return current;
         });
-        json(res, 200, { ok: true, workers });
+        json(res, 200, { ok: true, worker: discovered, workers });
         return;
       }
       workers = updateActiveWorkers((current) => {
@@ -110,8 +113,22 @@ export function createSubAgentApiHandlers({
     }
   }
 
+  async function handleSubAgentInfoApi(req, res) {
+    if (req.method !== "POST") {
+      methodNotAllowed(res, "POST");
+      return;
+    }
+    try {
+      const body = JSON.parse(await readRequestBody(req, 20_000) || "{}");
+      json(res, 200, { ok: true, worker: await discoverSubAgentWorker(body.url) });
+    } catch (error) {
+      json(res, 400, { ok: false, error: error.message });
+    }
+  }
+
   return {
     "/api/sub-agents": handleSubAgentsApi,
+    "/api/sub-agents/info": handleSubAgentInfoApi,
     "/api/sub-agents/callback": handleSubAgentCallbackApi,
   };
 }

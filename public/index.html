@@ -14,6 +14,7 @@
       <div class="brand">
         <h1>AI Agent Office</h1>
         <p>ORCHESTRATE &nbsp;–&nbsp; MONITOR &nbsp;–&nbsp; COLLABORATE &nbsp;–&nbsp; GET THINGS DONE</p>
+        <p class="brand-context" id="header-context">v… · Workspace …</p>
       </div>
       <div class="top-actions">
         <div class="online-pill"><span class="status-dot" id="health-dot"></span><span id="health-text">CONNECTING</span></div>
@@ -26,28 +27,18 @@
     <div class="workspace">
       <nav class="sidebar" aria-label="Primary navigation">
         <div class="nav-items">
-          <a class="nav-item active" href="/dashboard" data-section="dashboard"><span class="nav-icon">▣</span>DASHBOARD</a>
-          <a class="nav-item" href="/agents" data-section="agents"><span class="nav-icon">♙</span>AGENTS</a>
-          <a class="nav-item" href="/tasks" data-section="tasks"><span class="nav-icon">▤</span>TASKS</a>
-          <a class="nav-item" href="/workflows" data-section="workflows"><span class="nav-icon">⌘</span>WORKFLOWS</a>
-          <a class="nav-item" href="/tools" data-section="tools"><span class="nav-icon">⌁</span>TOOLS</a>
-          <a class="nav-item" href="/memory" data-section="memory"><span class="nav-icon">◉</span>MEMORY</a>
-          <a class="nav-item" href="/knowledge" data-section="knowledge"><span class="nav-icon">▧</span>KNOWLEDGE</a>
-          <a class="nav-item" href="/logs" data-section="logs"><span class="nav-icon">▱</span>LOGS</a>
-          <a class="nav-item" href="/settings" data-section="settings"><span class="nav-icon">⚙</span>SETTINGS</a>
+          <a class="nav-item active" href="/dashboard" data-section="dashboard" aria-label="Dashboard"><span class="nav-icon" aria-hidden="true">▣</span>DASHBOARD</a>
+          <a class="nav-item" href="/agents" data-section="agents" aria-label="Agents"><span class="nav-icon" aria-hidden="true">♙</span>AGENTS</a>
+          <a class="nav-item" href="/tasks" data-section="tasks" aria-label="Tasks"><span class="nav-icon" aria-hidden="true">▤</span>TASKS</a>
+          <a class="nav-item" href="/operations" data-section="operations" aria-label="Operations"><span class="nav-icon" aria-hidden="true">◷</span>OPERATIONS</a>
+          <a class="nav-item" href="/memory" data-section="memory" aria-label="Memory"><span class="nav-icon" aria-hidden="true">◉</span>MEMORY</a>
+          <a class="nav-item" href="/knowledge" data-section="knowledge" aria-label="Knowledge"><span class="nav-icon" aria-hidden="true">▧</span>KNOWLEDGE</a>
+          <a class="nav-item" href="/logs" data-section="logs" aria-label="Logs"><span class="nav-icon" aria-hidden="true">▱</span>LOGS</a>
+          <a class="nav-item" href="/settings" data-section="settings" aria-label="Settings"><span class="nav-icon" aria-hidden="true">⚙</span>SETTINGS</a>
         </div>
       </nav>
 
       <main class="main-content">
-        <section class="metrics" aria-label="System metrics">
-          <article class="metric"><span class="metric-icon">♙</span><div><label>AGENTS</label><strong id="metric-agents">0</strong><small id="metric-agents-sub">0 active</small></div></article>
-          <article class="metric"><span class="metric-icon">▤</span><div><label>TASKS</label><strong id="metric-tasks">0</strong><small id="metric-tasks-sub">0 running</small></div></article>
-          <article class="metric"><span class="metric-icon">⌘</span><div><label>WORKFLOWS</label><strong>3</strong><small id="metric-workflows-sub">1 active</small></div></article>
-          <article class="metric"><span class="metric-icon">⌁</span><div><label>TOOLS</label><strong id="metric-tools">0</strong><small>connected</small></div></article>
-          <article class="metric"><span class="metric-icon">◉</span><div><label>TOKENS (24H)</label><strong id="metric-tokens">0</strong><small id="metric-token-trend">↑ session</small></div></article>
-          <article class="metric"><span class="metric-icon bars">▥</span><div><label>UPTIME</label><strong id="metric-uptime">00:00</strong><small>this session</small></div></article>
-        </section>
-
         <section class="operations-grid">
           <section class="panel office-panel" data-view="agents">
             <header class="panel-header"><div><span class="header-icon">▦</span><h2>AGENT OFFICE</h2></div><span class="panel-meta" id="office-meta">LIVE FLOOR</span></header>
@@ -58,7 +49,7 @@
           </section>
 
           <aside class="right-column">
-            <section class="panel selected-panel" data-view="dashboard agents">
+            <section class="panel selected-panel" data-view="agents">
               <header class="panel-header"><div><span class="header-icon">⇆</span><h2>SELECTED AGENT</h2></div></header>
               <div class="panel-body selected-body">
                 <div class="agent-summary">
@@ -83,7 +74,7 @@
               </div>
             </section>
 
-            <section class="panel logs-panel" data-view="dashboard logs tools">
+            <section class="panel logs-panel" data-view="dashboard logs">
               <header class="panel-header"><div><span class="header-icon">▤</span><h2>SYSTEM LOGS</h2></div></header>
               <div class="system-log panel-body" id="system-log"></div>
             </section>
@@ -91,16 +82,87 @@
         </section>
 
         <section class="bottom-grid">
-          <section class="panel task-panel" data-view="dashboard tasks workflows">
+          <section class="panel chat-panel" data-view="dashboard">
+            <header class="panel-header"><div><span class="header-icon">›_</span><h2>OFFICE MANAGER</h2></div><span class="panel-meta" id="chat-status">CONNECTING</span></header>
+            <div class="chat-messages panel-body" id="chat-messages" aria-live="polite">
+              <div class="chat-empty"><strong>START A CONVERSATION</strong><span>Ask the office manager to inspect, create, or assign work.</span></div>
+            </div>
+            <form class="chat-composer panel-body" id="chat-form">
+              <textarea id="chat-input" rows="1" maxlength="100000" required placeholder="Message the office manager…" aria-label="Message the office manager"></textarea>
+              <button class="primary" id="send-chat" type="submit">SEND</button>
+            </form>
+          </section>
+          <section class="panel task-panel" data-view="tasks">
             <header class="panel-header"><div><span class="header-icon">▣</span><h2>TASK QUEUE</h2></div><button class="header-action" id="add-task-button" type="button">+ NEW TASK</button></header>
             <div class="task-toolbar panel-body" id="task-filters" aria-label="Filter tasks"><button class="active" data-filter="all">ALL (0)</button><button data-filter="running">RUNNING (0)</button><button data-filter="pending">PENDING (0)</button><button data-filter="completed">COMPLETED (0)</button><button data-filter="failed">FAILED (0)</button></div>
-            <div class="task-table-wrap panel-body"><table class="task-table"><thead><tr><th>#</th><th>TASK</th><th>AGENT</th><th>STATUS</th><th>PRIORITY</th><th>PROGRESS</th><th>CREATED</th></tr></thead><tbody id="task-body"></tbody></table></div>
+            <div class="task-table-wrap panel-body"><table class="task-table"><thead><tr><th>#</th><th>TASK</th><th>AGENT</th><th>STATUS</th><th>PRIORITY</th><th>PROGRESS</th><th>CREATED</th><th>DELIVERED WORK</th></tr></thead><tbody id="task-body"></tbody></table></div>
           </section>
         </section>
 
-        <section class="panel route-page-panel" data-view="memory knowledge settings" hidden>
-          <header class="panel-header"><div><span class="header-icon" id="route-page-icon">◉</span><h2 id="route-page-title">MEMORY</h2></div></header>
-          <div class="panel-body route-page-body"><strong id="route-page-heading">Agent memory</strong><p id="route-page-description">Session context and workspace state are managed by the active rig configuration.</p></div>
+        <section class="panel operations-panel" data-view="operations" hidden>
+          <header class="panel-header"><div><span class="header-icon">◷</span><h2>PERIODIC OPERATIONS</h2></div><button class="header-action" id="add-operation-button" type="button">+ NEW OPERATION</button></header>
+          <div class="operations-summary panel-body"><strong id="operations-active-count">0 ACTIVE</strong><span>Schedules are persisted and dispatched to registered HTTP agents.</span></div>
+          <div class="operations-table-wrap panel-body">
+            <table class="operations-table"><thead><tr><th>OPERATION</th><th>SCHEDULE</th><th>ASSIGNMENT</th><th>PRIORITY</th><th>LAST RUN</th><th>NEXT RUN</th><th>STATE</th><th>ACTIONS</th></tr></thead><tbody id="operations-body"></tbody></table>
+          </div>
+        </section>
+
+        <section class="panel settings-panel" data-view="settings" hidden>
+          <header class="panel-header"><div><span class="header-icon">⚙</span><h2>SETTINGS</h2></div><span class="panel-meta" id="settings-status">SELECT A PROMPT</span></header>
+          <nav class="settings-tabs panel-body" role="tablist" aria-label="Settings sections">
+            <button class="active" type="button" role="tab" aria-selected="true" data-settings-tab="prompts">SYS PROMPTS</button>
+            <button type="button" role="tab" aria-selected="false" data-settings-tab="tools">TOOLS</button>
+            <button type="button" role="tab" aria-selected="false" data-settings-tab="mcp">MCP</button>
+            <button type="button" role="tab" aria-selected="false" data-settings-tab="provider">PROVIDER</button>
+          </nav>
+          <div class="settings-body settings-view panel-body" data-settings-view="prompts">
+            <aside class="prompt-list" id="prompt-list" aria-label="System prompts"></aside>
+            <section class="prompt-editor">
+              <div class="prompt-editor-heading"><span>EDITING</span><strong id="prompt-editor-title">Select a system prompt</strong><code id="prompt-editor-key">—</code></div>
+              <textarea id="system-prompt-content" spellcheck="false" disabled placeholder="Select a prompt from the list."></textarea>
+              <footer class="prompt-editor-actions"><button id="reset-system-prompt" type="button" disabled>RESET CHANGES</button><button class="primary" id="save-system-prompt" type="button" disabled>SAVE PROMPT</button></footer>
+            </section>
+          </div>
+          <div class="settings-view tools-settings panel-body" data-settings-view="tools" hidden>
+            <div class="settings-section-intro"><strong>INTERNAL TOOLS</strong><span>Choose which tools the office manager may call.</span></div>
+            <div class="tool-permissions" id="tool-permissions"></div>
+          </div>
+          <div class="settings-view editor-settings panel-body" data-settings-view="mcp" hidden>
+            <div class="settings-section-intro"><strong>MCP CONFIGURATION</strong><span>JSON configuration for connected Model Context Protocol servers.</span></div>
+            <textarea id="mcp-config-content" spellcheck="false" placeholder="{&#10;  &quot;mcpServers&quot;: {}&#10;}"></textarea>
+            <footer class="settings-actions"><button id="reset-mcp-config" type="button">RESET CHANGES</button><button class="primary" id="save-mcp-config" type="button">SAVE MCP</button></footer>
+          </div>
+          <form class="settings-view provider-settings panel-body" data-settings-view="provider" id="provider-form" hidden>
+            <div class="settings-section-intro"><strong>MODEL PROVIDER</strong><span>Connection used by the internal office manager.</span></div>
+            <div class="settings-fields">
+              <label for="provider-type">PROVIDER</label>
+              <select id="provider-type"><option value="openai">OPENAI</option><option value="ollama">OLLAMA</option><option value="custom">CUSTOM</option></select>
+              <label for="provider-model">MODEL</label>
+              <select id="provider-model" required><option value="">REFRESH MODELS TO SELECT</option></select>
+              <label for="provider-base-url">BASE URL</label>
+              <input id="provider-base-url" type="url" autocomplete="off" placeholder="Provider default">
+              <label for="provider-api-key">API KEY</label>
+              <input id="provider-api-key" type="password" autocomplete="off" placeholder="Not required for local providers">
+            </div>
+            <footer class="settings-actions"><span class="provider-model-status" id="provider-model-status">USING SAVED MODEL LIST</span><button id="refresh-provider-models" type="button">REFRESH MODELS</button><button id="reset-provider" type="button">RESET CHANGES</button><button class="primary" id="save-provider" type="submit">SAVE PROVIDER</button></footer>
+          </form>
+        </section>
+
+        <section class="panel knowledge-panel" data-view="knowledge" hidden>
+          <header class="panel-header"><div><span class="header-icon">▧</span><h2>SKILL FILES</h2></div><button class="header-action" id="add-skill-file-button" type="button">+ ADD SKILL FILE</button></header>
+          <div class="skills-summary panel-body"><strong id="enabled-skills-count">0 ENABLED</strong><span>Enabled skill files are included in the active agent preset.</span></div>
+          <div class="skills-table-wrap panel-body">
+            <table class="skills-table"><thead><tr><th>ENABLED</th><th>SKILL</th><th>FILE</th><th>SIZE</th><th>UPDATED</th><th>ACTIONS</th></tr></thead><tbody id="skills-body"></tbody></table>
+          </div>
+          <input id="skill-file-input" type="file" accept=".md,text/markdown,text/plain" multiple hidden>
+        </section>
+
+        <section class="panel memory-panel" data-view="memory" hidden>
+          <header class="panel-header"><div><span class="header-icon">◉</span><h2>OFFICE MEMORY</h2></div><button class="header-action" id="refresh-memory-button" type="button">REFRESH</button></header>
+          <div class="memory-summary panel-body"><strong id="memory-record-count">0 RECORDS</strong><span>Durable task and operation history available to the office manager.</span></div>
+          <div class="memory-table-wrap panel-body">
+            <table class="memory-table"><thead><tr><th>WHEN</th><th>TYPE</th><th>STATUS</th><th>AGENT</th><th>WORK</th><th>DELIVERED ARTIFACTS</th></tr></thead><tbody id="memory-body"></tbody></table>
+          </div>
         </section>
       </main>
     </div>
@@ -111,11 +173,11 @@
       <header class="panel-header"><div><span class="header-icon">♙</span><h2 id="agent-dialog-title">ADD AGENT</h2></div><button class="dialog-close" id="close-agent-dialog" type="button" aria-label="Close">×</button></header>
       <div class="agent-form-body">
         <input type="hidden" id="agent-original-name">
-        <label for="agent-name">NAME</label>
-        <input id="agent-name" name="name" maxlength="64" pattern="[A-Za-z0-9_-]{1,64}" autocomplete="off" required placeholder="researcher">
+        <label for="agent-name">WORKER NAME</label>
+        <input id="agent-name" name="name" maxlength="100" autocomplete="off" readonly placeholder="Discovered from /api/info">
         <label for="agent-url">HTTP URL</label>
         <input id="agent-url" name="url" type="url" required placeholder="http://127.0.0.1:3000">
-        <p>The worker endpoint may include <code>/a2a</code>; it is added automatically when omitted.</p>
+        <p id="agent-info-status">Enter the worker host or A2A URL. Name and capabilities are discovered from <code>/api/info</code>.</p>
       </div>
       <footer class="dialog-actions"><button id="cancel-agent" type="button">CANCEL</button><button class="primary" id="save-agent" type="submit">SAVE AGENT</button></footer>
     </form>
@@ -126,13 +188,32 @@
       <div class="agent-form-body task-form-body">
         <label for="task-title">INSTRUCTIONS</label>
         <textarea id="task-title" name="title" maxlength="100000" required placeholder="Describe the result this agent should produce…"></textarea>
-        <label for="task-agent">ASSIGN TO</label>
-        <select id="task-agent" name="agent"><option value="auto">AUTO ASSIGN</option></select>
-        <p>Auto assign selects the registered agent with the lightest active workload.</p>
         <label for="task-priority">PRIORITY</label>
         <select id="task-priority" name="priority"><option value="medium">MEDIUM</option><option value="high">HIGH</option><option value="low">LOW</option></select>
+        <p>Created tasks remain unassigned until the office manager assigns them.</p>
       </div>
-      <footer class="dialog-actions"><button id="cancel-task" type="button">CANCEL</button><button class="primary" id="save-task" type="submit">CREATE &amp; ASSIGN</button></footer>
+      <footer class="dialog-actions"><button id="cancel-task" type="button">CANCEL</button><button class="primary" id="save-task" type="submit">CREATE TASK</button></footer>
+    </form>
+  </dialog>
+  <dialog class="agent-dialog operation-dialog" id="operation-dialog" aria-labelledby="operation-dialog-title">
+    <form id="operation-form">
+      <header class="panel-header"><div><span class="header-icon">◷</span><h2 id="operation-dialog-title">NEW PERIODIC OPERATION</h2></div><button class="dialog-close" id="close-operation-dialog" type="button" aria-label="Close">×</button></header>
+      <div class="agent-form-body operation-form-body">
+        <input type="hidden" id="operation-id">
+        <label for="operation-name">NAME</label>
+        <input id="operation-name" maxlength="100" required placeholder="Daily status report">
+        <label for="operation-task">INSTRUCTIONS</label>
+        <textarea id="operation-task" maxlength="100000" required placeholder="Describe the task to run on every interval…"></textarea>
+        <label for="operation-agent">ASSIGN TO</label>
+        <select id="operation-agent"><option value="auto">AUTO ASSIGN</option></select>
+        <label for="operation-interval">RUN EVERY</label>
+        <div class="interval-fields"><input id="operation-interval" type="number" min="1" max="10000" value="1" required><select id="operation-unit"><option value="minutes">MINUTES</option><option value="hours" selected>HOURS</option><option value="days">DAYS</option></select></div>
+        <label for="operation-priority">PRIORITY</label>
+        <select id="operation-priority"><option value="medium">MEDIUM</option><option value="high">HIGH</option><option value="low">LOW</option></select>
+        <label for="operation-enabled">ENABLED</label>
+        <label class="enabled-field"><input id="operation-enabled" type="checkbox" checked><span>Dispatch automatically</span></label>
+      </div>
+      <footer class="dialog-actions"><button id="cancel-operation" type="button">CANCEL</button><button class="primary" id="save-operation" type="submit">SAVE OPERATION</button></footer>
     </form>
   </dialog>
   <div class="toast" id="toast" role="status"></div>

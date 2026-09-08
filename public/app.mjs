@@ -18,12 +18,24 @@ const PAGES = {
   dashboard: { path: "/dashboard", title: "Dashboard" },
   agents: { path: "/agents", title: "Agents" },
   tasks: { path: "/tasks", title: "Tasks" },
-  workflows: { path: "/workflows", title: "Workflows" },
-  tools: { path: "/tools", title: "Tools" },
-  memory: { path: "/memory", title: "Memory", icon: "◉", heading: "Agent memory", description: "Session context and workspace state are managed by the active rig configuration." },
+  operations: { path: "/operations", title: "Operations" },
+  memory: { path: "/memory", title: "Memory" },
   knowledge: { path: "/knowledge", title: "Knowledge", icon: "▧", heading: "Knowledge base", description: "Connected sources and selected skills provide shared context to the agent office." },
   logs: { path: "/logs", title: "Logs" },
-  settings: { path: "/settings", title: "Settings", icon: "⚙", heading: "Office settings", description: "Provider, tool, skill, and sub-agent settings come from the active rig configuration." },
+  settings: { path: "/settings", title: "Settings" },
+};
+
+const TOOL_DETAILS = {
+  manage_office_tasks: ["Office tasks", "Read, create, and explicitly assign queued work."],
+  read_office_memory: ["Office memory", "Read durable task and operation history."],
+  list_files: ["List files", "Inspect workspace directory contents."],
+  read_file: ["Read files", "Read files from the configured workspace."],
+  write_file: ["Write files", "Create and update workspace files."],
+  search_files: ["Search files", "Search workspace content and paths."],
+  curl: ["HTTP requests", "Call external HTTP endpoints."],
+  run_command: ["Run commands", "Execute approved workspace commands."],
+  chrome_devtools: ["Chrome DevTools", "Inspect and validate browser-rendered output."],
+  delegate_to_sub_agent: ["Delegate to agent", "Send independent work to registered agents."],
 };
 
 const state = {
@@ -32,8 +44,22 @@ const state = {
   activeTab: "details",
   taskFilter: "all",
   localTasks: [],
-  delegatedTasks: [],
+  officeTasks: [],
   workers: [],
+  operations: [],
+  systemPrompts: [],
+  settingsTab: "prompts",
+  toolPermissions: {},
+  providerSettings: { provider: "openai", model: "", baseUrl: "", apiKey: "" },
+  mcpConfig: "",
+  mcpDirty: false,
+  providerDirty: false,
+  skills: [],
+  memoryRecords: [],
+  chatMessages: [],
+  chatRunning: false,
+  selectedPromptKey: null,
+  promptDirty: false,
   activity: [],
   logs: [],
   health: null,
@@ -42,7 +68,6 @@ const state = {
   socketReady: false,
   runningTaskId: null,
   paused: false,
-  tokenCount: 0,
 };
 
 function escapeHtml(value) {
@@ -56,6 +81,11 @@ function clock(value = Date.now()) {
 function shortTime(value) {
   if (!value) return "—";
   return new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function scheduleTime(value) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 function showToast(message, error = false) {
@@ -114,17 +144,17 @@ function normalizeTaskStatus(status) {
 }
 
 function allTasks() {
-  const delegated = state.delegatedTasks.map((task) => ({
-    id: task.messageId || task.taskId || `${task.agent}-${task.createdAt}`,
-    title: task.title || `Delegated task ${task.taskId || "awaiting acknowledgement"}`,
-    agent: task.agent,
-    status: normalizeTaskStatus(task.state),
+  const officeTasks = state.officeTasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    agent: task.agent || "UNASSIGNED",
+    status: normalizeTaskStatus(task.status),
     priority: task.priority || "medium",
-    progress: task.state === "completed" ? 100 : task.state === "working" ? 55 : task.state === "submitting" ? 15 : 0,
+    progress: task.status === "completed" ? 100 : task.status === "running" ? 55 : ["failed", "timed_out"].includes(task.status) ? 100 : 0,
     createdAt: task.createdAt,
-    delegated: true,
+    deliveredWork: task.deliveredWork || [],
   }));
-  return [...state.localTasks, ...delegated].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return [...state.localTasks, ...officeTasks].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 function currentAgent() {
@@ -159,7 +189,7 @@ function renderAgentRegistry() {
 }
 
 function detailRows(agent) {
-  const model = state.orchestrator?.model || state.health?.model || "not configured";
+  const model = agent.model?.name || state.orchestrator?.model || state.health?.model || "not configured";
   const workspace = state.health?.workspace || "—";
   const tasks = allTasks().filter((task) => task.agent === agent.name);
   const runningTask = tasks.find((task) => task.status === "running");
@@ -210,6 +240,34 @@ function renderLogs() {
   node.scrollTop = node.scrollHeight;
 }
 
+function renderChat() {
+  const node = $("#chat-messages");
+  if (!node) return;
+  node.innerHTML = state.chatMessages.length ? state.chatMessages.map((message) => `
+    <article class="chat-message ${escapeHtml(message.role)}${message.streaming ? " streaming" : ""}${message.error ? " error" : ""}">
+      <label>${message.role === "user" ? "YOU" : "OFFICE MANAGER"}</label>
+      <p>${escapeHtml(message.text || (message.streaming ? "Thinking" : ""))}</p>
+    </article>`).join("") : `<div class="chat-empty"><strong>START A CONVERSATION</strong><span>Ask the office manager to inspect, create, or assign work.</span></div>`;
+  node.scrollTop = node.scrollHeight;
+  const ready = state.socketReady && Boolean(state.health?.workspace);
+  $("#chat-status").textContent = state.chatRunning ? "WORKING…" : ready ? "READY" : "CONNECTING";
+  $("#send-chat").disabled = !ready || state.chatRunning;
+  $("#chat-input").disabled = state.chatRunning;
+}
+
+function currentChatReply() {
+  return [...state.chatMessages].reverse().find((message) => message.role === "agent" && message.streaming);
+}
+
+function resizeChatInput() {
+  const input = $("#chat-input");
+  if (!input) return;
+  input.style.height = "36px";
+  const height = Math.min(Math.max(input.scrollHeight, 36), 160);
+  input.style.height = `${height}px`;
+  input.style.overflowY = input.scrollHeight > 160 ? "auto" : "hidden";
+}
+
 function taskCounts(tasks) {
   return Object.fromEntries(["all", "running", "pending", "completed", "failed"].map((status) => [status, status === "all" ? tasks.length : tasks.filter((task) => task.status === status).length]));
 }
@@ -227,27 +285,292 @@ function renderTasks() {
     <td>${index + 1}</td><td title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</td><td>${escapeHtml(task.agent)}</td>
     <td class="status-${task.status}">${escapeHtml(task.status)}</td><td class="priority-${task.priority}">${escapeHtml(task.priority)}</td>
     <td><span class="progress-cell"><span class="progress"><i style="width:${task.progress}%"></i></span>${task.progress}%</span></td><td>${shortTime(task.createdAt)}</td>
-  </tr>`).join("") : `<tr class="empty-row"><td colspan="7">NO TASKS IN THIS VIEW</td></tr>`;
-  $("#metric-tasks").textContent = tasks.length;
-  $("#metric-tasks-sub").textContent = `${counts.running} running`;
+    <td class="delivered-work">${task.deliveredWork?.length ? task.deliveredWork.map((work) => `<a href="${escapeHtml(work.uri)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(work.mimeType)}">↗ ${escapeHtml(work.name)}</a>`).join("") : "—"}</td>
+  </tr>`).join("") : `<tr class="empty-row"><td colspan="8">NO TASKS IN THIS VIEW</td></tr>`;
   renderSelectedAgent();
 }
 
-function renderTaskAgentOptions() {
-  const select = $("#task-agent");
+function renderOperationAgentOptions() {
+  const select = $("#operation-agent");
   if (!select) return;
   const selected = select.value || "auto";
   select.innerHTML = `<option value="auto">AUTO ASSIGN</option>${state.workers.map((worker) => `<option value="${escapeHtml(worker.name)}">${escapeHtml(worker.name)}</option>`).join("")}`;
   select.value = [...select.options].some((option) => option.value === selected) ? selected : "auto";
 }
 
-function renderMetrics() {
-  const active = state.agents.filter((agent) => agent.status === "running").length;
-  const toolCount = state.orchestrator?.tools?.length || 0;
-  $("#metric-agents").textContent = state.agents.length;
-  $("#metric-agents-sub").textContent = `${active} active`;
-  $("#metric-tools").textContent = toolCount;
-  $("#metric-tokens").textContent = state.tokenCount > 999 ? `${Math.round(state.tokenCount / 1000)}K` : state.tokenCount;
+function renderOperations() {
+  const body = $("#operations-body");
+  if (!body) return;
+  const active = state.operations.filter((operation) => operation.enabled).length;
+  $("#operations-active-count").textContent = `${active} ACTIVE`;
+  body.innerHTML = state.operations.length ? state.operations.map((operation) => {
+    const stateClass = !operation.enabled ? "disabled" : operation.lastStatus === "failed" ? "failed" : "";
+    const stateLabel = operation.enabled ? operation.lastStatus || "SCHEDULED" : "DISABLED";
+    return `<tr>
+      <td><span class="operation-name"><strong>${escapeHtml(operation.name)}</strong><small title="${escapeHtml(operation.task)}">${escapeHtml(operation.task)}</small></span></td>
+      <td>EVERY ${operation.intervalValue} ${escapeHtml(operation.intervalUnit).toUpperCase()}</td>
+      <td>${operation.agent === "auto" ? "AUTO ASSIGN" : escapeHtml(operation.agent)}</td>
+      <td class="priority-${escapeHtml(operation.priority)}">${escapeHtml(operation.priority)}</td>
+      <td>${scheduleTime(operation.lastRunAt)}</td><td>${operation.enabled ? scheduleTime(operation.nextRunAt) : "—"}</td>
+      <td><span class="operation-state ${stateClass}">${escapeHtml(stateLabel)}</span></td>
+      <td><span class="operation-actions"><button class="toggle-operation" data-operation="${escapeHtml(operation.id)}">${operation.enabled ? "DISABLE" : "ENABLE"}</button><button class="edit-operation" data-operation="${escapeHtml(operation.id)}">EDIT</button><button class="delete-operation" data-operation="${escapeHtml(operation.id)}">DELETE</button></span></td>
+    </tr>`;
+  }).join("") : `<tr class="empty-row"><td colspan="8">NO PERIODIC OPERATIONS DEFINED</td></tr>`;
+}
+
+function currentSystemPrompt() {
+  return state.systemPrompts.find((prompt) => prompt.key === state.selectedPromptKey) || null;
+}
+
+function renderSettingsStatus() {
+  const status = $("#settings-status");
+  if (!status) return;
+  if (state.settingsTab === "tools") {
+    const enabled = Object.values(state.toolPermissions).filter(Boolean).length;
+    status.textContent = `${enabled} TOOLS ENABLED`;
+  } else if (state.settingsTab === "mcp") {
+    status.textContent = state.mcpDirty ? "UNSAVED CHANGES" : "SAVED";
+  } else if (state.settingsTab === "provider") {
+    status.textContent = state.providerDirty ? "UNSAVED CHANGES" : "SAVED";
+  } else {
+    status.textContent = state.promptDirty ? "UNSAVED CHANGES" : currentSystemPrompt() ? "SAVED" : "SELECT A PROMPT";
+  }
+}
+
+function selectSettingsTab(tab) {
+  if (!['prompts', 'tools', 'mcp', 'provider'].includes(tab)) return;
+  state.settingsTab = tab;
+  $$('[data-settings-tab]').forEach((button) => {
+    const active = button.dataset.settingsTab === tab;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', String(active));
+  });
+  $$('[data-settings-view]').forEach((view) => { view.hidden = view.dataset.settingsView !== tab; });
+  renderSettingsStatus();
+}
+
+function renderToolPermissions() {
+  const container = $("#tool-permissions");
+  if (!container) return;
+  container.innerHTML = Object.entries(state.toolPermissions).map(([name, enabled]) => {
+    const [label, description] = TOOL_DETAILS[name] || [name.replaceAll('_', ' '), 'Internal office manager tool.'];
+    return `<label class="tool-permission"><input type="checkbox" data-tool-permission="${escapeHtml(name)}" ${enabled ? 'checked' : ''}><span><strong>${escapeHtml(label)}</strong><small>${escapeHtml(description)}</small></span></label>`;
+  }).join('') || `<div class="office-empty"><strong>NO TOOLS AVAILABLE</strong></div>`;
+  renderSettingsStatus();
+}
+
+function providerFormValue() {
+  return {
+    provider: $("#provider-type").value,
+    model: $("#provider-model").value.trim(),
+    baseUrl: $("#provider-base-url").value.trim(),
+    apiKey: $("#provider-api-key").value.trim(),
+  };
+}
+
+function setProviderModelOptions(models = [], selected = "") {
+  const select = $("#provider-model");
+  const values = [...new Set(models.map((model) => String(model).trim()).filter(Boolean))];
+  if (selected && !values.includes(selected)) values.unshift(selected);
+  select.innerHTML = values.length
+    ? values.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join("")
+    : `<option value="">REFRESH MODELS TO SELECT</option>`;
+  select.value = selected && values.includes(selected) ? selected : values[0] || "";
+}
+
+function populateProviderForm() {
+  $("#provider-type").value = state.providerSettings.provider || "openai";
+  setProviderModelOptions([], state.providerSettings.model || "");
+  $("#provider-base-url").value = state.providerSettings.baseUrl || "";
+  $("#provider-api-key").value = state.providerSettings.apiKey || "";
+  $("#provider-model-status").textContent = state.providerSettings.model ? "SAVED MODEL SELECTED" : "REFRESH MODELS TO BEGIN";
+  state.providerDirty = false;
+  renderSettingsStatus();
+}
+
+async function refreshProviderModels() {
+  const button = $("#refresh-provider-models");
+  const status = $("#provider-model-status");
+  const settings = providerFormValue();
+  button.disabled = true;
+  status.textContent = "LOADING MODELS…";
+  try {
+    const response = await fetch("/api/models", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(settings),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    if (!data.models?.length) throw new Error("The provider returned no models.");
+    setProviderModelOptions(data.models, settings.model);
+    state.providerDirty = JSON.stringify(providerFormValue()) !== JSON.stringify(state.providerSettings);
+    status.textContent = `${data.models.length} MODELS AVAILABLE`;
+    showToast(`${data.models.length} models loaded.`);
+  } catch (error) {
+    status.textContent = "MODEL REFRESH FAILED";
+    showToast(error.message, true);
+  } finally {
+    button.disabled = false;
+    renderSettingsStatus();
+  }
+}
+
+function renderSystemPrompts() {
+  const list = $("#prompt-list");
+  if (!list) return;
+  list.innerHTML = state.systemPrompts.length ? state.systemPrompts.map((prompt) => `
+    <button type="button" data-prompt="${escapeHtml(prompt.key)}" class="${prompt.key === state.selectedPromptKey ? "active" : ""}">
+      <strong>${escapeHtml(prompt.title)}</strong><small>${escapeHtml(prompt.key)}</small>
+    </button>`).join("") : `<div class="office-empty"><strong>NO SYSTEM PROMPTS</strong></div>`;
+  const prompt = currentSystemPrompt();
+  $("#prompt-editor-title").textContent = prompt?.title || "Select a system prompt";
+  $("#prompt-editor-key").textContent = prompt?.key || "—";
+  $("#system-prompt-content").disabled = !prompt;
+  $("#reset-system-prompt").disabled = !prompt || !state.promptDirty;
+  $("#save-system-prompt").disabled = !prompt || !state.promptDirty;
+  renderSettingsStatus();
+}
+
+function formatBytes(value) {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function renderSkills() {
+  const body = $("#skills-body");
+  if (!body) return;
+  const enabled = state.skills.filter((skill) => skill.selected).length;
+  $("#enabled-skills-count").textContent = `${enabled} ENABLED`;
+  body.innerHTML = state.skills.length ? state.skills.map((skill) => `<tr>
+    <td><input class="skill-toggle" type="checkbox" data-skill="${escapeHtml(skill.id)}" ${skill.selected ? "checked" : ""} aria-label="Enable ${escapeHtml(skill.name)}"></td>
+    <td><strong class="skill-name">${escapeHtml(skill.name)}</strong></td>
+    <td><span class="skill-file">${escapeHtml(skill.name)}/SKILL.md</span></td>
+    <td>${formatBytes(new Blob([skill.content]).size)}</td>
+    <td>${scheduleTime(skill.updatedAt)}</td>
+    <td><button class="skill-delete" type="button" data-skill="${escapeHtml(skill.id)}">DELETE</button></td>
+  </tr>`).join("") : `<tr class="empty-row"><td colspan="6">NO SKILL FILES ADDED</td></tr>`;
+}
+
+function renderMemory() {
+  const body = $("#memory-body");
+  if (!body) return;
+  $("#memory-record-count").textContent = `${state.memoryRecords.length} RECORD${state.memoryRecords.length === 1 ? "" : "S"}`;
+  body.innerHTML = state.memoryRecords.length ? state.memoryRecords.map((record) => `<tr>
+    <td>${scheduleTime(record.occurredAt)}</td>
+    <td>${escapeHtml(record.kind)}</td>
+    <td class="memory-status-${escapeHtml(record.status)}">${escapeHtml(record.status)}</td>
+    <td>${escapeHtml(record.agent || "—")}</td>
+    <td class="memory-work"><strong>${escapeHtml(record.title)}</strong><span title="${escapeHtml(record.summary)}">${escapeHtml(record.summary || "No summary was recorded.")}</span></td>
+    <td class="memory-artifacts">${record.artifacts?.length ? record.artifacts.map((artifact) => `<a href="${escapeHtml(artifact.uri)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(artifact.mimeType || "artifact")}">↗ ${escapeHtml(artifact.name || artifact.artifactName || "Delivered work")}</a>`).join("") : "—"}</td>
+  </tr>`).join("") : `<tr class="empty-row"><td colspan="6">NO COMPLETED OR FAILED WORK RECORDED YET</td></tr>`;
+}
+
+function selectSystemPrompt(key, { force = false } = {}) {
+  if (!force && state.promptDirty && !window.confirm("Discard unsaved system prompt changes?")) return;
+  const prompt = state.systemPrompts.find((entry) => entry.key === key);
+  if (!prompt) return;
+  state.selectedPromptKey = prompt.key;
+  state.promptDirty = false;
+  $("#system-prompt-content").value = prompt.content;
+  renderSystemPrompts();
+}
+
+async function loadSystemPrompts() {
+  try {
+    const data = await fetchJson("/api/system-prompts");
+    state.systemPrompts = data.prompts || [];
+    const selected = state.systemPrompts.some((prompt) => prompt.key === state.selectedPromptKey)
+      ? state.selectedPromptKey
+      : state.systemPrompts[0]?.key;
+    if (selected) selectSystemPrompt(selected, { force: true });
+    else renderSystemPrompts();
+  } catch (error) {
+    showToast(error.message, true);
+  }
+}
+
+async function loadConfigurationSettings() {
+  try {
+    const [uiState, mcp] = await Promise.all([fetchJson("/api/ui-state"), fetchJson("/api/config")]);
+    state.toolPermissions = uiState.state?.toolPermissions || {};
+    state.providerSettings = { ...state.providerSettings, ...(uiState.state?.providerSettings || {}) };
+    state.mcpConfig = mcp.content || "";
+    state.mcpDirty = false;
+    $("#mcp-config-content").value = state.mcpConfig;
+    renderToolPermissions();
+    populateProviderForm();
+  } catch (error) {
+    showToast(error.message, true);
+  }
+}
+
+async function saveUiState(statePatch) {
+  const response = await fetch("/api/ui-state", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ state: statePatch }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+}
+
+async function loadSkills() {
+  try {
+    const data = await fetchJson("/api/skills");
+    state.skills = data.skills || [];
+    renderSkills();
+  } catch (error) {
+    showToast(error.message, true);
+  }
+}
+
+async function loadMemory({ quiet = false } = {}) {
+  try {
+    const data = await fetchJson("/api/memory?limit=200");
+    state.memoryRecords = data.records || [];
+    renderMemory();
+  } catch (error) {
+    if (!quiet) showToast(error.message, true);
+  }
+}
+
+async function mutateSkills(method, payload) {
+  const response = await fetch("/api/skills", {
+    method,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  state.skills = data.skills || [];
+  renderSkills();
+  return data;
+}
+
+function skillNameFromFile(file, content) {
+  const frontMatter = /^---\n([\s\S]*?)\n---/.exec(content)?.[1] || "";
+  const declared = /^name\s*:\s*([^\n]+)$/m.exec(frontMatter)?.[1]?.trim();
+  const candidate = declared || file.name.replace(/\.[^.]+$/, "");
+  return candidate.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
+}
+
+async function saveSystemPrompt() {
+  const prompt = currentSystemPrompt();
+  if (!prompt) return;
+  const content = $("#system-prompt-content").value;
+  const response = await fetch("/api/system-prompts", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ key: prompt.key, content }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  prompt.content = content;
+  state.promptDirty = false;
+  renderSystemPrompts();
 }
 
 function formatUptime() {
@@ -262,7 +585,20 @@ function mergeConfiguredAgents(workers) {
   const previous = new Map(state.agents.map((agent) => [agent.name, agent]));
   const normalized = workers.map((worker, index) => {
     const matching = ROLE_AGENTS.find((agent) => agent.name.toLowerCase() === worker.name.toLowerCase());
-    return { ...(matching || { role: "Remote Specialist", description: `Connected worker at ${worker.url}`, tools: "remote agent tools" }), name: worker.name, id: `worker-${index + 1}`, url: worker.url, configured: true, status: previous.get(worker.name)?.status || "ready" };
+    const skill = worker.capabilities?.skills?.[0];
+    return {
+      ...(matching || {}),
+      name: worker.name,
+      role: skill?.name || matching?.role || "Remote Specialist",
+      description: worker.description || skill?.description || matching?.description || `Connected worker at ${worker.url}`,
+      tools: worker.capabilities?.tools?.length ? worker.capabilities.tools.join(", ") : matching?.tools || "remote agent tools",
+      model: worker.model,
+      capabilities: worker.capabilities,
+      id: `worker-${index + 1}`,
+      url: worker.url,
+      configured: true,
+      status: previous.get(worker.name)?.status || "ready",
+    };
   });
   state.agents = normalized;
   if (!state.agents.some((agent) => agent.name === state.selectedAgent)) {
@@ -288,6 +624,17 @@ async function mutateAgent(method, payload) {
   return data;
 }
 
+async function discoverAgent(url) {
+  const response = await fetch("/api/sub-agents/info", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data.worker;
+}
+
 async function createTask(payload) {
   const response = await fetch("/api/tasks", {
     method: "POST",
@@ -299,18 +646,39 @@ async function createTask(payload) {
   return data;
 }
 
+async function mutateOperation(method, payload) {
+  const response = await fetch("/api/operations", {
+    method,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  state.operations = data.operations || [];
+  renderOperations();
+  return data;
+}
+
 async function refreshDashboard({ quiet = false } = {}) {
   try {
-    const [health, subAgents] = await Promise.all([fetchJson("/api/health"), fetchJson("/api/sub-agents")]);
+    const [health, subAgents, operations, officeTasks] = await Promise.all([
+      fetchJson("/api/health"),
+      fetchJson("/api/sub-agents"),
+      fetchJson("/api/operations"),
+      fetchJson("/api/tasks"),
+    ]);
     state.health = health;
+    $("#header-context").textContent = `v${health.version || "0.0.0"} · Workspace ${health.workspace || "—"}`;
     state.orchestrator = subAgents.orchestrator;
-    state.delegatedTasks = subAgents.tasks || [];
+    state.officeTasks = officeTasks.tasks || [];
     state.workers = subAgents.workers || [];
+    state.operations = operations.operations || [];
     mergeConfiguredAgents(state.workers);
     $("#health-dot").className = "status-dot online";
     $("#health-text").textContent = "SYSTEM ONLINE";
     $("#office-meta").textContent = `${subAgents.workers?.length || 0} REMOTE WORKERS`;
-    renderOffice(); renderAgentRegistry(); renderTaskAgentOptions(); renderMetrics(); renderTasks();
+    renderOffice(); renderAgentRegistry(); renderOperationAgentOptions(); renderOperations(); renderTasks();
+    renderChat();
     if (!quiet) addLog("System", "Agent configuration synchronized", "success");
   } catch (error) {
     $("#health-dot").className = "status-dot offline";
@@ -322,7 +690,7 @@ async function refreshDashboard({ quiet = false } = {}) {
 function setAgentState(name, status) {
   const agent = state.agents.find((entry) => entry.name === name);
   if (agent) agent.status = status;
-  renderOffice(); renderSelectedAgent(); renderMetrics();
+  renderOffice(); renderSelectedAgent();
 }
 
 function updateRunningTask(changes) {
@@ -350,6 +718,7 @@ function handleSocketMessage(message) {
   if (message.type === "ready") {
     state.socketReady = true;
     addLog("System", `Orchestrator connected · ${message.model}`, "success");
+    renderChat();
     return;
   }
   if (message.type === "info") { addActivity(message.message); return; }
@@ -362,11 +731,21 @@ function handleSocketMessage(message) {
   if (message.type === "agent_event") {
     const label = eventLabel(message.event || {});
     if (label) addActivity(label, message.event?.type === "final" ? "success" : "");
-    const usage = message.event?.usage || message.event?.serverResponse?.usage;
-    if (usage) {
-      state.tokenCount += Number(usage.total_tokens || usage.totalTokens || 0);
-      renderMetrics();
+    return;
+  }
+  if (message.type === "answer_start") {
+    if (!currentChatReply()) state.chatMessages.push({ role: "agent", text: "", streaming: true });
+    renderChat();
+    return;
+  }
+  if (message.type === "answer_delta") {
+    let reply = currentChatReply();
+    if (!reply) {
+      reply = { role: "agent", text: "", streaming: true };
+      state.chatMessages.push(reply);
     }
+    reply.text += message.text || "";
+    renderChat();
     return;
   }
   if (message.type === "run_paused") {
@@ -380,6 +759,17 @@ function handleSocketMessage(message) {
     return;
   }
   if (message.type === "done") {
+    if (state.chatRunning) {
+      const reply = currentChatReply() || { role: "agent", text: "", streaming: true };
+      if (!state.chatMessages.includes(reply)) state.chatMessages.push(reply);
+      reply.text = message.text || reply.text || "Done.";
+      reply.streaming = false;
+      state.chatRunning = false;
+      addActivity("Office manager response complete", "success");
+      renderChat();
+      $("#chat-input").focus();
+      return;
+    }
     updateRunningTask({ status: "completed", progress: 100, result: message.text });
     addActivity("✓ Task completed", "success");
     addLog("Coordinator", "Task completed successfully", "success");
@@ -391,6 +781,17 @@ function handleSocketMessage(message) {
     return;
   }
   if (message.type === "error") {
+    if (state.chatRunning) {
+      const reply = currentChatReply() || { role: "agent", text: "", streaming: true };
+      if (!state.chatMessages.includes(reply)) state.chatMessages.push(reply);
+      reply.text = message.error || "The office manager could not complete the request.";
+      reply.streaming = false;
+      reply.error = true;
+      state.chatRunning = false;
+      addLog("Coordinator", reply.text, "error");
+      renderChat();
+      return;
+    }
     updateRunningTask({ status: "failed", progress: 100, error: message.error });
     addActivity(`Error: ${message.error}`, "error");
     addLog("Coordinator", message.error, "error");
@@ -411,21 +812,73 @@ function connectSocket() {
   });
   socket.addEventListener("close", () => {
     state.socketReady = false;
-    if (state.runningTaskId) handleSocketMessage({ type: "error", error: "Orchestration channel disconnected." });
+    if (state.runningTaskId || state.chatRunning) handleSocketMessage({ type: "error", error: "Orchestration channel disconnected." });
+    renderChat();
     setTimeout(connectSocket, 1800);
   });
   socket.addEventListener("error", () => { state.socketReady = false; });
 }
 
+function refreshOrchestratorConnection() {
+  if (!state.runningTaskId && !state.chatRunning && state.socket && state.socket.readyState < WebSocket.CLOSING) {
+    state.socket.close(1000, "Configuration changed");
+  }
+}
+
 $("#refresh-button").addEventListener("click", () => void refreshDashboard());
 $("#pause-button").addEventListener("click", () => {
-  if (!state.runningTaskId || !state.socketReady) { showToast("No active workflow to pause."); return; }
+  if ((!state.runningTaskId && !state.chatRunning) || !state.socketReady) { showToast("No active workflow to pause."); return; }
   state.socket.send(JSON.stringify({ type: state.paused ? "resume" : "pause", sessionId }));
 });
 $("#stop-button").addEventListener("click", () => {
-  if (state.runningTaskId) { showToast("Runs stop at safe tool boundaries; pause first if needed."); return; }
+  if (state.runningTaskId || state.chatRunning) { showToast("Runs stop at safe tool boundaries; pause first if needed."); return; }
   state.activity = []; renderActivity(); addLog("System", "Activity view cleared");
 });
+
+$("#chat-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const input = $("#chat-input");
+  const prompt = input.value.trim();
+  if (!prompt) return;
+  if (!state.socketReady || !state.health?.workspace) {
+    showToast("The office manager is still connecting.", true);
+    return;
+  }
+  if (state.chatRunning) {
+    showToast("Wait for the current response to finish.");
+    return;
+  }
+  const history = state.chatMessages
+    .filter((message) => !message.streaming && !message.error && message.text)
+    .map(({ role, text }) => ({ role, text }));
+  state.chatMessages.push(
+    { role: "user", text: prompt },
+    { role: "agent", text: "", streaming: true },
+  );
+  state.chatRunning = true;
+  input.value = "";
+  resizeChatInput();
+  renderChat();
+  addActivity("Office manager received a message");
+  try {
+    state.socket.send(JSON.stringify({
+      type: "prompt",
+      prompt,
+      history,
+      sessionId,
+      workspace: state.health.workspace,
+    }));
+  } catch (error) {
+    handleSocketMessage({ type: "error", error: error.message });
+  }
+});
+$("#chat-input").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    $("#chat-form").requestSubmit();
+  }
+});
+$("#chat-input").addEventListener("input", resizeChatInput);
 
 $$('.tabs button').forEach((button) => button.addEventListener("click", () => {
   state.activeTab = button.dataset.tab;
@@ -439,11 +892,33 @@ function openAgentDialog(worker = null) {
   $("#agent-original-name").value = worker?.name || "";
   $("#agent-name").value = worker?.name || "";
   $("#agent-url").value = worker?.url || "";
+  $("#agent-info-status").textContent = worker?.description || "Enter the worker host or A2A URL. Name and capabilities are discovered from /api/info.";
   agentDialog.showModal();
-  $("#agent-name").focus();
+  $("#agent-url").focus();
+}
+
+let agentDiscoverySequence = 0;
+async function previewAgentInfo() {
+  const url = $("#agent-url").value.trim();
+  if (!url) return;
+  const sequence = ++agentDiscoverySequence;
+  $("#agent-info-status").textContent = "DISCOVERING WORKER INFO…";
+  try {
+    const worker = await discoverAgent(url);
+    if (sequence !== agentDiscoverySequence) return;
+    $("#agent-name").value = worker.name;
+    const tools = worker.capabilities?.tools?.length || 0;
+    const model = worker.model?.name ? ` · ${worker.model.name}` : "";
+    $("#agent-info-status").textContent = `${worker.description || "Worker discovered"} · ${tools} tools${model}`;
+  } catch (error) {
+    if (sequence !== agentDiscoverySequence) return;
+    $("#agent-name").value = "";
+    $("#agent-info-status").textContent = error.message;
+  }
 }
 
 $("#add-agent-button").addEventListener("click", () => openAgentDialog());
+$("#agent-url").addEventListener("change", () => void previewAgentInfo());
 $("#close-agent-dialog").addEventListener("click", () => agentDialog.close());
 $("#cancel-agent").addEventListener("click", () => agentDialog.close());
 agentDialog.addEventListener("click", (event) => {
@@ -474,12 +949,12 @@ $("#agent-registry-body").addEventListener("click", async (event) => {
 $("#agent-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const originalName = $("#agent-original-name").value;
-  const name = $("#agent-name").value.trim();
   const url = $("#agent-url").value.trim();
   const saveButton = $("#save-agent");
   saveButton.disabled = true;
   try {
-    await mutateAgent(originalName ? "PUT" : "POST", { originalName, name, url });
+    const result = await mutateAgent(originalName ? "PUT" : "POST", { originalName, url });
+    const name = result.worker.name;
     agentDialog.close();
     await refreshDashboard({ quiet: true });
     addLog("System", `Agent ${name} ${originalName ? "updated" : "added"}`, "success");
@@ -494,7 +969,6 @@ $("#agent-form").addEventListener("submit", async (event) => {
 const taskDialog = $("#task-dialog");
 function openTaskDialog() {
   $("#task-title").value = "";
-  $("#task-agent").value = "auto";
   $("#task-priority").value = "medium";
   taskDialog.showModal();
   $("#task-title").focus();
@@ -513,22 +987,276 @@ $("#task-form").addEventListener("submit", async (event) => {
   try {
     const result = await createTask({
       title: $("#task-title").value.trim(),
-      agent: $("#task-agent").value,
       priority: $("#task-priority").value,
     });
     taskDialog.close();
     await refreshDashboard({ quiet: true });
-    const assigned = result.task.agent;
-    setAgentState(assigned, "running");
-    addActivity(`Assigned task to ${assigned}`, "success");
-    addLog("Coordinator", `${result.autoAssigned ? "Auto-assigned" : "Assigned"} task to ${assigned}`, "success");
-    showToast(`Task assigned to ${assigned}.`);
+    addActivity(`Created unassigned task: ${result.task.title}`, "success");
+    addLog("Coordinator", "Task created and waiting for office manager assignment", "success");
+    showToast("Task created and left unassigned.");
   } catch (error) {
     showToast(error.message, true);
   } finally {
     saveButton.disabled = false;
   }
 });
+
+const operationDialog = $("#operation-dialog");
+function openOperationDialog(operation = null) {
+  $("#operation-dialog-title").textContent = operation ? "EDIT PERIODIC OPERATION" : "NEW PERIODIC OPERATION";
+  $("#operation-id").value = operation?.id || "";
+  $("#operation-name").value = operation?.name || "";
+  $("#operation-task").value = operation?.task || "";
+  renderOperationAgentOptions();
+  $("#operation-agent").value = operation?.agent || "auto";
+  $("#operation-interval").value = operation?.intervalValue || 1;
+  $("#operation-unit").value = operation?.intervalUnit || "hours";
+  $("#operation-priority").value = operation?.priority || "medium";
+  $("#operation-enabled").checked = operation?.enabled !== false;
+  operationDialog.showModal();
+  $("#operation-name").focus();
+}
+
+function operationPayload(operation, changes = {}) {
+  return {
+    id: operation.id,
+    name: operation.name,
+    task: operation.task,
+    agent: operation.agent,
+    intervalValue: operation.intervalValue,
+    intervalUnit: operation.intervalUnit,
+    priority: operation.priority,
+    enabled: operation.enabled,
+    ...changes,
+  };
+}
+
+$("#add-operation-button").addEventListener("click", () => openOperationDialog());
+$("#close-operation-dialog").addEventListener("click", () => operationDialog.close());
+$("#cancel-operation").addEventListener("click", () => operationDialog.close());
+operationDialog.addEventListener("click", (event) => {
+  if (event.target === operationDialog) operationDialog.close();
+});
+$("#operation-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const id = $("#operation-id").value;
+  const saveButton = $("#save-operation");
+  saveButton.disabled = true;
+  try {
+    await mutateOperation(id ? "PUT" : "POST", {
+      id,
+      name: $("#operation-name").value.trim(),
+      task: $("#operation-task").value.trim(),
+      agent: $("#operation-agent").value,
+      intervalValue: Number($("#operation-interval").value),
+      intervalUnit: $("#operation-unit").value,
+      priority: $("#operation-priority").value,
+      enabled: $("#operation-enabled").checked,
+    });
+    operationDialog.close();
+    addLog("Scheduler", `${id ? "Updated" : "Created"} periodic operation`, "success");
+    showToast(`Periodic operation ${id ? "updated" : "created"}.`);
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    saveButton.disabled = false;
+  }
+});
+$("#operations-body").addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-operation]");
+  if (!button) return;
+  const operation = state.operations.find((entry) => entry.id === button.dataset.operation);
+  if (!operation) return;
+  if (button.classList.contains("edit-operation")) {
+    openOperationDialog(operation);
+    return;
+  }
+  if (button.classList.contains("delete-operation")) {
+    if (!window.confirm(`Delete periodic operation “${operation.name}”?`)) return;
+    try {
+      await mutateOperation("DELETE", { id: operation.id });
+      showToast(`Deleted ${operation.name}.`);
+    } catch (error) { showToast(error.message, true); }
+    return;
+  }
+  try {
+    await mutateOperation("PUT", operationPayload(operation, { enabled: !operation.enabled }));
+    showToast(`${operation.name} ${operation.enabled ? "disabled" : "enabled"}.`);
+  } catch (error) { showToast(error.message, true); }
+});
+
+$("#prompt-list").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-prompt]");
+  if (button) selectSystemPrompt(button.dataset.prompt);
+});
+$("#system-prompt-content").addEventListener("input", () => {
+  const prompt = currentSystemPrompt();
+  state.promptDirty = Boolean(prompt && $("#system-prompt-content").value !== prompt.content);
+  renderSystemPrompts();
+});
+$("#reset-system-prompt").addEventListener("click", () => {
+  const prompt = currentSystemPrompt();
+  if (!prompt) return;
+  $("#system-prompt-content").value = prompt.content;
+  state.promptDirty = false;
+  renderSystemPrompts();
+});
+$("#save-system-prompt").addEventListener("click", async () => {
+  const button = $("#save-system-prompt");
+  button.disabled = true;
+  try {
+    await saveSystemPrompt();
+    refreshOrchestratorConnection();
+    addLog("System", `Saved system prompt ${state.selectedPromptKey}`, "success");
+    showToast("System prompt saved.");
+  } catch (error) {
+    showToast(error.message, true);
+    renderSystemPrompts();
+  }
+});
+
+$(".settings-tabs").addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-settings-tab]");
+  if (button) selectSettingsTab(button.dataset.settingsTab);
+});
+$("#tool-permissions").addEventListener("change", async (event) => {
+  const checkbox = event.target.closest("input[data-tool-permission]");
+  if (!checkbox) return;
+  const name = checkbox.dataset.toolPermission;
+  const previous = state.toolPermissions[name];
+  state.toolPermissions[name] = checkbox.checked;
+  checkbox.disabled = true;
+  renderSettingsStatus();
+  try {
+    await saveUiState({ toolPermissions: state.toolPermissions });
+    refreshOrchestratorConnection();
+    addLog("Settings", `${TOOL_DETAILS[name]?.[0] || name} ${checkbox.checked ? "enabled" : "disabled"}`, "success");
+    showToast(`Tool ${checkbox.checked ? "enabled" : "disabled"}.`);
+  } catch (error) {
+    state.toolPermissions[name] = previous;
+    checkbox.checked = previous;
+    showToast(error.message, true);
+  } finally {
+    checkbox.disabled = false;
+    renderSettingsStatus();
+  }
+});
+$("#mcp-config-content").addEventListener("input", () => {
+  state.mcpDirty = $("#mcp-config-content").value !== state.mcpConfig;
+  renderSettingsStatus();
+});
+$("#reset-mcp-config").addEventListener("click", () => {
+  $("#mcp-config-content").value = state.mcpConfig;
+  state.mcpDirty = false;
+  renderSettingsStatus();
+});
+$("#save-mcp-config").addEventListener("click", async () => {
+  const button = $("#save-mcp-config");
+  const content = $("#mcp-config-content").value.trim();
+  button.disabled = true;
+  try {
+    if (content) JSON.parse(content);
+    const response = await fetch("/api/config", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    state.mcpConfig = content;
+    state.mcpDirty = false;
+    refreshOrchestratorConnection();
+    addLog("Settings", "MCP configuration saved", "success");
+    showToast("MCP configuration saved.");
+  } catch (error) {
+    showToast(error instanceof SyntaxError ? `Invalid MCP JSON: ${error.message}` : error.message, true);
+  } finally {
+    button.disabled = false;
+    renderSettingsStatus();
+  }
+});
+$("#provider-form").addEventListener("input", (event) => {
+  state.providerDirty = JSON.stringify(providerFormValue()) !== JSON.stringify(state.providerSettings);
+  if (event.target.id !== "provider-model") $("#provider-model-status").textContent = "REFRESH MODELS TO UPDATE";
+  renderSettingsStatus();
+});
+$("#refresh-provider-models").addEventListener("click", () => void refreshProviderModels());
+$("#reset-provider").addEventListener("click", populateProviderForm);
+$("#provider-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = $("#save-provider");
+  const settings = providerFormValue();
+  button.disabled = true;
+  try {
+    await saveUiState({ providerSettings: settings });
+    state.providerSettings = settings;
+    state.providerDirty = false;
+    refreshOrchestratorConnection();
+    addLog("Settings", `Provider saved · ${settings.provider}/${settings.model}`, "success");
+    showToast("Provider settings saved.");
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    button.disabled = false;
+    renderSettingsStatus();
+  }
+});
+
+$("#add-skill-file-button").addEventListener("click", () => $("#skill-file-input").click());
+$("#skill-file-input").addEventListener("change", async (event) => {
+  const files = [...event.target.files];
+  event.target.value = "";
+  if (!files.length) return;
+  const errors = [];
+  let added = 0;
+  for (const file of files) {
+    try {
+      if (file.size > 2_000_000) throw new Error(`${file.name} is larger than 2 MB.`);
+      const content = await file.text();
+      const name = skillNameFromFile(file, content);
+      if (!name) throw new Error(`${file.name} does not have a valid skill name.`);
+      await mutateSkills("POST", { name, content });
+      added += 1;
+    } catch (error) {
+      errors.push(`${file.name}: ${error.message}`);
+    }
+  }
+  if (added) {
+    addLog("Knowledge", `Added ${added} skill file${added === 1 ? "" : "s"}`, "success");
+    showToast(`${added} skill file${added === 1 ? "" : "s"} added.${errors.length ? ` ${errors.length} failed.` : ""}`, Boolean(errors.length));
+  } else if (errors.length) showToast(errors[0], true);
+});
+$("#skills-body").addEventListener("change", async (event) => {
+  const checkbox = event.target.closest("input.skill-toggle[data-skill]");
+  if (!checkbox) return;
+  checkbox.disabled = true;
+  const selectedSkillIds = state.skills
+    .filter((skill) => skill.id === checkbox.dataset.skill ? checkbox.checked : skill.selected)
+    .map((skill) => skill.id);
+  try {
+    await mutateSkills("PUT", { selectedSkillIds });
+    showToast(`Skill ${checkbox.checked ? "enabled" : "disabled"}.`);
+  } catch (error) {
+    showToast(error.message, true);
+    renderSkills();
+  }
+});
+$("#skills-body").addEventListener("click", async (event) => {
+  const button = event.target.closest("button.skill-delete[data-skill]");
+  if (!button) return;
+  const skill = state.skills.find((entry) => entry.id === button.dataset.skill);
+  if (!skill || !window.confirm(`Delete skill file “${skill.name}/SKILL.md”?`)) return;
+  button.disabled = true;
+  try {
+    await mutateSkills("DELETE", { skillId: skill.id });
+    addLog("Knowledge", `Deleted skill ${skill.name}`, "success");
+    showToast(`${skill.name}/SKILL.md deleted.`);
+  } catch (error) {
+    showToast(error.message, true);
+    button.disabled = false;
+  }
+});
+$("#refresh-memory-button").addEventListener("click", () => void loadMemory());
 
 $$('#task-filters button').forEach((button) => button.addEventListener("click", () => {
   state.taskFilter = button.dataset.filter; renderTasks();
@@ -545,10 +1273,15 @@ $$('.nav-item').forEach((link) => link.addEventListener("click", (event) => {
   router.navigate(link.getAttribute("href"));
 }));
 
-setInterval(() => { $("#metric-uptime").textContent = formatUptime().slice(0, 5); renderSelectedAgent(); }, 1000);
+setInterval(renderSelectedAgent, 1000);
 setInterval(() => void refreshDashboard({ quiet: true }), 2500);
+setInterval(() => void loadMemory({ quiet: true }), 5000);
 
-renderOffice(); renderAgentRegistry(); renderTaskAgentOptions(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderMetrics();
+renderOffice(); renderAgentRegistry(); renderOperationAgentOptions(); renderOperations(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat();
 router.start();
 connectSocket();
 void refreshDashboard();
+void loadSystemPrompts();
+void loadConfigurationSettings();
+void loadSkills();
+void loadMemory();

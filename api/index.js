@@ -1,6 +1,8 @@
 import { createSettingsApiHandlers } from "./settings.js";
 import { createSubAgentApiHandlers } from "./sub-agents.js";
 import { createTaskApiHandlers } from "./tasks.js";
+import { createOperationsApiHandlers } from "./operations.js";
+import { createMemoryApiHandlers } from "./memory.js";
 import { createWorkspaceApiHandlers } from "./workspace.js";
 
 export function createApiRouter(options) {
@@ -8,6 +10,8 @@ export function createApiRouter(options) {
     ...createSettingsApiHandlers(options),
     ...createSubAgentApiHandlers(options),
     ...createTaskApiHandlers(options),
+    ...createOperationsApiHandlers(options),
+    ...createMemoryApiHandlers(options),
     ...createWorkspaceApiHandlers(options),
   }));
 
