@@ -86,4 +86,4 @@ Each accepted update receives `{"type":"task_update_ack","taskId":"…","state":
 }
 ```
 
-Final states are `completed` or `failed`. Progress and final messages are posted to `#central-office`; deliverables are attached to the corresponding task and chat message.
+Final states are `completed` or `failed`. The office downloads final deliverables before acknowledging completion. ZIP files are extracted into a task-specific shared-workspace folder and then deleted; non-archive files are copied there directly. Local file links are attached to the corresponding task and chat message and are available on `/workspace`.

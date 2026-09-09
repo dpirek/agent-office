@@ -1,5 +1,6 @@
 
 /db
+.office-workspace/
 *.sqlite
 .env
 !.env.example

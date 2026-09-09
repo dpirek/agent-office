@@ -17,6 +17,7 @@ import {
 } from "./lib/ui-state.js";
 import { attachWebSocketServer, createWebSocketHandler } from "./lib/ws.js";
 import { createWorkerWebSocketHandler } from "./lib/worker-ws.js";
+import { createSharedWorkspace } from "./lib/shared-workspace.js";
 import {
   defaultBaseUrlForProvider,
   defaultModelForProvider,
@@ -42,16 +43,20 @@ const defaultWorkspace = path.resolve(process.env.AI_HARNESS_WORKSPACE || proces
 const configPath = path.join(runtimeRoot, ".ai-harness/config.toml");
 const databaseDir = path.join(runtimeRoot, "db");
 const uiStateDatabasePath = path.join(databaseDir, "ui-state.sqlite");
+const sharedWorkspaceRoot = path.resolve(process.env.AI_HARNESS_SHARED_WORKSPACE || path.join(runtimeRoot, ".office-workspace"));
 
 const defaultPort = Number(process.env.PORT || 8010);
 await fs.mkdir(databaseDir, { recursive: true });
+await fs.mkdir(sharedWorkspaceRoot, { recursive: true });
 const connections = new Set();
 let storeClosed = false;
 let server;
 let officeChatService;
 let officeManagerBoardRunning = false;
 
+const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
 const subAgentManager = new SubAgentManager({
+  materializeArtifacts: (task, artifacts) => sharedWorkspace.storeTaskArtifacts(task, artifacts),
   onTaskAssigned(task) {
     officeChatService?.postAssignment(task);
   },
@@ -261,6 +266,7 @@ server = http.createServer(async (req, res) => {
     appVersion,
     subAgentManager,
     officeChatService,
+    sharedWorkspaceRoot,
   });
 
   if (await handleApiRequest(req, res, url)) return;

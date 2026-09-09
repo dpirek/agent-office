@@ -37,9 +37,18 @@ test("queue returns a visible task receipt before the worker completes", async (
   const taskEvents = [];
   const assignments = [];
   const sent = [];
+  const materialized = [];
   const manager = new SubAgentManager({
     onTaskAssigned: (task) => assignments.push(task),
     onTaskEvent: (event, task) => taskEvents.push({ event, task }),
+    materializeArtifacts: async (task, work) => {
+      materialized.push({ task, work });
+      return work.map((artifact) => ({
+        ...artifact,
+        uri: "/api/shared-workspace-file?path=Check-release--task-1%2Fworker-task-1.zip",
+        workspacePath: "Check-release--task-1/worker-task-1.zip",
+      }));
+    },
   });
   manager.registerWorker({ name: "alpha", url: "ws://127.0.0.1:9999/worker" }, {
     connectionId: "connection-1",
@@ -65,7 +74,7 @@ test("queue returns a visible task receipt before the worker completes", async (
     status: { state: "working" },
     message: { parts: [{ kind: "text", text: "Running tests." }] },
   }, "connection-1");
-  const update = manager.receiveUpdate("alpha", {
+  const update = await manager.receiveUpdate("alpha", {
     type: "task_update",
     taskId: sent[0].taskId,
     inReplyTo: queued.task.messageId,
@@ -94,6 +103,8 @@ test("queue returns a visible task receipt before the worker completes", async (
   assert.equal(taskEvents[0].event, "working");
   assert.equal(taskEvents[1].event, "completed");
   assert.equal(taskEvents[1].task.deliveredWork[0].name, "worker-task-1.zip");
+  assert.equal(materialized[0].task.title, "Check the release");
+  assert.equal(materialized[0].work[0].uri, "https://worker.example.com/workspace/worker-task-1.zip");
   const result = await queued.completion;
   assert.equal(result.text, "Work complete.");
   assert.deepEqual(result.deliveredWork[0], {
@@ -101,10 +112,11 @@ test("queue returns a visible task receipt before the worker completes", async (
     artifactName: "worker-task-1.zip",
     name: "worker-task-1.zip",
     mimeType: "application/zip",
-    uri: "https://worker.example.com/workspace/worker-task-1.zip",
+    uri: "/api/shared-workspace-file?path=Check-release--task-1%2Fworker-task-1.zip",
+    workspacePath: "Check-release--task-1/worker-task-1.zip",
     metadata: { fileCount: 3, size: 12_480 },
   });
-  assert.equal(manager.listTasks()[0].deliveredWork[0].uri, "https://worker.example.com/workspace/worker-task-1.zip");
+  assert.match(manager.listTasks()[0].deliveredWork[0].uri, /^\/api\/shared-workspace-file/);
   manager.unregisterConnection("connection-1");
   assert.equal(manager.listWorkers().length, 0);
 });

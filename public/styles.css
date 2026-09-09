@@ -151,6 +151,7 @@ h1, h2, p { margin: 0; }
 .settings-panel { grid-column: 1 / -1; grid-row: 2 / 4; }
 .knowledge-panel { grid-column: 1 / -1; grid-row: 2 / 4; }
 .memory-panel { grid-column: 1 / -1; grid-row: 2 / 4; }
+.shared-workspace-panel { grid-column: 1 / -1; grid-row: 2 / 4; }
 .office-chat-page { grid-column: 1 / -1; grid-row: 1 / -1; }
 .route-page-body { display: grid; place-content: center; gap: 10px; padding: 32px; text-align: center; color: var(--muted); }
 .route-page-body strong { color: var(--text); font-size: 18px; letter-spacing: .05em; text-transform: uppercase; }
@@ -170,6 +171,7 @@ body:not([data-page="dashboard"]) .operations-panel,
 body:not([data-page="dashboard"]) .settings-panel,
 body:not([data-page="dashboard"]) .knowledge-panel,
 body:not([data-page="dashboard"]) .memory-panel { grid-row: 1 / -1; }
+body:not([data-page="dashboard"]) .shared-workspace-panel { grid-row: 1 / -1; }
 .task-panel, .logs-panel { display: flex; flex-direction: column; }
 .task-toolbar { flex: 0 0 35px; display: flex; padding: 4px 7px; border-bottom: 1px solid var(--line-dim); box-shadow: none; }
 .task-toolbar button { min-width: 94px; padding: 0 12px; border: 0; border-right: 1px solid var(--line-dim); background: transparent; color: var(--muted); font-size: 8px; }
@@ -347,6 +349,28 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .memory-status-completed { color: var(--green); }.memory-status-failed, .memory-status-timed_out { color: var(--red); }
 .memory-artifacts a { display: block; max-width: 230px; overflow: hidden; color: var(--green); text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .memory-artifacts a:hover { text-decoration: underline; }
+.shared-workspace-panel { display: flex; flex-direction: column; }
+.shared-workspace-summary { flex: 0 0 54px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 9px 14px; border-bottom: 1px solid var(--line-dim); box-shadow: none; }
+.shared-workspace-summary > div { display: flex; flex-direction: column; gap: 4px; }
+.shared-workspace-summary strong { color: var(--green); font-size: 11px; }
+.shared-workspace-summary span, .shared-workspace-summary code { color: var(--muted); font-size: 9px; }
+.shared-workspace-summary code { max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shared-workspace-browser { min-height: 0; overflow: auto; padding: 10px; }
+.workspace-folder { margin-bottom: 10px; border: 1px solid var(--line-dim); background: #0a1012; }
+.workspace-folder > header { height: 39px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; border-bottom: 1px solid var(--line-dim); background: #11191c; }
+.workspace-folder > header div { display: flex; align-items: center; gap: 9px; }
+.workspace-folder > header span { color: var(--green); }
+.workspace-folder > header strong { font-size: 10px; }
+.workspace-folder > header small { color: var(--muted); font-size: 8px; }
+.workspace-file { min-height: 35px; display: grid; grid-template-columns: 18px minmax(0, 1fr) 90px 150px 54px; align-items: center; gap: 7px; padding: 5px 12px; border-bottom: 1px solid var(--line-dim); color: var(--text); text-decoration: none; }
+.workspace-file:last-child { border-bottom: 0; }
+.workspace-file:hover { background: #14201b; }
+.workspace-file > span, .workspace-file > b { color: var(--green); }
+.workspace-file > strong { overflow: hidden; font-size: 9px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-file > small, .workspace-file > time, .workspace-file > b { color: var(--muted); font-size: 8px; font-weight: 400; }
+.workspace-empty, .workspace-empty-folder { display: grid; place-content: center; gap: 8px; min-height: 180px; color: var(--muted); text-align: center; }
+.workspace-empty strong { color: var(--text); font-size: 13px; }
+.workspace-empty-folder { min-height: 60px; font-size: 8px; }
 
 .registry-body { overflow: auto; }
 .registry-table { width: 100%; border-collapse: collapse; font-size: 9px; }

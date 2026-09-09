@@ -19,6 +19,7 @@ const PAGES = {
   chat: { path: "/chat", title: "Central Office" },
   agents: { path: "/agents", title: "Agents" },
   tasks: { path: "/tasks", title: "Tasks" },
+  workspace: { path: "/workspace", title: "Workspace" },
   operations: { path: "/operations", title: "Operations" },
   memory: { path: "/memory", title: "Memory" },
   knowledge: { path: "/knowledge", title: "Knowledge", icon: "▧", heading: "Knowledge base", description: "Connected sources and selected skills provide shared context to the agent office." },
@@ -58,6 +59,8 @@ const state = {
   providerDirty: false,
   skills: [],
   memoryRecords: [],
+  sharedWorkspaceRoot: "",
+  sharedWorkspaceTree: [],
   chatMessages: [],
   officeChatMessages: [],
   officeChatMembers: [],
@@ -128,6 +131,7 @@ function renderPage(section) {
     $("#route-page-description").textContent = page.description;
   }
   if (section === "chat") void loadOfficeChat({ quiet: true });
+  if (section === "workspace") void loadSharedWorkspace({ quiet: true });
 }
 
 function addActivity(text, tone = "") {
@@ -377,6 +381,43 @@ function renderTasks() {
     <td class="delivered-work">${task.deliveredWork?.length ? task.deliveredWork.map((work) => `<a href="${escapeHtml(work.uri)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(work.mimeType)}">↗ ${escapeHtml(work.name)}</a>`).join("") : "—"}</td>
   </tr>`).join("") : `<tr class="empty-row"><td colspan="8">NO TASKS IN THIS VIEW</td></tr>`;
   renderSelectedAgent();
+}
+
+function workspaceFiles(nodes, prefix = "") {
+  return nodes.flatMap((node) => node.type === "file"
+    ? [{ ...node, nestedPath: prefix ? `${prefix}/${node.name}` : node.name }]
+    : workspaceFiles(node.children || [], prefix ? `${prefix}/${node.name}` : node.name));
+}
+
+function renderSharedWorkspace() {
+  const root = $("#shared-workspace-root");
+  const browser = $("#shared-workspace-browser");
+  if (!root || !browser) return;
+  const files = workspaceFiles(state.sharedWorkspaceTree);
+  root.textContent = state.sharedWorkspaceRoot || "—";
+  root.title = state.sharedWorkspaceRoot || "";
+  $("#workspace-file-count").textContent = `${files.length} FILE${files.length === 1 ? "" : "S"}`;
+  const folders = state.sharedWorkspaceTree.filter((entry) => entry.type === "directory");
+  const rootFiles = state.sharedWorkspaceTree.filter((entry) => entry.type === "file");
+  const groups = [...(rootFiles.length ? [{ name: "SHARED ROOT", children: rootFiles }] : []), ...folders];
+  browser.innerHTML = groups.length ? groups.map((folder) => {
+    const entries = workspaceFiles(folder.children || []);
+    return `<section class="workspace-folder">
+      <header><div><span>▤</span><strong>${escapeHtml(folder.name)}</strong></div><small>${entries.length} FILE${entries.length === 1 ? "" : "S"}</small></header>
+      <div class="workspace-folder-files">${entries.length ? entries.map((file) => `<a class="workspace-file" href="/api/shared-workspace-file?path=${encodeURIComponent(file.path)}" target="_blank" rel="noopener noreferrer"><span>▱</span><strong>${escapeHtml(file.nestedPath)}</strong><small>${formatBytes(file.size)}</small><time>${scheduleTime(file.modifiedAt)}</time><b>OPEN ↗</b></a>`).join("") : `<div class="workspace-empty-folder">EMPTY TASK FOLDER</div>`}</div>
+    </section>`;
+  }).join("") : `<div class="workspace-empty"><strong>NO DELIVERED FILES</strong><span>Completed worker artifacts will appear here in task-specific folders.</span></div>`;
+}
+
+async function loadSharedWorkspace({ quiet = false } = {}) {
+  try {
+    const data = await fetchJson("/api/shared-workspace");
+    state.sharedWorkspaceRoot = data.root || "";
+    state.sharedWorkspaceTree = data.tree || [];
+    renderSharedWorkspace();
+  } catch (error) {
+    if (!quiet) showToast(error.message, true);
+  }
 }
 
 function renderOperationAgentOptions() {
@@ -1318,6 +1359,7 @@ $("#skills-body").addEventListener("click", async (event) => {
   }
 });
 $("#refresh-memory-button").addEventListener("click", () => void loadMemory());
+$("#refresh-workspace-button").addEventListener("click", () => void loadSharedWorkspace());
 
 $$('#task-filters button').forEach((button) => button.addEventListener("click", () => {
   state.taskFilter = button.dataset.filter; renderTasks();
@@ -1339,9 +1381,10 @@ setInterval(() => void refreshDashboard({ quiet: true }), 2500);
 setInterval(() => void loadMemory({ quiet: true }), 5000);
 setInterval(() => {
   if (document.body.dataset.page === "chat") void loadOfficeChat({ quiet: true });
+  if (document.body.dataset.page === "workspace") void loadSharedWorkspace({ quiet: true });
 }, 2000);
 
-renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat();
+renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat(); renderSharedWorkspace();
 router.start();
 connectSocket();
 void refreshDashboard();
@@ -1350,3 +1393,4 @@ void loadConfigurationSettings();
 void loadSkills();
 void loadMemory();
 void loadOfficeChat();
+void loadSharedWorkspace();

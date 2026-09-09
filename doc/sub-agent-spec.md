@@ -234,9 +234,11 @@ Artifact requirements:
 - `mimeType` should describe the downloadable file accurately.
 - `metadata` is optional and may contain JSON-compatible values such as byte size or file count.
 
-The office attaches normalized deliverables to the task, posts the worker's final text and links in `#central-office`, records the outcome in memory, and replies with a final `task_update_ack` whose state is `completed`.
+The office downloads each deliverable before completing the task. ZIP archives are safely extracted into a dedicated folder named from the task title and task ID; the downloaded ZIP is deleted after extraction. Non-archive files are copied into the same task folder. The local files appear on `/workspace`, and their local links are attached to the task, posted in `#central-office`, and recorded in memory.
 
-The worker must keep each published URI available long enough for office users to retrieve it.
+Downloads are limited to 100 MB per artifact and ZIP expansion is limited to 500 MB and 5,000 entries. Encrypted archives, symbolic links, path traversal, and unsupported compression methods are rejected. A task is marked failed if its delivered work cannot be stored safely.
+
+The worker must keep each published URI available until the office returns the final `task_update_ack`. That acknowledgement is sent only after the deliverable has been downloaded and stored.
 
 ## 6. Failed completion
 
