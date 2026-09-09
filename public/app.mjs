@@ -296,6 +296,13 @@ function chatInitials(name) {
   return String(name || "?").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 }
 
+function chatAvatar(message) {
+  if (message.kind === "user") {
+    return `<svg class="human-avatar-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.25"></circle><path d="M5.5 20v-2.2c0-3.7 2.9-6.3 6.5-6.3s6.5 2.6 6.5 6.3V20z"></path></svg>`;
+  }
+  return escapeHtml(chatInitials(message.author));
+}
+
 function renderOfficeChat({ preserveScroll = false } = {}) {
   const members = $("#office-chat-members");
   members.innerHTML = state.officeChatMembers.map((member) => `
@@ -309,7 +316,7 @@ function renderOfficeChat({ preserveScroll = false } = {}) {
   const messages = state.officeChatMessages;
   board.innerHTML = messages.length ? messages.map((message) => `
     <article class="office-board-message ${escapeHtml(message.kind)}${message.streaming ? " streaming" : ""}">
-      <div class="office-board-avatar">${escapeHtml(chatInitials(message.author))}</div>
+      <div class="office-board-avatar"${message.kind === "user" ? ` title="You · Human"` : ""}>${chatAvatar(message)}</div>
       <div class="office-board-message-body">
         <div class="office-board-message-meta"><strong>${escapeHtml(message.author)}</strong><span>@${escapeHtml(message.username)} · ${shortTime(message.createdAt)}</span></div>
         <div class="office-board-message-text">${highlightMentions(message.text)}</div>
