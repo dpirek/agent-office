@@ -290,7 +290,7 @@ function renderOfficeChat({ preserveScroll = false } = {}) {
   const members = $("#office-chat-members");
   members.innerHTML = state.officeChatMembers.map((member) => `
     <button class="office-chat-member" type="button" data-username="${escapeHtml(member.username)}" title="Mention @${escapeHtml(member.username)}">
-      <i></i><span><strong>${escapeHtml(member.name)}</strong><small>@${escapeHtml(member.username)}</small></span>
+      <i></i><span><span class="office-chat-member-name"><strong>${escapeHtml(member.name)}</strong>${member.status === "is typing" ? `<em>is typing</em>` : ""}</span><small>@${escapeHtml(member.username)}</small></span>
     </button>`).join("");
   $("#office-chat-member-count").textContent = `${state.officeChatMembers.length} MEMBER${state.officeChatMembers.length === 1 ? "" : "S"}`;
 

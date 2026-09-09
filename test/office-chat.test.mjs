@@ -93,3 +93,21 @@ test("assignments and worker results are published to central office", (context)
   assert.equal(messages[1].artifacts[0].name, "release.zip");
   assert.equal(messages[1].taskId, "msg-42");
 });
+
+test("chat members expose typing status from active orchestration", (context) => {
+  const { directory, store } = setup();
+  context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const chat = createOfficeChatService({
+    uiStateStore: store,
+    subAgentManager: {
+      listWorkers: () => [{ name: "Dave the Developer" }, { name: "Idle Worker" }],
+      listTasks: () => [{ agent: "Dave the Developer", state: "working" }],
+    },
+    isManagerTyping: () => true,
+  });
+
+  const members = chat.list().members;
+  assert.equal(members.find((member) => member.username === "office-manager").status, "is typing");
+  assert.equal(members.find((member) => member.username === "dave-the-developer").status, "is typing");
+  assert.equal(members.find((member) => member.username === "idle-worker").status, "online");
+});

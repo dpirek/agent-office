@@ -239,6 +239,7 @@ officeChatService = createOfficeChatService({
   uiStateStore,
   subAgentManager,
   onManagerMention: handleOfficeManagerMention,
+  isManagerTyping: () => officeManagerBoardRunning,
 });
 if (environmentFileDetected) {
   applyEnvironmentSettings(uiStateStore, process.env, __dirname);
