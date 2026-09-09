@@ -162,6 +162,7 @@ function allTasks() {
     createdAt: task.createdAt,
     dependsOn: task.dependsOn || [],
     deliveredWork: task.deliveredWork || [],
+    canStop: true,
   }));
   return [...state.localTasks, ...officeTasks].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
@@ -393,7 +394,7 @@ function renderTasks() {
     <td title="${escapeHtml(dependencyTitle)}">${dependencyState}</td>
     <td><span class="progress-cell"><span class="progress"><i style="width:${task.progress}%"></i></span>${task.progress}%</span></td><td>${shortTime(task.createdAt)}</td>
     <td class="delivered-work">${task.deliveredWork?.length ? task.deliveredWork.map((work) => `<a href="${escapeHtml(work.uri)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(work.mimeType)}">↗ ${escapeHtml(work.name)}</a>`).join("") : "—"}</td>
-    <td>${task.status === "running" ? `<button class="stop-task" data-task-id="${escapeHtml(task.id)}" type="button">STOP</button>` : "—"}</td>
+    <td>${task.status === "running" && task.canStop ? `<button class="stop-task" data-task-id="${escapeHtml(task.id)}" type="button">STOP</button>` : "—"}</td>
   </tr>`;
   }).join("") : `<tr class="empty-row"><td colspan="10">NO TASKS IN THIS VIEW</td></tr>`;
   renderSelectedAgent();

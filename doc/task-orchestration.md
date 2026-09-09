@@ -10,7 +10,7 @@ The server starts a new Office Manager review whenever delegated work becomes `c
 
 If a prerequisite fails, dependent work remains pending. The manager can create and assign one corrective task, or report that the sequence is blocked. It must not dispatch the blocked downstream tasks.
 
-An operator can stop a running task from `/tasks`. The office sends `task_cancel` to the assigned worker, records the task as `cancelled`, publishes the cancellation to central chat and memory, and triggers an Office Manager review. Cancelled prerequisites do not unlock dependent tasks.
+An operator can stop a running task from `/tasks`. The office sends `task_cancel` to the assigned worker, records the task as `cancelled`, publishes the cancellation to central chat and memory, and triggers an Office Manager review. Cancelled prerequisites do not unlock dependent tasks, and the manager does not recreate or reassign cancelled work unless the operator explicitly requests it.
 
 Example:
 
