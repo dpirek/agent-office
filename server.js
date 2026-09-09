@@ -97,7 +97,7 @@ const subAgentManager = new SubAgentManager({
         finishedAt: task.finishedAt,
       },
     });
-    if (["working", "completed", "failed", "timed_out"].includes(event)) {
+    if (["working", "completed", "failed", "timed_out", "cancelled"].includes(event)) {
       officeChatService?.postTaskResult(event, task);
     }
     taskReviewTrigger?.notify(event, task);

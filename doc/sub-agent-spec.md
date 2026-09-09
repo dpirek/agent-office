@@ -141,6 +141,21 @@ The office sends each assignment over the registered socket:
 
 A worker may receive more than one task on the same connection. It must either process them concurrently or maintain its own queue without blocking the socket receive loop.
 
+### Task cancellation
+
+The office can stop an active assignment by sending:
+
+```json
+{
+  "type": "task_cancel",
+  "taskId": "task-generated-uuid",
+  "inReplyTo": "msg-generated-uuid",
+  "reason": "Task stopped by the office manager."
+}
+```
+
+On receipt, the worker must abort the matching model request, command, child process, and pending artifact upload, then release its task resources. The office marks the task `cancelled` immediately, so no cancellation acknowledgement is required. A late `task_update` is ignored and acknowledged with state `cancelled`; it cannot overwrite the cancelled result.
+
 ### Direct questions
 
 A simple question addressed to a worker in `#central-office` does not create a task. The office sends it as a direct message on the same socket:
@@ -359,6 +374,7 @@ connect /ws/workers
   → send task_update: working
   ← receive task_update_ack: working
   → execute and validate work
+  ← optionally receive task_cancel, abort work, and send no further result
   → publish deliverable files over HTTP(S)
   → send task_update: completed | failed
   ← receive task_update_ack: completed | failed
@@ -372,6 +388,7 @@ connect /ws/workers
 - Give every worker a stable, unique name.
 - Declare accurate skills, tools, model information, and artifact support.
 - Preserve `taskId` and `messageId` for the entire execution.
+- Handle `task_cancel` by aborting all work associated with its `taskId`.
 - Emit useful progress text without flooding the channel.
 - Validate work before reporting `completed`.
 - Publish deliverables before sending the completion message.

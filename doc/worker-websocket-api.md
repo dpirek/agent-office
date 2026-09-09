@@ -80,6 +80,16 @@ Workers may send any number of `working` updates. `inReplyTo` is optional, but w
 
 Each accepted update receives `{"type":"task_update_ack","taskId":"…","state":"working"}`.
 
+## Stop a task
+
+The office may send a cancellation while work is active:
+
+```json
+{"type":"task_cancel","taskId":"task-generated-uuid","inReplyTo":"msg-generated-uuid","reason":"Task stopped by the office manager."}
+```
+
+Abort the matching model request, commands, child processes, and artifact uploads immediately. No acknowledgement is required. The office marks the assignment `cancelled`; late updates cannot overwrite that state.
+
 ## Complete with deliverables
 
 ```json
@@ -102,4 +112,4 @@ Each accepted update receives `{"type":"task_update_ack","taskId":"…","state":
 }
 ```
 
-Final states are `completed` or `failed`. The office downloads final deliverables before acknowledging completion. ZIP files are extracted into a task-specific shared-workspace folder and then deleted; non-archive files are copied there directly. Local file links are attached to the corresponding task and chat message and are available on `/workspace`.
+Worker-reported final states are `completed` or `failed`; the office may additionally finalize an assignment as `cancelled` or `timed_out`. The office downloads final deliverables before acknowledging completion. ZIP files are extracted into a task-specific shared-workspace folder and then deleted; non-archive files are copied there directly. Local file links are attached to the corresponding task and chat message and are available on `/workspace`.

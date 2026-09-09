@@ -148,7 +148,7 @@ function addLog(source, text, tone = "") {
 function normalizeTaskStatus(status) {
   if (["working", "submitting", "running"].includes(status)) return "running";
   if (status === "timed_out") return "failed";
-  return ["pending", "completed", "failed"].includes(status) ? status : "pending";
+  return ["pending", "completed", "failed", "cancelled"].includes(status) ? status : "pending";
 }
 
 function allTasks() {
@@ -158,7 +158,7 @@ function allTasks() {
     agent: task.agent || "UNASSIGNED",
     status: normalizeTaskStatus(task.status),
     priority: task.priority || "medium",
-    progress: task.status === "completed" ? 100 : task.status === "running" ? 55 : ["failed", "timed_out"].includes(task.status) ? 100 : 0,
+    progress: task.status === "completed" ? 100 : task.status === "running" ? 55 : ["failed", "timed_out", "cancelled"].includes(task.status) ? 100 : 0,
     createdAt: task.createdAt,
     dependsOn: task.dependsOn || [],
     deliveredWork: task.deliveredWork || [],
@@ -369,7 +369,7 @@ function resizeChatInput() {
 }
 
 function taskCounts(tasks) {
-  return Object.fromEntries(["all", "running", "pending", "completed", "failed"].map((status) => [status, status === "all" ? tasks.length : tasks.filter((task) => task.status === status).length]));
+  return Object.fromEntries(["all", "running", "pending", "completed", "failed", "cancelled"].map((status) => [status, status === "all" ? tasks.length : tasks.filter((task) => task.status === status).length]));
 }
 
 function renderTasks() {
@@ -393,8 +393,9 @@ function renderTasks() {
     <td title="${escapeHtml(dependencyTitle)}">${dependencyState}</td>
     <td><span class="progress-cell"><span class="progress"><i style="width:${task.progress}%"></i></span>${task.progress}%</span></td><td>${shortTime(task.createdAt)}</td>
     <td class="delivered-work">${task.deliveredWork?.length ? task.deliveredWork.map((work) => `<a href="${escapeHtml(work.uri)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(work.mimeType)}">↗ ${escapeHtml(work.name)}</a>`).join("") : "—"}</td>
+    <td>${task.status === "running" ? `<button class="stop-task" data-task-id="${escapeHtml(task.id)}" type="button">STOP</button>` : "—"}</td>
   </tr>`;
-  }).join("") : `<tr class="empty-row"><td colspan="9">NO TASKS IN THIS VIEW</td></tr>`;
+  }).join("") : `<tr class="empty-row"><td colspan="10">NO TASKS IN THIS VIEW</td></tr>`;
   renderSelectedAgent();
 }
 
@@ -769,6 +770,17 @@ async function createTask(payload) {
   return data;
 }
 
+async function stopTask(id) {
+  const response = await fetch("/api/tasks", {
+    method: "DELETE",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+}
+
 async function mutateOperation(method, payload) {
   const response = await fetch("/api/operations", {
     method,
@@ -1115,6 +1127,23 @@ $("#task-form").addEventListener("submit", async (event) => {
     showToast(error.message, true);
   } finally {
     saveButton.disabled = false;
+  }
+});
+
+$("#task-body").addEventListener("click", async (event) => {
+  const button = event.target.closest(".stop-task[data-task-id]");
+  if (!button) return;
+  const task = allTasks().find((entry) => entry.id === button.dataset.taskId);
+  if (!window.confirm(`Stop “${task?.title || "this task"}”? The worker will be instructed to terminate its work.`)) return;
+  button.disabled = true;
+  try {
+    await stopTask(button.dataset.taskId);
+    await refreshDashboard({ quiet: true });
+    addActivity(`Stopped task: ${task?.title || button.dataset.taskId}`, "error");
+    showToast("Task stopped.");
+  } catch (error) {
+    button.disabled = false;
+    showToast(error.message, true);
   }
 });
 

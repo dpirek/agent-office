@@ -3,6 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { cancelOfficeTask, createOfficeTask, assignOfficeTask } from "../lib/office-tasks.js";
+import { SubAgentManager } from "../lib/sub-agents.js";
 import { createUiStateStore } from "../lib/ui-state.js";
 import { createOfficeTasksTool } from "../lib/tools/office-tasks.js";
 
@@ -134,4 +136,41 @@ test("dependent tasks dispatch sequentially across manager review turns", async 
   assert.match(dispatched[1].task, /research\/research\.md/);
   assert.match(dispatched[1].task, /# Current task\nDesign the UI/);
   assert.match(dispatched[1].task, /do not redo or ignore it/);
+});
+
+test("a running office task can be stopped and late worker updates are ignored", async (context) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "agent-office-cancel-"));
+  const store = createUiStateStore(path.join(directory, "state.sqlite"));
+  const sent = [];
+  const manager = new SubAgentManager();
+  manager.registerWorker({ name: "Builder", url: "ws://127.0.0.1:9997/worker" }, {
+    connectionId: "cancel-connection",
+    send: (message) => sent.push(message),
+  });
+  context.after(() => {
+    manager.unregisterConnection("cancel-connection");
+    store.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
+
+  const created = createOfficeTask(store, { title: "Build the website" });
+  const running = assignOfficeTask(store, manager, { id: created.id, agent: "Builder" });
+  assert.equal(running.status, "running");
+  const stopped = cancelOfficeTask(store, manager, { id: created.id, reason: "Requirements changed." });
+  assert.equal(stopped.status, "cancelled");
+  assert.equal(stopped.error, "Requirements changed.");
+  assert.equal(sent[1].type, "task_cancel");
+  assert.equal(sent[1].taskId, sent[0].taskId);
+  assert.equal(sent[1].inReplyTo, sent[0].message.messageId);
+
+  const lateUpdate = await manager.receiveUpdate("Builder", {
+    type: "task_update",
+    taskId: sent[0].taskId,
+    inReplyTo: sent[0].message.messageId,
+    status: { state: "completed" },
+    message: { parts: [{ kind: "text", text: "Late result" }] },
+  }, "cancel-connection");
+  assert.equal(lateUpdate.state, "cancelled");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(store.getOfficeTasks()[0].status, "cancelled");
 });

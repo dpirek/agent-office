@@ -1,5 +1,5 @@
 import { json, methodNotAllowed, readRequestBody } from "./http.js";
-import { assignOfficeTask, createOfficeTask, readOfficeTasks } from "../lib/office-tasks.js";
+import { assignOfficeTask, cancelOfficeTask, createOfficeTask, readOfficeTasks } from "../lib/office-tasks.js";
 
 export function createTaskApiHandlers({ subAgentManager, uiStateStore }) {
   async function handleTasksApi(req, res) {
@@ -11,8 +11,8 @@ export function createTaskApiHandlers({ subAgentManager, uiStateStore }) {
       json(res, 200, { ok: true, ...readOfficeTasks(uiStateStore, subAgentManager) });
       return;
     }
-    if (!["POST", "PUT"].includes(req.method)) {
-      methodNotAllowed(res, "GET, POST, PUT");
+    if (!["POST", "PUT", "DELETE"].includes(req.method)) {
+      methodNotAllowed(res, "GET, POST, PUT, DELETE");
       return;
     }
 
@@ -20,8 +20,10 @@ export function createTaskApiHandlers({ subAgentManager, uiStateStore }) {
       const body = JSON.parse(await readRequestBody(req, 100_000) || "{}");
       const task = req.method === "POST"
         ? createOfficeTask(uiStateStore, body)
-        : assignOfficeTask(uiStateStore, subAgentManager, { id: body.id, agent: body.agent });
-      json(res, req.method === "POST" ? 201 : 202, { ok: true, task });
+        : req.method === "PUT"
+          ? assignOfficeTask(uiStateStore, subAgentManager, { id: body.id, agent: body.agent })
+          : cancelOfficeTask(uiStateStore, subAgentManager, { id: body.id, reason: body.reason });
+      json(res, req.method === "POST" ? 201 : req.method === "PUT" ? 202 : 200, { ok: true, task });
     } catch (error) {
       json(res, 400, { ok: false, error: error.message });
     }
