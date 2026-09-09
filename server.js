@@ -16,6 +16,7 @@ import {
   normalizeStoredToolPermissions as normalizeToolPermissions,
 } from "./lib/ui-state.js";
 import { attachWebSocketServer, createWebSocketHandler } from "./lib/ws.js";
+import { createWorkerWebSocketHandler } from "./lib/worker-ws.js";
 import {
   defaultBaseUrlForProvider,
   defaultModelForProvider,
@@ -51,12 +52,6 @@ let officeChatService;
 let officeManagerBoardRunning = false;
 
 const subAgentManager = new SubAgentManager({
-  callbackUrl() {
-    const address = server?.address();
-    const localPort = typeof address === "object" ? address.port : defaultPort;
-    const baseUrl = process.env.AI_HARNESS_PUBLIC_URL?.trim() || `http://127.0.0.1:${localPort}`;
-    return new URL("/api/sub-agents/callback", baseUrl).href;
-  },
   onTaskAssigned(task) {
     officeChatService?.postAssignment(task);
   },
@@ -81,17 +76,11 @@ const subAgentManager = new SubAgentManager({
         finishedAt: task.finishedAt,
       },
     });
-    if (["completed", "failed", "timed_out"].includes(event)) {
+    if (["working", "completed", "failed", "timed_out"].includes(event)) {
       officeChatService?.postTaskResult(event, task);
     }
   },
 });
-
-function syncSubAgentWorkers(rigConfigurations) {
-  subAgentManager.setWorkers(rigConfigurations.configurations.find(
-    (configuration) => configuration.id === rigConfigurations.activeConfigurationId,
-  )?.subAgents || []);
-}
 
 async function initializeUiStateStore(databasePath, initialMcpConfigPath) {
   const store = createUiStateStore(databasePath);
@@ -148,11 +137,6 @@ async function createAgentSession({
   // Enabling a built-in tool in the web Tools settings is the user's
   // authorization to execute it. Disabled tools are not exposed to the model.
   const disabled = new Set(disabledSteps);
-  const rigConfigurations = uiStateStore.getRigConfigurations();
-  const activeConfiguration = rigConfigurations.configurations.find(
-    (configuration) => configuration.id === rigConfigurations.activeConfigurationId,
-  );
-  subAgentManager.setWorkers(activeConfiguration?.subAgents || []);
   const localTools = disabled.has("tools") ? [] : createTools({
     root,
     approve: async () => true,
@@ -259,8 +243,6 @@ officeChatService = createOfficeChatService({
 if (environmentFileDetected) {
   applyEnvironmentSettings(uiStateStore, process.env, __dirname);
 }
-const initialRigConfigurations = uiStateStore.getRigConfigurations();
-syncSubAgentWorkers(initialRigConfigurations);
 const periodicOperationScheduler = new PeriodicOperationScheduler({ uiStateStore, subAgentManager });
 periodicOperationScheduler.start();
 
@@ -275,14 +257,17 @@ server = http.createServer(async (req, res) => {
     appVersion,
     subAgentManager,
     officeChatService,
-    onRigConfigurationsChanged: syncSubAgentWorkers,
   });
 
   if (await handleApiRequest(req, res, url)) return;
   await serveStatic(req, res, publicDir);
 });
 
-attachWebSocketServer(server, handleWebSocket);
+const handleWorkerWebSocket = createWorkerWebSocketHandler({
+  subAgentManager,
+  token: process.env.AI_HARNESS_WORKER_TOKEN,
+});
+attachWebSocketServer(server, handleWebSocket, "/ws", { "/ws/workers": handleWorkerWebSocket });
 
 server.on("connection", (socket) => {
   connections.add(socket);

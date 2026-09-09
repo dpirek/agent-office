@@ -206,8 +206,8 @@ function renderAgentRegistry() {
     <tr>
       <td>${escapeHtml(worker.name)}</td>
       <td title="${escapeHtml(worker.url)}">${escapeHtml(worker.url)}</td>
-      <td><span class="registry-actions"><button type="button" class="edit-agent" data-agent="${escapeHtml(worker.name)}">EDIT</button><button type="button" class="delete-agent" data-agent="${escapeHtml(worker.name)}">DELETE</button></span></td>
-    </tr>`).join("") : `<tr class="empty-row"><td colspan="3">NO HTTP AGENTS CONFIGURED</td></tr>`;
+      <td>${escapeHtml([...(worker.capabilities?.skills || []).map((skill) => skill.name), ...(worker.capabilities?.tools || [])].slice(0, 4).join(", ") || "REGISTERED")}</td>
+    </tr>`).join("") : `<tr class="empty-row"><td colspan="3">WAITING FOR AUTHENTICATED WEBSOCKET WORKERS</td></tr>`;
 }
 
 function detailRows(agent) {
@@ -231,7 +231,7 @@ function renderSelectedAgent() {
   if (!agent) {
     $("#selected-name").textContent = "No agent selected";
     $("#selected-status").textContent = "unregistered";
-    $("#selected-description").textContent = "Add an HTTP agent in Agent Registry";
+    $("#selected-description").textContent = "Waiting for a WebSocket worker to connect";
     $("#selected-portrait span").textContent = "—";
     $(".agent-summary-copy .status-dot").classList.add("empty");
     $("#agent-details").innerHTML = `<div class="detail-row"><label>STATUS</label><span>No registered agents</span></div>`;
@@ -696,28 +696,6 @@ async function fetchJson(url) {
   return data;
 }
 
-async function mutateAgent(method, payload) {
-  const response = await fetch("/api/sub-agents", {
-    method,
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-  return data;
-}
-
-async function discoverAgent(url) {
-  const response = await fetch("/api/sub-agents/info", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url }),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-  return data.worker;
-}
-
 async function createTask(payload) {
   const response = await fetch("/api/tasks", {
     method: "POST",
@@ -1010,86 +988,6 @@ $$('.tabs button').forEach((button) => button.addEventListener("click", () => {
   $$(".tabs button").forEach((entry) => entry.classList.toggle("active", entry === button));
   renderSelectedAgent();
 }));
-
-const agentDialog = $("#agent-dialog");
-function openAgentDialog(worker = null) {
-  $("#agent-dialog-title").textContent = worker ? "EDIT AGENT" : "ADD AGENT";
-  $("#agent-original-name").value = worker?.name || "";
-  $("#agent-name").value = worker?.name || "";
-  $("#agent-url").value = worker?.url || "";
-  $("#agent-info-status").textContent = worker?.description || "Enter the worker host or A2A URL. Name and capabilities are discovered from /api/info.";
-  agentDialog.showModal();
-  $("#agent-url").focus();
-}
-
-let agentDiscoverySequence = 0;
-async function previewAgentInfo() {
-  const url = $("#agent-url").value.trim();
-  if (!url) return;
-  const sequence = ++agentDiscoverySequence;
-  $("#agent-info-status").textContent = "DISCOVERING WORKER INFO…";
-  try {
-    const worker = await discoverAgent(url);
-    if (sequence !== agentDiscoverySequence) return;
-    $("#agent-name").value = worker.name;
-    const tools = worker.capabilities?.tools?.length || 0;
-    const model = worker.model?.name ? ` · ${worker.model.name}` : "";
-    $("#agent-info-status").textContent = `${worker.description || "Worker discovered"} · ${tools} tools${model}`;
-  } catch (error) {
-    if (sequence !== agentDiscoverySequence) return;
-    $("#agent-name").value = "";
-    $("#agent-info-status").textContent = error.message;
-  }
-}
-
-$("#add-agent-button").addEventListener("click", () => openAgentDialog());
-$("#agent-url").addEventListener("change", () => void previewAgentInfo());
-$("#close-agent-dialog").addEventListener("click", () => agentDialog.close());
-$("#cancel-agent").addEventListener("click", () => agentDialog.close());
-agentDialog.addEventListener("click", (event) => {
-  if (event.target === agentDialog) agentDialog.close();
-});
-$("#agent-registry-body").addEventListener("click", async (event) => {
-  const button = event.target.closest("button[data-agent]");
-  if (!button) return;
-  const worker = state.workers.find((entry) => entry.name === button.dataset.agent);
-  if (!worker) return;
-  if (button.classList.contains("edit-agent")) {
-    openAgentDialog(worker);
-    return;
-  }
-  if (!window.confirm(`Delete agent “${worker.name}”?`)) return;
-  button.disabled = true;
-  try {
-    await mutateAgent("DELETE", { name: worker.name });
-    await refreshDashboard({ quiet: true });
-    addLog("System", `Agent ${worker.name} deleted`, "success");
-    showToast(`Deleted ${worker.name}.`);
-  } catch (error) {
-    showToast(error.message, true);
-  } finally {
-    button.disabled = false;
-  }
-});
-$("#agent-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const originalName = $("#agent-original-name").value;
-  const url = $("#agent-url").value.trim();
-  const saveButton = $("#save-agent");
-  saveButton.disabled = true;
-  try {
-    const result = await mutateAgent(originalName ? "PUT" : "POST", { originalName, url });
-    const name = result.worker.name;
-    agentDialog.close();
-    await refreshDashboard({ quiet: true });
-    addLog("System", `Agent ${name} ${originalName ? "updated" : "added"}`, "success");
-    showToast(`${name} ${originalName ? "updated" : "added"}.`);
-  } catch (error) {
-    showToast(error.message, true);
-  } finally {
-    saveButton.disabled = false;
-  }
-});
 
 const taskDialog = $("#task-dialog");
 function openTaskDialog() {

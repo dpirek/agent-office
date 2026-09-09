@@ -55,7 +55,7 @@
               <div class="panel-body selected-body">
                 <div class="agent-summary">
                   <div class="portrait" id="selected-portrait"><span>◉</span></div>
-                  <div class="agent-summary-copy"><strong id="selected-name">No agent selected</strong><span><i class="status-dot empty"></i><b id="selected-status">unregistered</b></span><small id="selected-description">Add an HTTP agent in Agent Registry</small></div>
+                  <div class="agent-summary-copy"><strong id="selected-name">No agent selected</strong><span><i class="status-dot empty"></i><b id="selected-status">unregistered</b></span><small id="selected-description">Waiting for a WebSocket worker to connect</small></div>
                   <div class="agent-controls"><button id="pause-button" title="Pause agent">Ⅱ</button><button id="stop-button" title="Clear run">■</button><button title="Agent actions">•••</button></div>
                 </div>
                 <div class="tabs" role="tablist"><button class="active" data-tab="details">DETAILS</button><button data-tab="tasks">TASKS</button><button data-tab="tools">TOOLS</button><button data-tab="memory">MEMORY</button><button data-tab="logs">LOGS</button></div>
@@ -69,9 +69,9 @@
             </section>
 
             <section class="panel agent-registry-panel" data-view="agents">
-              <header class="panel-header"><div><span class="header-icon">♙</span><h2>AGENT REGISTRY</h2></div><button class="header-action" id="add-agent-button" type="button">+ ADD AGENT</button></header>
+              <header class="panel-header"><div><span class="header-icon">♙</span><h2>LIVE WORKER REGISTRY</h2></div><span class="panel-meta">WS /ws/workers</span></header>
               <div class="panel-body registry-body">
-                <table class="registry-table"><thead><tr><th>NAME</th><th>HTTP URL</th><th>ACTIONS</th></tr></thead><tbody id="agent-registry-body"></tbody></table>
+                <table class="registry-table"><thead><tr><th>NAME</th><th>WEBSOCKET URL</th><th>CAPABILITIES</th></tr></thead><tbody id="agent-registry-body"></tbody></table>
               </div>
             </section>
 
@@ -102,7 +102,7 @@
 
         <section class="panel operations-panel" data-view="operations" hidden>
           <header class="panel-header"><div><span class="header-icon">◷</span><h2>PERIODIC OPERATIONS</h2></div><button class="header-action" id="add-operation-button" type="button">+ NEW OPERATION</button></header>
-          <div class="operations-summary panel-body"><strong id="operations-active-count">0 ACTIVE</strong><span>Schedules are persisted and dispatched to registered HTTP agents.</span></div>
+          <div class="operations-summary panel-body"><strong id="operations-active-count">0 ACTIVE</strong><span>Schedules are persisted and dispatched to connected WebSocket workers.</span></div>
           <div class="operations-table-wrap panel-body">
             <table class="operations-table"><thead><tr><th>OPERATION</th><th>SCHEDULE</th><th>ASSIGNMENT</th><th>PRIORITY</th><th>LAST RUN</th><th>NEXT RUN</th><th>STATE</th><th>ACTIONS</th></tr></thead><tbody id="operations-body"></tbody></table>
           </div>
@@ -191,20 +191,6 @@
     </div>
 
   </div>
-  <dialog class="agent-dialog" id="agent-dialog" aria-labelledby="agent-dialog-title">
-    <form id="agent-form">
-      <header class="panel-header"><div><span class="header-icon">♙</span><h2 id="agent-dialog-title">ADD AGENT</h2></div><button class="dialog-close" id="close-agent-dialog" type="button" aria-label="Close">×</button></header>
-      <div class="agent-form-body">
-        <input type="hidden" id="agent-original-name">
-        <label for="agent-name">WORKER NAME</label>
-        <input id="agent-name" name="name" maxlength="100" autocomplete="off" readonly placeholder="Discovered from /api/info">
-        <label for="agent-url">HTTP URL</label>
-        <input id="agent-url" name="url" type="url" required placeholder="http://127.0.0.1:3000">
-        <p id="agent-info-status">Enter the worker host or A2A URL. Name and capabilities are discovered from <code>/api/info</code>.</p>
-      </div>
-      <footer class="dialog-actions"><button id="cancel-agent" type="button">CANCEL</button><button class="primary" id="save-agent" type="submit">SAVE AGENT</button></footer>
-    </form>
-  </dialog>
   <dialog class="agent-dialog task-dialog" id="task-dialog" aria-labelledby="task-dialog-title">
     <form id="task-form">
       <header class="panel-header"><div><span class="header-icon">▣</span><h2 id="task-dialog-title">CREATE TASK</h2></div><button class="dialog-close" id="close-task-dialog" type="button" aria-label="Close">×</button></header>
