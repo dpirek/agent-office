@@ -94,7 +94,7 @@ test("assignments and worker results are published to central office", (context)
   assert.equal(messages[1].taskId, "msg-42");
 });
 
-test("chat members expose typing status from active orchestration", (context) => {
+test("chat members distinguish manager typing from busy workers", (context) => {
   const { directory, store } = setup();
   context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
   const chat = createOfficeChatService({
@@ -108,6 +108,6 @@ test("chat members expose typing status from active orchestration", (context) =>
 
   const members = chat.list().members;
   assert.equal(members.find((member) => member.username === "office-manager").status, "is typing");
-  assert.equal(members.find((member) => member.username === "dave-the-developer").status, "is typing");
+  assert.equal(members.find((member) => member.username === "dave-the-developer").status, "busy");
   assert.equal(members.find((member) => member.username === "idle-worker").status, "online");
 });
