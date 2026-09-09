@@ -16,6 +16,7 @@ const ROLE_AGENTS = [
 
 const PAGES = {
   dashboard: { path: "/dashboard", title: "Dashboard" },
+  chat: { path: "/chat", title: "Central Office" },
   agents: { path: "/agents", title: "Agents" },
   tasks: { path: "/tasks", title: "Tasks" },
   operations: { path: "/operations", title: "Operations" },
@@ -57,6 +58,8 @@ const state = {
   skills: [],
   memoryRecords: [],
   chatMessages: [],
+  officeChatMessages: [],
+  officeChatMembers: [],
   chatRunning: false,
   selectedPromptKey: null,
   promptDirty: false,
@@ -123,6 +126,7 @@ function renderPage(section) {
     $("#route-page-heading").textContent = page.heading;
     $("#route-page-description").textContent = page.description;
   }
+  if (section === "chat") void loadOfficeChat({ quiet: true });
 }
 
 function addActivity(text, tone = "") {
@@ -272,6 +276,66 @@ function renderChat() {
   $("#chat-status").textContent = state.chatRunning ? "WORKING…" : ready ? "READY" : "CONNECTING";
   $("#send-chat").disabled = !ready || state.chatRunning;
   $("#chat-input").disabled = state.chatRunning;
+}
+
+function highlightMentions(text) {
+  return escapeHtml(text).replace(/(^|\s)(@[a-z0-9][a-z0-9-]*)\b/gi, "$1<mark>$2</mark>");
+}
+
+function chatInitials(name) {
+  return String(name || "?").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+}
+
+function renderOfficeChat({ preserveScroll = false } = {}) {
+  const members = $("#office-chat-members");
+  members.innerHTML = state.officeChatMembers.map((member) => `
+    <button class="office-chat-member" type="button" data-username="${escapeHtml(member.username)}" title="Mention @${escapeHtml(member.username)}">
+      <i></i><span><strong>${escapeHtml(member.name)}</strong><small>@${escapeHtml(member.username)}</small></span>
+    </button>`).join("");
+  $("#office-chat-member-count").textContent = `${state.officeChatMembers.length} MEMBER${state.officeChatMembers.length === 1 ? "" : "S"}`;
+
+  const board = $("#office-board-messages");
+  const wasAtBottom = board.scrollHeight - board.scrollTop - board.clientHeight < 70;
+  const messages = state.officeChatMessages;
+  board.innerHTML = messages.length ? messages.map((message) => `
+    <article class="office-board-message ${escapeHtml(message.kind)}${message.streaming ? " streaming" : ""}">
+      <div class="office-board-avatar">${escapeHtml(chatInitials(message.author))}</div>
+      <div class="office-board-message-body">
+        <div class="office-board-message-meta"><strong>${escapeHtml(message.author)}</strong><span>@${escapeHtml(message.username)} · ${shortTime(message.createdAt)}</span></div>
+        <div class="office-board-message-text">${highlightMentions(message.text)}</div>
+        ${message.artifacts?.length ? `<div class="office-board-artifacts">${message.artifacts.map((artifact) => `<a href="${escapeHtml(artifact.uri)}" target="_blank" rel="noopener noreferrer">↗ ${escapeHtml(artifact.name)}</a>`).join("")}</div>` : ""}
+      </div>
+    </article>`).join("") : `<div class="office-board-empty"><strong># CENTRAL-OFFICE IS READY</strong><span>Mention @office-manager or a registered agent to begin.</span></div>`;
+  if (!preserveScroll || wasAtBottom) board.scrollTop = board.scrollHeight;
+  $("#office-chat-status").textContent = "LIVE CHANNEL";
+}
+
+async function loadOfficeChat({ quiet = false } = {}) {
+  try {
+    const data = await fetchJson("/api/chat?limit=300");
+    state.officeChatMessages = data.messages || [];
+    state.officeChatMembers = data.members || [];
+    renderOfficeChat({ preserveScroll: true });
+  } catch (error) {
+    if (!quiet) showToast(error.message, true);
+  }
+}
+
+async function postOfficeChat(payload) {
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+}
+
+function resizeOfficeBoardInput() {
+  const input = $("#office-board-input");
+  input.style.height = "31px";
+  input.style.height = `${Math.min(130, Math.max(31, input.scrollHeight))}px`;
 }
 
 function currentChatReply() {
@@ -899,6 +963,48 @@ $("#chat-input").addEventListener("keydown", (event) => {
 });
 $("#chat-input").addEventListener("input", resizeChatInput);
 
+$("#office-board-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = $("#office-board-input");
+  const prompt = input.value.trim();
+  if (!prompt) return;
+  if (state.chatRunning) {
+    showToast("Wait for the office manager's current response to finish.");
+    return;
+  }
+  const sendButton = $("#office-board-send");
+  sendButton.disabled = true;
+  try {
+    const result = await postOfficeChat({ text: prompt });
+    input.value = "";
+    resizeOfficeBoardInput();
+    await loadOfficeChat({ quiet: true });
+    const failed = result.dispatches?.filter((dispatch) => !dispatch.ok) || [];
+    if (failed.length) showToast(failed.map((dispatch) => dispatch.error).join(" · "), true);
+    if (result.managerMentioned) showToast("Office manager notified.");
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    sendButton.disabled = false;
+  }
+});
+$("#office-board-input").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    $("#office-board-form").requestSubmit();
+  }
+});
+$("#office-board-input").addEventListener("input", resizeOfficeBoardInput);
+$("#office-chat-members").addEventListener("click", (event) => {
+  const member = event.target.closest(".office-chat-member[data-username]");
+  if (!member) return;
+  const input = $("#office-board-input");
+  const mention = `@${member.dataset.username} `;
+  input.value = input.value ? `${input.value.trimEnd()} ${mention}` : mention;
+  resizeOfficeBoardInput();
+  input.focus();
+});
+
 $$('.tabs button').forEach((button) => button.addEventListener("click", () => {
   state.activeTab = button.dataset.tab;
   $$(".tabs button").forEach((entry) => entry.classList.toggle("active", entry === button));
@@ -1295,8 +1401,11 @@ $$('.nav-item').forEach((link) => link.addEventListener("click", (event) => {
 setInterval(renderSelectedAgent, 1000);
 setInterval(() => void refreshDashboard({ quiet: true }), 2500);
 setInterval(() => void loadMemory({ quiet: true }), 5000);
+setInterval(() => {
+  if (document.body.dataset.page === "chat") void loadOfficeChat({ quiet: true });
+}, 2000);
 
-renderOffice(); renderAgentRegistry(); renderOperationAgentOptions(); renderOperations(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat();
+renderOffice(); renderAgentRegistry(); renderOperationAgentOptions(); renderOperations(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat();
 router.start();
 connectSocket();
 void refreshDashboard();
@@ -1304,3 +1413,4 @@ void loadSystemPrompts();
 void loadConfigurationSettings();
 void loadSkills();
 void loadMemory();
+void loadOfficeChat();

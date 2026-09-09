@@ -38,6 +38,7 @@ test("auto assignment chooses the lightest active workload", () => {
 
 test("queue returns a visible task receipt before the worker completes", async () => {
   const taskEvents = [];
+  const assignments = [];
   const manager = new SubAgentManager({
     workers: [{ name: "alpha", url: "http://127.0.0.1:9999" }],
     callbackUrl: "http://127.0.0.1:8010/api/sub-agents/callback",
@@ -45,6 +46,7 @@ test("queue returns a visible task receipt before the worker completes", async (
       status: 202,
       headers: { "content-type": "application/json" },
     }),
+    onTaskAssigned: (task) => assignments.push(task),
     onTaskEvent: (event, task) => taskEvents.push({ event, task }),
   });
   const queued = manager.queue({ agent: "alpha", task: "Check the release", priority: "high", timeoutMs: 1_000 });
@@ -52,6 +54,7 @@ test("queue returns a visible task receipt before the worker completes", async (
   assert.equal(queued.task.agent, "alpha");
   assert.equal(queued.task.title, "Check the release");
   assert.equal(queued.task.priority, "high");
+  assert.equal(assignments[0].messageId, queued.task.messageId);
   assert.equal(manager.listTasks().length, 1);
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(manager.listTasks()[0].state, "working");

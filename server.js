@@ -4,12 +4,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApiRouter } from "./api/index.js";
 import { createModelClient } from "./lib/openai.js";
-import { CodingAgent } from "./lib/agent.js";
+import { CodingAgent, resolveDisabledSteps } from "./lib/agent.js";
 import { serveStatic } from "./lib/response.js";
 import { createTools } from "./lib/tools/index.js";
 import { loadMcpTools } from "./lib/mcp.js";
 import { SubAgentManager } from "./lib/sub-agents.js";
 import { PeriodicOperationScheduler } from "./lib/operations.js";
+import { createOfficeChatService } from "./lib/office-chat.js";
 import {
   createUiStateStore,
   normalizeStoredToolPermissions as normalizeToolPermissions,
@@ -46,6 +47,8 @@ await fs.mkdir(databaseDir, { recursive: true });
 const connections = new Set();
 let storeClosed = false;
 let server;
+let officeChatService;
+let officeManagerBoardRunning = false;
 
 const subAgentManager = new SubAgentManager({
   callbackUrl() {
@@ -53,6 +56,9 @@ const subAgentManager = new SubAgentManager({
     const localPort = typeof address === "object" ? address.port : defaultPort;
     const baseUrl = process.env.AI_HARNESS_PUBLIC_URL?.trim() || `http://127.0.0.1:${localPort}`;
     return new URL("/api/sub-agents/callback", baseUrl).href;
+  },
+  onTaskAssigned(task) {
+    officeChatService?.postAssignment(task);
   },
   onTaskEvent(event, task) {
     const summary = String(task.text || task.error || "").slice(0, 20_000);
@@ -75,6 +81,9 @@ const subAgentManager = new SubAgentManager({
         finishedAt: task.finishedAt,
       },
     });
+    if (["completed", "failed", "timed_out"].includes(event)) {
+      officeChatService?.postTaskResult(event, task);
+    }
   },
 });
 
@@ -206,6 +215,46 @@ const handleWebSocket = createWebSocketHandler({
 });
 
 const uiStateStore = await initializeUiStateStore(uiStateDatabasePath, configPath);
+async function handleOfficeManagerMention({ text }) {
+  if (officeManagerBoardRunning) throw new Error("The office manager is already responding to another message.");
+  officeManagerBoardRunning = true;
+  try {
+    const rigConfigurations = uiStateStore.getRigConfigurations();
+    const activeConfiguration = rigConfigurations.configurations.find(
+      (configuration) => configuration.id === rigConfigurations.activeConfigurationId,
+    );
+    const disabledSteps = resolveDisabledSteps([], activeConfiguration?.componentState?.effects);
+    const agent = await createAgentSession({
+      disabledSteps,
+      emit: () => {},
+      onTextDelta: () => {},
+      root: await resolveWorkspace(defaultWorkspace),
+      toolPermissions: normalizeToolPermissions(activeConfiguration?.toolPermissions),
+    });
+    const recent = officeChatService.list({ limit: 40 }).messages
+      .map((message) => `${message.author}: ${message.text}`)
+      .join("\n");
+    const request = `You were addressed as @office-manager in #central-office. Respond to the latest message and coordinate work through the office task tools when delegation is needed. Any task assignment you make will be announced on the board automatically.\n\nRecent channel transcript:\n${recent}\n\nLatest message:\n${text}`;
+    const prompt = disabledSteps.includes("composer")
+      ? request
+      : await agent.refinePrompt(request, { disabledSteps });
+    const output = await agent.run({ text: prompt }, { disabledSteps });
+    officeChatService.postMessage({
+      author: "Office Manager",
+      username: "office-manager",
+      kind: "manager",
+      text: output || "Done.",
+    });
+  } finally {
+    officeManagerBoardRunning = false;
+  }
+}
+
+officeChatService = createOfficeChatService({
+  uiStateStore,
+  subAgentManager,
+  onManagerMention: handleOfficeManagerMention,
+});
 if (environmentFileDetected) {
   applyEnvironmentSettings(uiStateStore, process.env, __dirname);
 }
@@ -224,6 +273,7 @@ server = http.createServer(async (req, res) => {
     fileAccessDisabledByEnvironment,
     appVersion,
     subAgentManager,
+    officeChatService,
     onRigConfigurationsChanged: syncSubAgentWorkers,
   });
 

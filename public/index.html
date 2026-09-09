@@ -28,6 +28,7 @@
       <nav class="sidebar" aria-label="Primary navigation">
         <div class="nav-items">
           <a class="nav-item active" href="/dashboard" data-section="dashboard" aria-label="Dashboard"><span class="nav-icon" aria-hidden="true">▣</span>DASHBOARD</a>
+          <a class="nav-item" href="/chat" data-section="chat" aria-label="Office chat"><span class="nav-icon" aria-hidden="true">◫</span>CHAT</a>
           <a class="nav-item" href="/agents" data-section="agents" aria-label="Agents"><span class="nav-icon" aria-hidden="true">♙</span>AGENTS</a>
           <a class="nav-item" href="/tasks" data-section="tasks" aria-label="Tasks"><span class="nav-icon" aria-hidden="true">▤</span>TASKS</a>
           <a class="nav-item" href="/operations" data-section="operations" aria-label="Operations"><span class="nav-icon" aria-hidden="true">◷</span>OPERATIONS</a>
@@ -104,6 +105,28 @@
           <div class="operations-summary panel-body"><strong id="operations-active-count">0 ACTIVE</strong><span>Schedules are persisted and dispatched to registered HTTP agents.</span></div>
           <div class="operations-table-wrap panel-body">
             <table class="operations-table"><thead><tr><th>OPERATION</th><th>SCHEDULE</th><th>ASSIGNMENT</th><th>PRIORITY</th><th>LAST RUN</th><th>NEXT RUN</th><th>STATE</th><th>ACTIONS</th></tr></thead><tbody id="operations-body"></tbody></table>
+          </div>
+        </section>
+
+        <section class="panel office-chat-page" data-view="chat" hidden>
+          <header class="panel-header"><div><span class="header-icon">◫</span><h2>CENTRAL OFFICE</h2></div><span class="panel-meta" id="office-chat-status">LIVE CHANNEL</span></header>
+          <div class="office-chat-layout panel-body">
+            <aside class="office-chat-sidebar">
+              <div class="office-chat-channel"><span>#</span><strong>central-office</strong></div>
+              <h3>PEOPLE</h3>
+              <div class="office-chat-members" id="office-chat-members"></div>
+            </aside>
+            <section class="office-chat-main">
+              <header class="office-chat-heading">
+                <div><strong># central-office</strong><span>Shared coordination channel for the whole agent office</span></div>
+                <span id="office-chat-member-count">1 MEMBER</span>
+              </header>
+              <div class="office-board-messages" id="office-board-messages" aria-live="polite"></div>
+              <form class="office-board-composer" id="office-board-form">
+                <textarea id="office-board-input" rows="1" maxlength="100000" required placeholder="Message #central-office · use @office-manager or @agent-name" aria-label="Message central office"></textarea>
+                <button class="primary" id="office-board-send" type="submit">SEND</button>
+              </form>
+            </section>
           </div>
         </section>
 
