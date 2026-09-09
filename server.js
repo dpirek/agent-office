@@ -18,6 +18,7 @@ import {
 import { attachWebSocketServer, createWebSocketHandler } from "./lib/ws.js";
 import { createWorkerWebSocketHandler } from "./lib/worker-ws.js";
 import { createSharedWorkspace } from "./lib/shared-workspace.js";
+import { SEQUENTIAL_ORCHESTRATION_POLICY, TaskReviewTrigger } from "./lib/task-review-trigger.js";
 import {
   defaultBaseUrlForProvider,
   defaultModelForProvider,
@@ -53,6 +54,8 @@ let storeClosed = false;
 let server;
 let officeChatService;
 let officeManagerBoardRunning = false;
+let officeManagerQueue = Promise.resolve();
+let taskReviewTrigger;
 
 const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
 const subAgentManager = new SubAgentManager({
@@ -97,6 +100,7 @@ const subAgentManager = new SubAgentManager({
     if (["working", "completed", "failed", "timed_out"].includes(event)) {
       officeChatService?.postTaskResult(event, task);
     }
+    taskReviewTrigger?.notify(event, task);
   },
 });
 
@@ -217,10 +221,7 @@ const handleWebSocket = createWebSocketHandler({
 });
 
 const uiStateStore = await initializeUiStateStore(uiStateDatabasePath, configPath);
-async function handleOfficeManagerMention({ message, text }) {
-  if (officeManagerBoardRunning) throw new Error("The office manager is already responding to another message.");
-  officeManagerBoardRunning = true;
-  try {
+async function runOfficeManager(request, { refine = true } = {}) {
     const rigConfigurations = uiStateStore.getRigConfigurations();
     const activeConfiguration = rigConfigurations.configurations.find(
       (configuration) => configuration.id === rigConfigurations.activeConfigurationId,
@@ -233,12 +234,7 @@ async function handleOfficeManagerMention({ message, text }) {
       root: await resolveWorkspace(defaultWorkspace),
       toolPermissions: normalizeToolPermissions(activeConfiguration?.toolPermissions),
     });
-    const recent = officeChatService.list({ limit: 40 }).messages
-      .filter((entry) => entry.id !== message.id)
-      .map((message) => `${message.author}: ${message.text}`)
-      .join("\n");
-    const request = `You were addressed as @office-manager in #central-office. Respond to the latest message and coordinate work through the office task tools when delegation is needed. Any task assignment you make will be announced on the board automatically.\n\nRecent channel transcript:\n${recent}\n\nLatest message:\n${text}`;
-    const prompt = disabledSteps.includes("composer")
+    const prompt = !refine || disabledSteps.includes("composer")
       ? request
       : await agent.refinePrompt(request, { disabledSteps });
     const output = await agent.run({ text: prompt }, { disabledSteps });
@@ -248,9 +244,28 @@ async function handleOfficeManagerMention({ message, text }) {
       kind: "manager",
       text: output || "Done.",
     });
-  } finally {
-    officeManagerBoardRunning = false;
-  }
+    return output;
+}
+
+function enqueueOfficeManager(run) {
+  const execute = async () => {
+    officeManagerBoardRunning = true;
+    try { return await run(); } finally { officeManagerBoardRunning = false; }
+  };
+  const result = officeManagerQueue.then(execute, execute);
+  officeManagerQueue = result.catch(() => undefined);
+  return result;
+}
+
+function handleOfficeManagerMention({ message, text }) {
+  return enqueueOfficeManager(async () => {
+    const recent = officeChatService.list({ limit: 40 }).messages
+      .filter((entry) => entry.id !== message.id)
+      .map((entry) => `${entry.author}: ${entry.text}`)
+      .join("\n");
+    const request = `You were addressed as @office-manager in #central-office. Respond to the latest message and coordinate work through the office task tools when delegation is needed. Any task assignment you make will be announced on the board automatically.\n\n${SEQUENTIAL_ORCHESTRATION_POLICY}\n\nRecent channel transcript:\n${recent}\n\nLatest message:\n${text}`;
+    return runOfficeManager(request);
+  });
 }
 
 officeChatService = createOfficeChatService({
@@ -258,6 +273,28 @@ officeChatService = createOfficeChatService({
   subAgentManager,
   onManagerMention: handleOfficeManagerMention,
   isManagerTyping: () => officeManagerBoardRunning,
+});
+taskReviewTrigger = new TaskReviewTrigger({
+  review: async ({ event, task }) => {
+    await new Promise((resolve) => setImmediate(resolve));
+    return enqueueOfficeManager(async () => {
+      const tasks = uiStateStore.getOfficeTasks({ limit: 200 });
+      const settled = tasks.find((entry) => entry.messageId === task.messageId || entry.workerTaskId === task.taskId);
+      const recent = officeChatService.list({ limit: 30 }).messages
+        .map((entry) => `${entry.author}: ${entry.text}`)
+        .join("\n");
+      const request = `A delegated task has ${event}. Review the outcome and decide whether the next stage should be assigned. Use manage_office_tasks to read the current queue before acting.\n\n${SEQUENTIAL_ORCHESTRATION_POLICY}\n\nSettled task:\n${JSON.stringify(settled || task, null, 2)}\n\nCurrent task queue:\n${JSON.stringify(tasks, null, 2)}\n\nRecent central-office transcript:\n${recent}`;
+      return runOfficeManager(request, { refine: false });
+    });
+  },
+  onError(error, { task }) {
+    officeChatService?.postMessage({
+      author: "Office Manager",
+      username: "office-manager",
+      kind: "system",
+      text: `Automatic review after “${task.title || "task"}” failed: ${error.message}`,
+    });
+  },
 });
 if (environmentFileDetected) {
   applyEnvironmentSettings(uiStateStore, process.env, __dirname);

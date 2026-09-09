@@ -160,6 +160,7 @@ function allTasks() {
     priority: task.priority || "medium",
     progress: task.status === "completed" ? 100 : task.status === "running" ? 55 : ["failed", "timed_out"].includes(task.status) ? 100 : 0,
     createdAt: task.createdAt,
+    dependsOn: task.dependsOn || [],
     deliveredWork: task.deliveredWork || [],
   }));
   return [...state.localTasks, ...officeTasks].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -373,6 +374,7 @@ function taskCounts(tasks) {
 
 function renderTasks() {
   const tasks = allTasks();
+  const tasksById = new Map(tasks.map((task) => [task.id, task]));
   const counts = taskCounts(tasks);
   $$("#task-filters button").forEach((button) => {
     const filter = button.dataset.filter;
@@ -380,12 +382,19 @@ function renderTasks() {
     button.classList.toggle("active", filter === state.taskFilter);
   });
   const filtered = state.taskFilter === "all" ? tasks : tasks.filter((task) => task.status === state.taskFilter);
-  $("#task-body").innerHTML = filtered.length ? filtered.slice(0, 20).map((task, index) => `<tr>
+  $("#task-body").innerHTML = filtered.length ? filtered.slice(0, 20).map((task, index) => {
+    const dependencies = task.dependsOn || [];
+    const waiting = dependencies.filter((id) => tasksById.get(id)?.status !== "completed");
+    const dependencyState = dependencies.length === 0 ? "READY" : waiting.length ? `WAITING ${waiting.length}` : "MET";
+    const dependencyTitle = dependencies.map((id) => tasksById.get(id)?.title || id).join(", ");
+    return `<tr>
     <td>${index + 1}</td><td title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</td><td>${escapeHtml(task.agent)}</td>
     <td class="status-${task.status}">${escapeHtml(task.status)}</td><td class="priority-${task.priority}">${escapeHtml(task.priority)}</td>
+    <td title="${escapeHtml(dependencyTitle)}">${dependencyState}</td>
     <td><span class="progress-cell"><span class="progress"><i style="width:${task.progress}%"></i></span>${task.progress}%</span></td><td>${shortTime(task.createdAt)}</td>
     <td class="delivered-work">${task.deliveredWork?.length ? task.deliveredWork.map((work) => `<a href="${escapeHtml(work.uri)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(work.mimeType)}">↗ ${escapeHtml(work.name)}</a>`).join("") : "—"}</td>
-  </tr>`).join("") : `<tr class="empty-row"><td colspan="8">NO TASKS IN THIS VIEW</td></tr>`;
+  </tr>`;
+  }).join("") : `<tr class="empty-row"><td colspan="9">NO TASKS IN THIS VIEW</td></tr>`;
   renderSelectedAgent();
 }
 

@@ -1,0 +1,18 @@
+# Sequential task orchestration
+
+The Office Manager treats multi-stage projects as dependency chains. It creates pending tasks in prerequisite order and records prerequisite task IDs in each task's `depends_on` field. Creating a task never assigns it.
+
+During one review turn, the Office Manager may assign at most one ready task. A task is ready only when every task listed in `depends_on` has status `completed`; the server rejects any earlier assignment attempt.
+
+The server starts a new Office Manager review whenever delegated work becomes `completed`, `failed`, or `timed_out`. The review receives the settled result, delivered files, current queue, and recent central-office conversation. It must inspect that context before deciding whether to assign the next stage.
+
+If a prerequisite fails, dependent work remains pending. The manager can create and assign one corrective task, or report that the sequence is blocked. It must not dispatch the blocked downstream tasks.
+
+Example:
+
+1. Research data — no dependencies.
+2. Design UI — depends on Research data.
+3. Implement website — depends on Design UI.
+4. Review logic and system prompts — depends on Implement website.
+
+Only the first stage is assigned initially. Each terminal event triggers review of its output before the next stage can begin.
