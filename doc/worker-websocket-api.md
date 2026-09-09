@@ -2,6 +2,8 @@
 
 Workers join the office by connecting to `ws://HOST:PORT/ws/workers` (or `wss://` in production). The office only considers a worker registered and assignable while that socket is connected.
 
+For the normative integration contract, including validation, security, lifecycle, and reconnect requirements, see [Agent Worker Integration Specification](./sub-agent-spec.md).
+
 ## Register
 
 The first client message must identify and authenticate the worker:
