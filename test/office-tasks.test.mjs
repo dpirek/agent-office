@@ -16,11 +16,12 @@ test("office tasks stay unassigned until the manager explicitly assigns them", a
   const completion = new Promise((resolve) => { finishTask = resolve; });
   const subAgentManager = {
     listWorkers: () => [{ name: "Dave", url: "http://127.0.0.1:8099/a2a" }],
-    queue({ agent, task, priority }) {
+    queue({ agent, task, title, priority }) {
       dispatchCount += 1;
-      assert.deepEqual({ agent, task, priority }, {
+      assert.deepEqual({ agent, task, title, priority }, {
         agent: "Dave",
         task: "Prepare the release notes",
+        title: "Prepare the release notes",
         priority: "high",
       });
       return { task: { messageId: "message-1" }, completion };
@@ -75,8 +76,8 @@ test("dependent tasks dispatch sequentially across manager review turns", async 
   const dispatched = [];
   const subAgentManager = {
     listWorkers: () => [{ name: "Researcher" }, { name: "Designer" }],
-    queue({ agent, task }) {
-      dispatched.push({ agent, task });
+    queue({ agent, task, title }) {
+      dispatched.push({ agent, task, title });
       let finish;
       const completion = new Promise((resolve) => { finish = resolve; });
       completions.push(finish);
@@ -108,13 +109,29 @@ test("dependent tasks dispatch sequentially across manager review turns", async 
   const sameReviewAssignment = await firstReview.execute({ action: "assign", task_id: independent.id, agent: "Designer" });
   assert.equal(sameReviewAssignment.ok, false);
   assert.match(sameReviewAssignment.error, /one task may be assigned/i);
-  assert.deepEqual(dispatched, [{ agent: "Researcher", task: "Research site data" }]);
+  assert.deepEqual(dispatched, [{ agent: "Researcher", task: "Research site data", title: "Research site data" }]);
 
-  completions[0]({ ok: true, taskId: "research-result", text: "Research complete." });
+  completions[0]({
+    ok: true,
+    taskId: "research-result",
+    text: "Use the Acme market dataset and lead with conversion rate.",
+    deliveredWork: [{
+      name: "research.md",
+      uri: "/api/shared-workspace-file?path=research%2Fresearch.md",
+      workspacePath: "research/research.md",
+    }],
+  });
   await new Promise((resolve) => setImmediate(resolve));
 
   const nextReview = createOfficeTasksTool({ uiStateStore: store, subAgentManager });
   const assignedDesign = await nextReview.execute({ action: "assign", task_id: design.id, agent: "Designer" });
   assert.equal(assignedDesign.ok, true);
-  assert.deepEqual(dispatched[1], { agent: "Designer", task: "Design the UI" });
+  assert.equal(dispatched[1].agent, "Designer");
+  assert.equal(dispatched[1].title, "Design the UI");
+  assert.match(dispatched[1].task, /# Prerequisite work/);
+  assert.match(dispatched[1].task, /Research site data/);
+  assert.match(dispatched[1].task, /Use the Acme market dataset and lead with conversion rate\./);
+  assert.match(dispatched[1].task, /research\/research\.md/);
+  assert.match(dispatched[1].task, /# Current task\nDesign the UI/);
+  assert.match(dispatched[1].task, /do not redo or ignore it/);
 });

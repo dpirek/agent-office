@@ -4,6 +4,8 @@ The Office Manager treats multi-stage projects as dependency chains. It creates 
 
 During one review turn, the Office Manager may assign at most one ready task. A task is ready only when every task listed in `depends_on` has status `completed`; the server rejects any earlier assignment attempt.
 
+When a dependent task is dispatched, the server automatically prepends the completed prerequisite chain to the worker prompt. That context contains each prerequisite's title, result text, and delivered-file paths. The worker therefore receives the prior research, design decisions, or implementation output along with its own instructions, even if the Office Manager does not repeat those details manually.
+
 The server starts a new Office Manager review whenever delegated work becomes `completed`, `failed`, or `timed_out`. The review receives the settled result, delivered files, current queue, and recent central-office conversation. It must inspect that context before deciding whether to assign the next stage.
 
 If a prerequisite fails, dependent work remains pending. The manager can create and assign one corrective task, or report that the sequence is blocked. It must not dispatch the blocked downstream tasks.

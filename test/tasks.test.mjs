@@ -134,3 +134,22 @@ test("queue returns a visible task receipt before the worker completes", async (
   manager.unregisterConnection("connection-1");
   assert.equal(manager.listWorkers().length, 0);
 });
+
+test("a worker receives enriched task text while the office keeps the display title", () => {
+  const sent = [];
+  const manager = new SubAgentManager();
+  manager.registerWorker({ name: "builder", url: "ws://127.0.0.1:9998/worker" }, {
+    connectionId: "connection-context",
+    send: (message) => sent.push(message),
+  });
+  const queued = manager.queue({
+    agent: "builder",
+    title: "Build the website",
+    task: "Research output: blue is preferred.\n\nBuild the website.",
+    timeoutMs: 1_000,
+  });
+  queued.completion.catch(() => {});
+  assert.equal(queued.task.title, "Build the website");
+  assert.equal(sent[0].message.parts[0].text, "Research output: blue is preferred.\n\nBuild the website.");
+  manager.unregisterConnection("connection-context");
+});
