@@ -60,6 +60,8 @@ Reply on the same socket with:
 
 The office posts the response to Central Office and returns a `direct_message_ack`. Do not include `taskId` or artifacts in a direct response.
 
+Long-running task status checks use the same `direct_message` format. The text identifies the active task and requests progress, blockers, next step, and ETA. Reply normally and continue the assigned work.
+
 ## Send updates
 
 Workers may send any number of `working` updates. `inReplyTo` is optional, but when present must match the task's `message.messageId`.

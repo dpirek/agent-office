@@ -8,7 +8,13 @@ When a dependent task is dispatched, the server automatically prepends the compl
 
 The server starts a new Office Manager review whenever delegated work becomes `completed`, `failed`, or `timed_out`. The review receives the settled result, delivered files, current queue, and recent central-office conversation. It must inspect that context before deciding whether to assign the next stage.
 
-If a prerequisite fails, dependent work remains pending. The manager can create and assign one corrective task, or report that the sequence is blocked. It must not dispatch the blocked downstream tasks.
+If a prerequisite fails, dependent work remains pending. The manager must inspect the failure and create a materially different corrective plan rather than retrying identical instructions. The corrective task must not depend on the failed task; replacement downstream tasks form a new dependency chain from the corrective work. Only the first ready corrective task is assigned during the failure review.
+
+## Periodic progress checks
+
+The office checks running tasks after `AI_HARNESS_TASK_PROGRESS_CHECK_INTERVAL_MS` and repeats at that interval while work remains active. The default is `300000` milliseconds (five minutes); accepted values range from `10000` milliseconds to 24 hours.
+
+For every overdue task, the Office Manager sends the assigned worker a direct status request asking for completed progress, blockers, next step, and ETA. Only one status request can be outstanding for a task. The request and response are posted to Central Office and recorded in Memory. When the worker replies, the manager reviews the status and intervenes only when work is blocked or needs a different approach.
 
 An operator can stop a running task from `/tasks`. The office sends `task_cancel` to the assigned worker, records the task as `cancelled`, publishes the cancellation to central chat and memory, and triggers an Office Manager review. Cancelled prerequisites do not unlock dependent tasks, and the manager does not recreate or reassign cancelled work unless the operator explicitly requests it.
 

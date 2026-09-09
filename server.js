@@ -10,7 +10,7 @@ import { createTools } from "./lib/tools/index.js";
 import { loadMcpTools } from "./lib/mcp.js";
 import { SubAgentManager } from "./lib/sub-agents.js";
 import { PeriodicOperationScheduler } from "./lib/operations.js";
-import { createOfficeChatService } from "./lib/office-chat.js";
+import { agentUsername, createOfficeChatService } from "./lib/office-chat.js";
 import {
   createUiStateStore,
   normalizeStoredToolPermissions as normalizeToolPermissions,
@@ -18,7 +18,8 @@ import {
 import { attachWebSocketServer, createWebSocketHandler } from "./lib/ws.js";
 import { createWorkerWebSocketHandler } from "./lib/worker-ws.js";
 import { createSharedWorkspace } from "./lib/shared-workspace.js";
-import { SEQUENTIAL_ORCHESTRATION_POLICY, TaskReviewTrigger } from "./lib/task-review-trigger.js";
+import { FAILURE_RECOVERY_POLICY, SEQUENTIAL_ORCHESTRATION_POLICY, TaskReviewTrigger } from "./lib/task-review-trigger.js";
+import { TaskProgressMonitor, resolveTaskProgressCheckInterval } from "./lib/task-progress-monitor.js";
 import { formatConversationContext } from "./lib/conversation-context.js";
 import {
   defaultBaseUrlForProvider,
@@ -57,6 +58,7 @@ let officeChatService;
 let officeManagerBoardRunning = false;
 let officeManagerQueue = Promise.resolve();
 let taskReviewTrigger;
+let taskProgressMonitor;
 
 const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
 const subAgentManager = new SubAgentManager({
@@ -73,6 +75,7 @@ const subAgentManager = new SubAgentManager({
       kind: "system",
       text: `Direct message to @${String(message.agent || "agent").toLowerCase().replace(/[^a-z0-9]+/g, "-")} failed: ${message.error}`,
     });
+    taskProgressMonitor?.handleDirectMessage(state, message);
   },
   onTaskAssigned(task) {
     officeChatService?.postAssignment(task);
@@ -285,7 +288,8 @@ taskReviewTrigger = new TaskReviewTrigger({
         .map((entry) => ({ label: entry.author, text: entry.text, isUser: entry.kind === "user" }));
       const reviewRequest = `A delegated task has ${event}. Review its outcome and decide whether the next stage should be assigned. Use manage_office_tasks to read the current queue before acting.\n\nSettled task:\n${JSON.stringify(settled || task, null, 2)}\n\nCurrent task queue:\n${JSON.stringify(tasks, null, 2)}`;
       const conversation = formatConversationContext(recent, reviewRequest);
-      const request = `${SEQUENTIAL_ORCHESTRATION_POLICY}\n\n${conversation}`;
+      const recovery = ["failed", "timed_out"].includes(event) ? `\n\n${FAILURE_RECOVERY_POLICY}` : "";
+      const request = `${SEQUENTIAL_ORCHESTRATION_POLICY}${recovery}\n\n${conversation}`;
       return runOfficeManager(request, { refine: false });
     });
   },
@@ -298,6 +302,77 @@ taskReviewTrigger = new TaskReviewTrigger({
     });
   },
 });
+const taskProgressCheckIntervalMs = resolveTaskProgressCheckInterval(process.env);
+taskProgressMonitor = new TaskProgressMonitor({
+  uiStateStore,
+  subAgentManager,
+  intervalMs: taskProgressCheckIntervalMs,
+  onCheck({ task, checkedAt }) {
+    officeChatService.postMessage({
+      author: "Office Manager",
+      username: "office-manager",
+      kind: "manager",
+      text: `@${agentUsername(task.agent)} Status check: “${task.title}” has been running longer than ${taskProgressCheckIntervalMs} ms. Please report progress, blockers, next step, and ETA.`,
+      taskId: task.messageId,
+    });
+    uiStateStore.recordOfficeMemory({
+      kind: "system",
+      status: "requested",
+      title: `Progress check: ${task.title}`,
+      summary: `Requested a progress update from ${task.agent}.`,
+      agent: task.agent,
+      sourceId: task.id,
+      occurredAt: checkedAt,
+      details: { intervalMs: taskProgressCheckIntervalMs, messageId: task.messageId },
+    });
+  },
+  onStatus({ task, message, checkedAt }) {
+    uiStateStore.recordOfficeMemory({
+      kind: "system",
+      status: "completed",
+      title: `Progress update: ${task.title}`,
+      summary: String(message.text || "No status text returned.").slice(0, 20_000),
+      agent: task.agent,
+      sourceId: task.id,
+      occurredAt: checkedAt,
+      details: { intervalMs: taskProgressCheckIntervalMs, messageId: task.messageId },
+    });
+    void enqueueOfficeManager(async () => {
+      const tasks = uiStateStore.getOfficeTasks({ limit: 200 });
+      const recent = officeChatService.list({ limit: 30 }).messages
+        .map((entry) => ({ label: entry.author, text: entry.text, isUser: entry.kind === "user" }));
+      const progressRequest = `A periodic progress check returned for the running task below. Assess whether work is progressing, blocked, or needs a different approach. Do not create a duplicate task merely because it is still running. If it is blocked, explain the intervention and use manage_office_tasks to cancel and replan only when justified.\n\nTask:\n${JSON.stringify(task, null, 2)}\n\nWorker status:\n${message.text}\n\nCurrent task queue:\n${JSON.stringify(tasks, null, 2)}`;
+      const conversation = formatConversationContext(recent, progressRequest);
+      return runOfficeManager(`${SEQUENTIAL_ORCHESTRATION_POLICY}\n\n${FAILURE_RECOVERY_POLICY}\n\n${conversation}`, { refine: false });
+    }).catch((error) => officeChatService.postMessage({
+      author: "Office Manager",
+      username: "office-manager",
+      kind: "system",
+      text: `Unable to review the progress update for “${task.title}”: ${error.message}`,
+    }));
+  },
+  onError(error, { task, checkedAt }) {
+    const title = task?.title || "running task";
+    officeChatService.postMessage({
+      author: "Office Manager",
+      username: "office-manager",
+      kind: "system",
+      text: `Progress check for “${title}” failed: ${error.message}`,
+      taskId: task?.messageId,
+    });
+    uiStateStore.recordOfficeMemory({
+      kind: "system",
+      status: "failed",
+      title: `Progress check: ${title}`,
+      summary: error.message,
+      agent: task?.agent,
+      sourceId: task?.id,
+      occurredAt: checkedAt,
+      details: { intervalMs: taskProgressCheckIntervalMs },
+    });
+  },
+});
+taskProgressMonitor.start();
 if (environmentFileDetected) {
   applyEnvironmentSettings(uiStateStore, process.env, __dirname);
 }

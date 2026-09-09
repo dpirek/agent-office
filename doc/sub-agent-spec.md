@@ -185,7 +185,9 @@ The worker should answer with a correlated response:
 }
 ```
 
-The response text is posted to `#central-office`, and the office replies with `{"type":"direct_message_ack","messageId":"direct-generated-uuid","state":"completed"}`. Direct messages do not use `taskId`, do not accept deliverables, and do not create task or memory records. The worker appears as `is typing` until it replies; active task work takes precedence and appears as `busy`.
+The response text is posted to `#central-office`, and the office replies with `{"type":"direct_message_ack","messageId":"direct-generated-uuid","state":"completed"}`. Direct messages do not use `taskId` or accept deliverables. Ordinary direct questions do not create task or memory records. The worker appears as `is typing` until it replies; active task work takes precedence and appears as `busy`.
+
+The office also uses `direct_message` for periodic progress checks on long-running tasks. These messages identify the task in their text and ask for completed progress, blockers, next step, and ETA. Reply promptly without stopping the ongoing task; the Office Manager reviews the response and records it in office memory.
 
 ## 4. Progress updates
 
