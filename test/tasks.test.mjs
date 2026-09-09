@@ -38,6 +38,7 @@ test("queue returns a visible task receipt before the worker completes", async (
   const assignments = [];
   const sent = [];
   const materialized = [];
+  const directMessages = [];
   const manager = new SubAgentManager({
     onTaskAssigned: (task) => assignments.push(task),
     onTaskEvent: (event, task) => taskEvents.push({ event, task }),
@@ -49,6 +50,7 @@ test("queue returns a visible task receipt before the worker completes", async (
         workspacePath: "Check-release--task-1/worker-task-1.zip",
       }));
     },
+    onDirectMessage: (state, message) => directMessages.push({ state, message }),
   });
   manager.registerWorker({ name: "alpha", url: "ws://127.0.0.1:9999/worker" }, {
     connectionId: "connection-1",
@@ -117,6 +119,18 @@ test("queue returns a visible task receipt before the worker completes", async (
     metadata: { fileCount: 3, size: 12_480 },
   });
   assert.match(manager.listTasks()[0].deliveredWork[0].uri, /^\/api\/shared-workspace-file/);
+  const direct = manager.sendDirectMessage({ agent: "alpha", text: "What version are you using?" });
+  assert.equal(sent.at(-1).type, "direct_message");
+  assert.equal(sent.at(-1).message.messageId, direct.messageId);
+  assert.equal(manager.listDirectMessages()[0].agent, "alpha");
+  const directAck = manager.receiveDirectMessage("alpha", {
+    type: "direct_message_response",
+    inReplyTo: direct.messageId,
+    message: { role: "agent", parts: [{ kind: "text", text: "Version 1.2.3." }] },
+  }, "connection-1");
+  assert.deepEqual(directAck, { messageId: direct.messageId, state: "completed" });
+  assert.equal(directMessages[0].message.text, "Version 1.2.3.");
+  assert.deepEqual(manager.listDirectMessages(), []);
   manager.unregisterConnection("connection-1");
   assert.equal(manager.listWorkers().length, 0);
 });

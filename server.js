@@ -57,6 +57,19 @@ let officeManagerBoardRunning = false;
 const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
 const subAgentManager = new SubAgentManager({
   materializeArtifacts: (task, artifacts) => sharedWorkspace.storeTaskArtifacts(task, artifacts),
+  onDirectMessage(state, message) {
+    officeChatService?.postMessage(state === "completed" ? {
+      author: message.agent,
+      username: message.agent,
+      kind: "agent",
+      text: message.text,
+    } : {
+      author: "Office Manager",
+      username: "office-manager",
+      kind: "system",
+      text: `Direct message to @${String(message.agent || "agent").toLowerCase().replace(/[^a-z0-9]+/g, "-")} failed: ${message.error}`,
+    });
+  },
   onTaskAssigned(task) {
     officeChatService?.postAssignment(task);
   },

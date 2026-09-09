@@ -44,6 +44,22 @@ Generate the token from **Agents → Live Worker Registry → Generate Token** o
 }
 ```
 
+## Answer a direct question
+
+Simple `@worker` questions arrive without creating a task:
+
+```json
+{"type":"direct_message","message":{"messageId":"direct-generated-uuid","role":"user","parts":[{"kind":"text","mimeType":"text/plain","text":"@dave what version are you using?"}]}}
+```
+
+Reply on the same socket with:
+
+```json
+{"type":"direct_message_response","inReplyTo":"direct-generated-uuid","message":{"messageId":"reply-generated-uuid","role":"agent","parts":[{"kind":"text","mimeType":"text/plain","text":"Version 1.2.3."}]}}
+```
+
+The office posts the response to Central Office and returns a `direct_message_ack`. Do not include `taskId` or artifacts in a direct response.
+
 ## Send updates
 
 Workers may send any number of `working` updates. `inReplyTo` is optional, but when present must match the task's `message.messageId`.

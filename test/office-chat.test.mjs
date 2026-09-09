@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { createOfficeChatService } from "../lib/office-chat.js";
+import { createOfficeChatService, isSimpleAgentQuestion } from "../lib/office-chat.js";
 import { createUiStateStore } from "../lib/ui-state.js";
 
 function setup() {
@@ -11,6 +11,14 @@ function setup() {
   const store = createUiStateStore(path.join(directory, "state.sqlite"));
   return { directory, store };
 }
+
+test("simple questions are distinguished from action requests", () => {
+  assert.equal(isSimpleAgentQuestion("@dave Why did the build fail?"), true);
+  assert.equal(isSimpleAgentQuestion("@dave can you tell me which model you use?"), true);
+  assert.equal(isSimpleAgentQuestion("@dave can you fix the login bug?"), false);
+  assert.equal(isSimpleAgentQuestion("@dave could you review this pull request?"), false);
+  assert.equal(isSimpleAgentQuestion("@dave please prepare the release"), false);
+});
 
 test("central office persists messages and dispatches direct agent mentions", async (context) => {
   const { directory, store } = setup();
@@ -53,6 +61,28 @@ test("office manager mentions wake the internal manager without assigning a work
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(mentions[0].text, "Status update, @office-manager?");
   assert.deepEqual(chat.list().members.map((member) => member.username), ["office-manager"]);
+});
+
+test("simple agent questions use direct messages without creating tasks", (context) => {
+  const { directory, store } = setup();
+  context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const sent = [];
+  const subAgentManager = {
+    listWorkers: () => [{ name: "Dave the Developer" }],
+    listTasks: () => [],
+    listDirectMessages: () => [],
+    sendDirectMessage(message) {
+      sent.push(message);
+      return { messageId: "direct-1", agent: message.agent, state: "waiting" };
+    },
+  };
+  const chat = createOfficeChatService({ uiStateStore: store, subAgentManager });
+
+  const result = chat.postUserMessage({ text: "@dave-the-developer what version are you using?" });
+  assert.equal(result.managerMentioned, false);
+  assert.equal(result.dispatches[0].kind, "direct_message");
+  assert.deepEqual(sent, [{ agent: "Dave the Developer", text: "@dave-the-developer what version are you using?" }]);
+  assert.deepEqual(store.getOfficeTasks(), []);
 });
 
 test("messages without a mention default to the office manager", async (context) => {
@@ -102,6 +132,7 @@ test("chat members distinguish manager typing from busy workers", (context) => {
     subAgentManager: {
       listWorkers: () => [{ name: "Dave the Developer" }, { name: "Idle Worker" }],
       listTasks: () => [{ agent: "Dave the Developer", state: "working" }],
+      listDirectMessages: () => [{ agent: "Idle Worker", state: "waiting" }],
     },
     isManagerTyping: () => true,
   });
@@ -109,5 +140,5 @@ test("chat members distinguish manager typing from busy workers", (context) => {
   const members = chat.list().members;
   assert.equal(members.find((member) => member.username === "office-manager").status, "is typing");
   assert.equal(members.find((member) => member.username === "dave-the-developer").status, "busy");
-  assert.equal(members.find((member) => member.username === "idle-worker").status, "online");
+  assert.equal(members.find((member) => member.username === "idle-worker").status, "is typing");
 });

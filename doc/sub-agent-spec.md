@@ -140,6 +140,37 @@ The office sends each assignment over the registered socket:
 
 A worker may receive more than one task on the same connection. It must either process them concurrently or maintain its own queue without blocking the socket receive loop.
 
+### Direct questions
+
+A simple question addressed to a worker in `#central-office` does not create a task. The office sends it as a direct message on the same socket:
+
+```json
+{
+  "type": "direct_message",
+  "message": {
+    "messageId": "direct-generated-uuid",
+    "role": "user",
+    "parts": [{ "kind": "text", "mimeType": "text/plain", "text": "@dave what version are you using?" }]
+  }
+}
+```
+
+The worker should answer with a correlated response:
+
+```json
+{
+  "type": "direct_message_response",
+  "inReplyTo": "direct-generated-uuid",
+  "message": {
+    "messageId": "reply-generated-uuid",
+    "role": "agent",
+    "parts": [{ "kind": "text", "mimeType": "text/plain", "text": "Version 1.2.3." }]
+  }
+}
+```
+
+The response text is posted to `#central-office`, and the office replies with `{"type":"direct_message_ack","messageId":"direct-generated-uuid","state":"completed"}`. Direct messages do not use `taskId`, do not accept deliverables, and do not create task or memory records. The worker appears as `is typing` until it replies; active task work takes precedence and appears as `busy`.
+
 ## 4. Progress updates
 
 Send zero or more progress messages while work is running:
