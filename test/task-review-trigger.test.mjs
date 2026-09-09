@@ -17,6 +17,7 @@ test("terminal task events trigger serialized Office Manager reviews", async () 
   assert.equal(trigger.notify("working", { id: "ignored" }), false);
   assert.equal(trigger.notify("completed", { id: "one" }), true);
   assert.equal(trigger.notify("failed", { id: "two" }), true);
+  assert.equal(trigger.notify("cancelled", { id: "three" }), true);
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(reviews, ["completed:one:start"]);
 
@@ -27,5 +28,7 @@ test("terminal task events trigger serialized Office Manager reviews", async () 
     "completed:one:finish",
     "failed:two:start",
     "failed:two:finish",
+    "cancelled:three:start",
+    "cancelled:three:finish",
   ]);
 });
