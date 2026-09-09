@@ -23,7 +23,6 @@ const PAGES = {
   operations: { path: "/operations", title: "Operations" },
   memory: { path: "/memory", title: "Memory" },
   knowledge: { path: "/knowledge", title: "Knowledge", icon: "▧", heading: "Knowledge base", description: "Connected sources and selected skills provide shared context to the agent office." },
-  logs: { path: "/logs", title: "Logs" },
   settings: { path: "/settings", title: "Settings" },
 };
 
