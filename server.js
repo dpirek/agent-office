@@ -19,6 +19,7 @@ import { attachWebSocketServer, createWebSocketHandler } from "./lib/ws.js";
 import { createWorkerWebSocketHandler } from "./lib/worker-ws.js";
 import { createSharedWorkspace } from "./lib/shared-workspace.js";
 import { SEQUENTIAL_ORCHESTRATION_POLICY, TaskReviewTrigger } from "./lib/task-review-trigger.js";
+import { formatConversationContext } from "./lib/conversation-context.js";
 import {
   defaultBaseUrlForProvider,
   defaultModelForProvider,
@@ -261,9 +262,9 @@ function handleOfficeManagerMention({ message, text }) {
   return enqueueOfficeManager(async () => {
     const recent = officeChatService.list({ limit: 40 }).messages
       .filter((entry) => entry.id !== message.id)
-      .map((entry) => `${entry.author}: ${entry.text}`)
-      .join("\n");
-    const request = `You were addressed as @office-manager in #central-office. Respond to the latest message and coordinate work through the office task tools when delegation is needed. Any task assignment you make will be announced on the board automatically.\n\n${SEQUENTIAL_ORCHESTRATION_POLICY}\n\nRecent channel transcript:\n${recent}\n\nLatest message:\n${text}`;
+      .map((entry) => ({ label: entry.author, text: entry.text, isUser: entry.kind === "user" }));
+    const conversation = formatConversationContext(recent, text);
+    const request = `You were addressed as @office-manager in #central-office. Respond to the current request and coordinate work through the office task tools when delegation is needed. Any task assignment you make will be announced on the board automatically.\n\n${SEQUENTIAL_ORCHESTRATION_POLICY}\n\n${conversation}`;
     return runOfficeManager(request);
   });
 }
@@ -281,9 +282,10 @@ taskReviewTrigger = new TaskReviewTrigger({
       const tasks = uiStateStore.getOfficeTasks({ limit: 200 });
       const settled = tasks.find((entry) => entry.messageId === task.messageId || entry.workerTaskId === task.taskId);
       const recent = officeChatService.list({ limit: 30 }).messages
-        .map((entry) => `${entry.author}: ${entry.text}`)
-        .join("\n");
-      const request = `A delegated task has ${event}. Review the outcome and decide whether the next stage should be assigned. Use manage_office_tasks to read the current queue before acting.\n\n${SEQUENTIAL_ORCHESTRATION_POLICY}\n\nSettled task:\n${JSON.stringify(settled || task, null, 2)}\n\nCurrent task queue:\n${JSON.stringify(tasks, null, 2)}\n\nRecent central-office transcript:\n${recent}`;
+        .map((entry) => ({ label: entry.author, text: entry.text, isUser: entry.kind === "user" }));
+      const reviewRequest = `A delegated task has ${event}. Review its outcome and decide whether the next stage should be assigned. Use manage_office_tasks to read the current queue before acting.\n\nSettled task:\n${JSON.stringify(settled || task, null, 2)}\n\nCurrent task queue:\n${JSON.stringify(tasks, null, 2)}`;
+      const conversation = formatConversationContext(recent, reviewRequest);
+      const request = `${SEQUENTIAL_ORCHESTRATION_POLICY}\n\n${conversation}`;
       return runOfficeManager(request, { refine: false });
     });
   },
