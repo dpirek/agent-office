@@ -18,6 +18,10 @@ For every overdue task, the Office Manager sends the assigned worker a direct st
 
 An operator can stop a running task from `/tasks`. The office sends `task_cancel` to the assigned worker, records the task as `cancelled`, publishes the cancellation to central chat and memory, and triggers an Office Manager review. Cancelled prerequisites do not unlock dependent tasks, and the manager does not recreate or reassign cancelled work unless the operator explicitly requests it.
 
+Cancellation is idempotent and fail-safe. If the worker already reached a terminal state, the office reconciles that result instead of returning an error. If the worker record or socket is already gone, the stale running database record is closed locally as `cancelled`.
+
+Non-running tasks can be deleted from `/tasks` with the trash icon. Running work must be stopped first. A task referenced by downstream dependencies cannot be deleted until those dependent tasks are removed, preventing an accidental orphaned or incorrectly unlocked chain. Deleting a task removes it from the queue but does not erase existing Central Office or Memory history.
+
 Example:
 
 1. Research data — no dependencies.

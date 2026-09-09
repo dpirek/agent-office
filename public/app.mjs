@@ -164,6 +164,7 @@ function allTasks() {
     dependsOn: task.dependsOn || [],
     deliveredWork: task.deliveredWork || [],
     canStop: true,
+    canDelete: true,
   }));
   return [...state.localTasks, ...officeTasks].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
@@ -370,6 +371,11 @@ function taskCounts(tasks) {
   return Object.fromEntries(["all", "running", "pending", "completed", "failed", "cancelled"].map((status) => [status, status === "all" ? tasks.length : tasks.filter((task) => task.status === status).length]));
 }
 
+function taskActionIcon(action) {
+  if (action === "stop") return `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="4" width="8" height="8"></rect></svg>`;
+  return `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6 4.5V3h4v1.5M5 6.5v6M8 6.5v6M11 6.5v6M4.5 4.5l.5 9h6l.5-9"></path></svg>`;
+}
+
 function renderTasks() {
   const tasks = allTasks();
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
@@ -391,7 +397,10 @@ function renderTasks() {
     <td title="${escapeHtml(dependencyTitle)}">${dependencyState}</td>
     <td><span class="progress-cell"><span class="progress"><i style="width:${task.progress}%"></i></span>${task.progress}%</span></td><td>${shortTime(task.createdAt)}</td>
     <td class="delivered-work">${task.deliveredWork?.length ? task.deliveredWork.map((work) => `<a href="${escapeHtml(work.uri)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(work.mimeType)}">↗ ${escapeHtml(work.name)}</a>`).join("") : "—"}</td>
-    <td>${task.status === "running" && task.canStop ? `<button class="stop-task" data-task-id="${escapeHtml(task.id)}" type="button">STOP</button>` : "—"}</td>
+    <td><span class="task-actions">
+      ${task.status === "running" && task.canStop ? `<button class="task-action-button stop-task" data-task-id="${escapeHtml(task.id)}" type="button" title="Stop task" aria-label="Stop ${escapeHtml(task.title)}">${taskActionIcon("stop")}</button>` : ""}
+      ${task.canDelete ? `<button class="task-action-button delete-task" data-task-id="${escapeHtml(task.id)}" type="button" title="${task.status === "running" ? "Stop task before deleting" : "Delete task"}" aria-label="Delete ${escapeHtml(task.title)}" ${task.status === "running" ? "disabled" : ""}>${taskActionIcon("delete")}</button>` : ""}
+    </span></td>
   </tr>`;
   }).join("") : `<tr class="empty-row"><td colspan="10">NO TASKS IN THIS VIEW</td></tr>`;
   renderSelectedAgent();
@@ -772,7 +781,18 @@ async function stopTask(id) {
   const response = await fetch("/api/tasks", {
     method: "DELETE",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ id }),
+    body: JSON.stringify({ id, action: "cancel" }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+}
+
+async function deleteTask(id) {
+  const response = await fetch("/api/tasks", {
+    method: "DELETE",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id, action: "delete" }),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
@@ -1129,16 +1149,21 @@ $("#task-form").addEventListener("submit", async (event) => {
 });
 
 $("#task-body").addEventListener("click", async (event) => {
-  const button = event.target.closest(".stop-task[data-task-id]");
+  const button = event.target.closest(".task-action-button[data-task-id]");
   if (!button) return;
   const task = allTasks().find((entry) => entry.id === button.dataset.taskId);
-  if (!window.confirm(`Stop “${task?.title || "this task"}”? The worker will be instructed to terminate its work.`)) return;
+  const deleting = button.classList.contains("delete-task");
+  const prompt = deleting
+    ? `Delete “${task?.title || "this task"}” from the task queue?`
+    : `Stop “${task?.title || "this task"}”? The worker will be instructed to terminate its work.`;
+  if (!window.confirm(prompt)) return;
   button.disabled = true;
   try {
-    await stopTask(button.dataset.taskId);
+    if (deleting) await deleteTask(button.dataset.taskId);
+    else await stopTask(button.dataset.taskId);
     await refreshDashboard({ quiet: true });
-    addActivity(`Stopped task: ${task?.title || button.dataset.taskId}`, "error");
-    showToast("Task stopped.");
+    addActivity(`${deleting ? "Deleted" : "Stopped"} task: ${task?.title || button.dataset.taskId}`, deleting ? "" : "error");
+    showToast(`Task ${deleting ? "deleted" : "stopped"}.`);
   } catch (error) {
     button.disabled = false;
     showToast(error.message, true);

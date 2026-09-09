@@ -181,9 +181,14 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .task-table th { color: #adb8bc; font-weight: 400; }
 .task-table th:nth-child(2), .task-table td:nth-child(2) { width: 34%; max-width: 230px; overflow: hidden; text-overflow: ellipsis; }
 .task-table .status-running { color: var(--green); }.task-table .status-pending { color: #bcc6ca; }.task-table .status-completed { color: var(--green); }.task-table .status-failed, .task-table .status-cancelled { color: var(--red); }
-.stop-task { min-width: 48px; height: 23px; border: 1px solid var(--red); background: transparent; color: var(--red); font-size: 8px; }
-.stop-task:hover { background: #35171a; }
-.stop-task:disabled { cursor: wait; opacity: .45; }
+.task-actions { display: flex; align-items: center; gap: 5px; }
+.task-action-button { width: 25px; height: 23px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line-dim); background: transparent; color: var(--muted); }
+.task-action-button svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin: miter; stroke-width: 1.25; }
+.task-action-button.stop-task { border-color: var(--orange); color: var(--orange); }
+.task-action-button.delete-task { border-color: var(--red); color: var(--red); }
+.task-action-button.stop-task:hover { background: #322116; }
+.task-action-button.delete-task:hover { background: #35171a; }
+.task-action-button:disabled { cursor: not-allowed; border-color: var(--line-dim); background: transparent; color: #536066; opacity: .45; }
 .priority-high { color: var(--orange); }.priority-medium { color: var(--amber); }.priority-low { color: #b9c3c7; }
 .progress-cell { display: flex; align-items: center; gap: 8px; }
 .progress { width: 67px; height: 8px; display: block; border: 1px solid #465257; background: repeating-linear-gradient(90deg, #263135 0 7px, #0b1012 7px 9px); }

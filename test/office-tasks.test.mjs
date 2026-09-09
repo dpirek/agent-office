@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { cancelOfficeTask, createOfficeTask, assignOfficeTask } from "../lib/office-tasks.js";
+import { assignOfficeTask, cancelOfficeTask, createOfficeTask, deleteOfficeTask } from "../lib/office-tasks.js";
 import { SubAgentManager } from "../lib/sub-agents.js";
 import { createUiStateStore } from "../lib/ui-state.js";
 import { createOfficeTasksTool } from "../lib/tools/office-tasks.js";
@@ -162,6 +162,10 @@ test("a running office task can be stopped and late worker updates are ignored",
   assert.equal(sent[1].type, "task_cancel");
   assert.equal(sent[1].taskId, sent[0].taskId);
   assert.equal(sent[1].inReplyTo, sent[0].message.messageId);
+  const alreadyStopped = manager.cancelTask({ messageId: running.messageId });
+  assert.equal(alreadyStopped.alreadyStopped, true);
+  assert.equal(alreadyStopped.state, "cancelled");
+  assert.equal(sent.length, 2, "idempotent cancellation does not send another command");
 
   const lateUpdate = await manager.receiveUpdate("Builder", {
     type: "task_update",
@@ -173,4 +177,40 @@ test("a running office task can be stopped and late worker updates are ignored",
   assert.equal(lateUpdate.state, "cancelled");
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(store.getOfficeTasks()[0].status, "cancelled");
+  assert.equal(cancelOfficeTask(store, manager, { id: created.id }).status, "cancelled");
+});
+
+test("stopping a stale running task succeeds when the worker already stopped", (context) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "agent-office-stale-cancel-"));
+  const store = createUiStateStore(path.join(directory, "state.sqlite"));
+  context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const completion = new Promise(() => {});
+  const manager = {
+    listWorkers: () => [{ name: "Builder" }],
+    queue: () => ({ task: { messageId: "stale-message" }, completion }),
+    cancelTask: () => { throw new Error("Unknown worker task."); },
+  };
+  const created = createOfficeTask(store, { title: "Stale work" });
+  assignOfficeTask(store, manager, { id: created.id, agent: "Builder" });
+
+  const stopped = cancelOfficeTask(store, manager, { id: created.id });
+  assert.equal(stopped.status, "cancelled");
+  assert.match(stopped.error, /stopped by the office manager/i);
+});
+
+test("tasks can be deleted after dependents and running work is protected", (context) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "agent-office-delete-"));
+  const store = createUiStateStore(path.join(directory, "state.sqlite"));
+  context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const parent = createOfficeTask(store, { title: "Research" });
+  const child = createOfficeTask(store, { title: "Build", dependsOn: [parent.id] });
+
+  assert.throws(() => deleteOfficeTask(store, { id: parent.id }), /Delete dependent tasks first/);
+  assert.equal(deleteOfficeTask(store, { id: child.id }).id, child.id);
+  assert.equal(deleteOfficeTask(store, { id: parent.id }).id, parent.id);
+  assert.deepEqual(store.getOfficeTasks(), []);
+
+  const running = createOfficeTask(store, { title: "Deploy" });
+  store.assignOfficeTask(running.id, { agent: "Builder", messageId: "running-message" });
+  assert.throws(() => deleteOfficeTask(store, { id: running.id }), /Stop the running task/);
 });
