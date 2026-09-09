@@ -14,10 +14,14 @@ ws://OFFICE_HOST:OFFICE_PORT/ws/workers
 
 Use `wss://` whenever the connection crosses an untrusted network.
 
-The office must be started with `AI_HARNESS_WORKER_TOKEN`. If the variable is missing, worker registration is disabled. A worker can provide this shared credential either:
+Create the credential from **Agents → Live Worker Registry → Generate Token**. The generated value is stored by the office and activated immediately. As an alternative bootstrap method, set `AI_HARNESS_WORKER_TOKEN` before the office starts; the environment value seeds the credential only when no stored token exists. If neither source has configured a token, worker registration is disabled.
+
+The generated token is revealed once. Copy it into the worker's secret store before closing the dialog. A worker can provide the credential either:
 
 - In the first message as `credentials.token`.
 - In the WebSocket upgrade request as `Authorization: Bearer TOKEN`.
+
+Regenerating the token rotates the credential for future registrations. Existing authenticated sockets remain connected, but they need the new token the next time they reconnect.
 
 Do not place credentials in either the office URL or the worker URL.
 
@@ -329,7 +333,7 @@ connect /ws/workers
 
 ## 11. Operational checklist
 
-- Configure the same strong `AI_HARNESS_WORKER_TOKEN` in the office and worker secret store.
+- Generate the office token and copy its value into the worker secret store (commonly as `AI_HARNESS_WORKER_TOKEN`).
 - Use TLS (`wss://` and `https://`) outside a trusted local network.
 - Give every worker a stable, unique name.
 - Declare accurate skills, tools, model information, and artifact support.

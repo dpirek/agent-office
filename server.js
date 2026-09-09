@@ -244,6 +244,9 @@ officeChatService = createOfficeChatService({
 if (environmentFileDetected) {
   applyEnvironmentSettings(uiStateStore, process.env, __dirname);
 }
+if (process.env.AI_HARNESS_WORKER_TOKEN?.trim() && !uiStateStore.getWorkerToken()) {
+  uiStateStore.setWorkerToken(process.env.AI_HARNESS_WORKER_TOKEN);
+}
 const periodicOperationScheduler = new PeriodicOperationScheduler({ uiStateStore, subAgentManager });
 periodicOperationScheduler.start();
 
@@ -266,7 +269,7 @@ server = http.createServer(async (req, res) => {
 
 const handleWorkerWebSocket = createWorkerWebSocketHandler({
   subAgentManager,
-  token: process.env.AI_HARNESS_WORKER_TOKEN,
+  getToken: () => uiStateStore.getWorkerToken(),
 });
 attachWebSocketServer(server, handleWebSocket, "/ws", { "/ws/workers": handleWorkerWebSocket });
 

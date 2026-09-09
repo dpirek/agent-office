@@ -27,7 +27,7 @@ The first client message must identify and authenticate the worker:
 }
 ```
 
-The token must match `AI_HARNESS_WORKER_TOKEN`. It may instead be supplied as an `Authorization: Bearer …` header. A successful registration returns a `registered` message containing the normalized worker record.
+Generate the token from **Agents → Live Worker Registry → Generate Token** or bootstrap it with the office's `AI_HARNESS_WORKER_TOKEN`. It may instead be supplied as an `Authorization: Bearer …` header. A successful registration returns a `registered` message containing the normalized worker record.
 
 ## Receive a task
 

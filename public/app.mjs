@@ -47,6 +47,7 @@ const state = {
   localTasks: [],
   officeTasks: [],
   workers: [],
+  workerTokenConfigured: false,
   operations: [],
   systemPrompts: [],
   settingsTab: "prompts",
@@ -208,6 +209,11 @@ function renderAgentRegistry() {
       <td title="${escapeHtml(worker.url)}">${escapeHtml(worker.url)}</td>
       <td>${escapeHtml([...(worker.capabilities?.skills || []).map((skill) => skill.name), ...(worker.capabilities?.tools || [])].slice(0, 4).join(", ") || "REGISTERED")}</td>
     </tr>`).join("") : `<tr class="empty-row"><td colspan="3">WAITING FOR AUTHENTICATED WEBSOCKET WORKERS</td></tr>`;
+}
+
+function renderWorkerTokenState() {
+  $("#worker-token-status").textContent = state.workerTokenConfigured ? "TOKEN CONFIGURED" : "TOKEN NOT SET";
+  $("#generate-worker-token").textContent = state.workerTokenConfigured ? "REGENERATE TOKEN" : "GENERATE TOKEN";
 }
 
 function detailRows(agent) {
@@ -733,12 +739,13 @@ async function refreshDashboard({ quiet = false } = {}) {
     state.orchestrator = subAgents.orchestrator;
     state.officeTasks = officeTasks.tasks || [];
     state.workers = subAgents.workers || [];
+    state.workerTokenConfigured = subAgents.workerTokenConfigured === true;
     state.operations = operations.operations || [];
     mergeConfiguredAgents(state.workers);
     $("#health-dot").className = "status-dot online";
     $("#health-text").textContent = "SYSTEM ONLINE";
     $("#office-meta").textContent = `1 MANAGER · ${subAgents.workers?.length || 0} REMOTE WORKERS`;
-    renderOffice(); renderAgentRegistry(); renderOperationAgentOptions(); renderOperations(); renderTasks();
+    renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderTasks();
     renderChat();
     if (!quiet) addLog("System", "Agent configuration synchronized", "success");
   } catch (error) {
@@ -988,6 +995,37 @@ $$('.tabs button').forEach((button) => button.addEventListener("click", () => {
   $$(".tabs button").forEach((entry) => entry.classList.toggle("active", entry === button));
   renderSelectedAgent();
 }));
+
+const workerTokenDialog = $("#worker-token-dialog");
+$("#generate-worker-token").addEventListener("click", async () => {
+  const button = $("#generate-worker-token");
+  button.disabled = true;
+  try {
+    const response = await fetch("/api/worker-token", { method: "POST" });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    state.workerTokenConfigured = true;
+    renderWorkerTokenState();
+    $("#worker-token-value").value = data.token;
+    workerTokenDialog.showModal();
+    $("#worker-token-value").select();
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+$("#copy-worker-token").addEventListener("click", async () => {
+  const token = $("#worker-token-value").value;
+  try {
+    await navigator.clipboard.writeText(token);
+  } catch {
+    $("#worker-token-value").select();
+    document.execCommand("copy");
+  }
+  showToast("Worker token copied.");
+});
+workerTokenDialog.addEventListener("close", () => { $("#worker-token-value").value = ""; });
 
 const taskDialog = $("#task-dialog");
 function openTaskDialog() {
@@ -1303,7 +1341,7 @@ setInterval(() => {
   if (document.body.dataset.page === "chat") void loadOfficeChat({ quiet: true });
 }, 2000);
 
-renderOffice(); renderAgentRegistry(); renderOperationAgentOptions(); renderOperations(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat();
+renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat();
 router.start();
 connectSocket();
 void refreshDashboard();
