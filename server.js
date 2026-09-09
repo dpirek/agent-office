@@ -215,7 +215,7 @@ const handleWebSocket = createWebSocketHandler({
 });
 
 const uiStateStore = await initializeUiStateStore(uiStateDatabasePath, configPath);
-async function handleOfficeManagerMention({ text }) {
+async function handleOfficeManagerMention({ message, text }) {
   if (officeManagerBoardRunning) throw new Error("The office manager is already responding to another message.");
   officeManagerBoardRunning = true;
   try {
@@ -232,6 +232,7 @@ async function handleOfficeManagerMention({ text }) {
       toolPermissions: normalizeToolPermissions(activeConfiguration?.toolPermissions),
     });
     const recent = officeChatService.list({ limit: 40 }).messages
+      .filter((entry) => entry.id !== message.id)
       .map((message) => `${message.author}: ${message.text}`)
       .join("\n");
     const request = `You were addressed as @office-manager in #central-office. Respond to the latest message and coordinate work through the office task tools when delegation is needed. Any task assignment you make will be announced on the board automatically.\n\nRecent channel transcript:\n${recent}\n\nLatest message:\n${text}`;

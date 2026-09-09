@@ -55,6 +55,23 @@ test("office manager mentions wake the internal manager without assigning a work
   assert.deepEqual(chat.list().members.map((member) => member.username), ["office-manager"]);
 });
 
+test("messages without a mention default to the office manager", async (context) => {
+  const { directory, store } = setup();
+  context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const received = [];
+  const chat = createOfficeChatService({
+    uiStateStore: store,
+    subAgentManager: { listWorkers: () => [{ name: "Dave the Developer" }] },
+    onManagerMention: (message) => received.push(message),
+  });
+
+  const result = chat.postUserMessage({ text: "What did we decide about the release?" });
+  assert.equal(result.managerMentioned, true);
+  assert.deepEqual(result.dispatches, []);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(received[0].text, "What did we decide about the release?");
+});
+
 test("assignments and worker results are published to central office", (context) => {
   const { directory, store } = setup();
   context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
