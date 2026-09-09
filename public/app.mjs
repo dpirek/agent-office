@@ -1,4 +1,5 @@
 import Router from "./lib/router.mjs";
+import { renderChatArtifacts, renderMarkdown } from "./lib/markdown.mjs";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -280,17 +281,13 @@ function renderChat() {
   node.innerHTML = state.chatMessages.length ? state.chatMessages.map((message) => `
     <article class="chat-message ${escapeHtml(message.role)}${message.streaming ? " streaming" : ""}${message.error ? " error" : ""}">
       <label>${message.role === "user" ? "YOU" : "OFFICE MANAGER"}</label>
-      <p>${escapeHtml(message.text || (message.streaming ? "Thinking" : ""))}</p>
+      <div class="chat-message-content markdown-body">${renderMarkdown(message.text || (message.streaming ? "Thinking" : ""))}</div>
     </article>`).join("") : `<div class="chat-empty"><strong>START A CONVERSATION</strong><span>Ask the office manager to inspect, create, or assign work.</span></div>`;
   node.scrollTop = node.scrollHeight;
   const ready = state.socketReady && Boolean(state.health?.workspace);
   $("#chat-status").textContent = state.chatRunning ? "WORKING…" : ready ? "READY" : "CONNECTING";
   $("#send-chat").disabled = !ready || state.chatRunning;
   $("#chat-input").disabled = state.chatRunning;
-}
-
-function highlightMentions(text) {
-  return escapeHtml(text).replace(/(^|\s)(@[a-z0-9][a-z0-9-]*)\b/gi, "$1<mark>$2</mark>");
 }
 
 function chatInitials(name) {
@@ -320,8 +317,8 @@ function renderOfficeChat({ preserveScroll = false } = {}) {
       <div class="office-board-avatar"${message.kind === "user" ? ` title="You · Human"` : ""}>${chatAvatar(message)}</div>
       <div class="office-board-message-body">
         <div class="office-board-message-meta"><strong>${escapeHtml(message.author)}</strong><span>@${escapeHtml(message.username)} · ${shortTime(message.createdAt)}</span></div>
-        <div class="office-board-message-text">${highlightMentions(message.text)}</div>
-        ${message.artifacts?.length ? `<div class="office-board-artifacts">${message.artifacts.map((artifact) => `<a href="${escapeHtml(artifact.uri)}" target="_blank" rel="noopener noreferrer">↗ ${escapeHtml(artifact.name)}</a>`).join("")}</div>` : ""}
+        <div class="office-board-message-text markdown-body">${renderMarkdown(message.text)}</div>
+        ${message.artifacts?.length ? `<div class="office-board-artifacts">${renderChatArtifacts(message.artifacts)}</div>` : ""}
       </div>
     </article>`).join("") : `<div class="office-board-empty"><strong># CENTRAL-OFFICE IS READY</strong><span>Mention @office-manager or a registered agent to begin.</span></div>`;
   if (!preserveScroll || wasAtBottom) board.scrollTop = board.scrollHeight;
