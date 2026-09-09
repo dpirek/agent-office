@@ -40,7 +40,7 @@ const TOOL_DETAILS = {
 
 const state = {
   agents: [],
-  selectedAgent: null,
+  selectedAgent: "Office Manager",
   activeTab: "details",
   taskFilter: "all",
   localTasks: [],
@@ -157,19 +157,37 @@ function allTasks() {
   return [...state.localTasks, ...officeTasks].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
+function officeManagerAgent() {
+  return {
+    id: "office-manager",
+    name: "Office Manager",
+    role: "Internal Orchestrator",
+    description: "Coordinates the office, manages tasks, and delegates work to registered agents",
+    tools: state.orchestrator?.tools?.join(", ") || "office tasks, office memory",
+    model: { name: state.orchestrator?.model || state.health?.model || "not configured" },
+    status: state.chatRunning ? "running" : state.socketReady ? "ready" : "offline",
+    internal: true,
+  };
+}
+
+function officeAgents() {
+  return [officeManagerAgent(), ...state.agents];
+}
+
 function currentAgent() {
-  return state.agents.find((agent) => agent.name === state.selectedAgent) || state.agents[0];
+  const agents = officeAgents();
+  return agents.find((agent) => agent.name === state.selectedAgent) || agents[0];
 }
 
 function renderOffice() {
   const floor = $("#agent-floor");
-  floor.innerHTML = state.agents.length ? state.agents.slice(0, 6).map((agent) => `
-    <button class="desk-agent ${agent.status === "running" ? "active" : ""} ${agent.name === state.selectedAgent ? "selected" : ""}" data-agent="${escapeHtml(agent.name)}" aria-label="Select ${escapeHtml(agent.name)}">
+  floor.innerHTML = officeAgents().slice(0, 6).map((agent) => `
+    <button class="desk-agent ${agent.internal ? "manager" : ""} ${["ready", "running"].includes(agent.status) ? "online" : ""} ${agent.status === "running" ? "active" : ""} ${agent.name === state.selectedAgent ? "selected" : ""}" data-agent="${escapeHtml(agent.name)}" aria-label="Select ${escapeHtml(agent.name)}">
       <span class="monitor"><i></i></span>
       <span class="desk-top"><i class="keyboard"></i></span>
       <span class="chair"></span><span class="avatar"></span>
       <span class="nameplate"><i></i>${escapeHtml(agent.name)}</span>
-    </button>`).join("") : `<div class="office-empty"><strong>NO REGISTERED AGENTS</strong><span>Add an HTTP agent from the Agent Registry.</span></div>`;
+    </button>`).join("");
   $$(".desk-agent", floor).forEach((button) => button.addEventListener("click", () => {
     state.selectedAgent = button.dataset.agent;
     renderOffice();
@@ -193,8 +211,9 @@ function detailRows(agent) {
   const workspace = state.health?.workspace || "—";
   const tasks = allTasks().filter((task) => task.agent === agent.name);
   const runningTask = tasks.find((task) => task.status === "running");
+  const currentTask = agent.internal && state.chatRunning ? "Handling office conversation" : runningTask?.title || "Standing by";
   const base = {
-    details: [["ID", agent.id], ["ROLE", agent.role], ["MODEL", model], ["STATUS", agent.status], ["CURRENT TASK", runningTask?.title || "Standing by"], ["WORKSPACE", workspace], ["TOOLS", agent.tools], ["TASKS (SESSION)", String(tasks.length)], ["UPTIME", formatUptime()]],
+    details: [["ID", agent.id], ["ROLE", agent.role], ["MODEL", model], ["STATUS", agent.status], ["CURRENT TASK", currentTask], ["WORKSPACE", workspace], ["TOOLS", agent.tools], ["TASKS (SESSION)", String(tasks.length)], ["UPTIME", formatUptime()]],
     tasks: tasks.length ? tasks.slice(0, 9).map((task) => [task.status.toUpperCase(), task.title]) : [["QUEUE", "No tasks assigned in this session"]],
     tools: agent.tools.split(", ").map((tool, index) => [`TOOL ${index + 1}`, tool]),
     memory: [["SESSION", sessionId.slice(0, 12)], ["CONTEXT", `${tasks.length} task records`], ["PERSISTENCE", "Workspace state enabled"]],
@@ -601,8 +620,8 @@ function mergeConfiguredAgents(workers) {
     };
   });
   state.agents = normalized;
-  if (!state.agents.some((agent) => agent.name === state.selectedAgent)) {
-    state.selectedAgent = state.agents[0]?.name || null;
+  if (!officeAgents().some((agent) => agent.name === state.selectedAgent)) {
+    state.selectedAgent = "Office Manager";
   }
 }
 
@@ -676,7 +695,7 @@ async function refreshDashboard({ quiet = false } = {}) {
     mergeConfiguredAgents(state.workers);
     $("#health-dot").className = "status-dot online";
     $("#health-text").textContent = "SYSTEM ONLINE";
-    $("#office-meta").textContent = `${subAgents.workers?.length || 0} REMOTE WORKERS`;
+    $("#office-meta").textContent = `1 MANAGER · ${subAgents.workers?.length || 0} REMOTE WORKERS`;
     renderOffice(); renderAgentRegistry(); renderOperationAgentOptions(); renderOperations(); renderTasks();
     renderChat();
     if (!quiet) addLog("System", "Agent configuration synchronized", "success");
@@ -718,7 +737,7 @@ function handleSocketMessage(message) {
   if (message.type === "ready") {
     state.socketReady = true;
     addLog("System", `Orchestrator connected · ${message.model}`, "success");
-    renderChat();
+    renderChat(); renderOffice(); renderSelectedAgent();
     return;
   }
   if (message.type === "info") { addActivity(message.message); return; }
@@ -766,7 +785,7 @@ function handleSocketMessage(message) {
       reply.streaming = false;
       state.chatRunning = false;
       addActivity("Office manager response complete", "success");
-      renderChat();
+      renderChat(); renderOffice(); renderSelectedAgent();
       $("#chat-input").focus();
       return;
     }
@@ -789,7 +808,7 @@ function handleSocketMessage(message) {
       reply.error = true;
       state.chatRunning = false;
       addLog("Coordinator", reply.text, "error");
-      renderChat();
+      renderChat(); renderOffice(); renderSelectedAgent();
       return;
     }
     updateRunningTask({ status: "failed", progress: 100, error: message.error });
@@ -813,7 +832,7 @@ function connectSocket() {
   socket.addEventListener("close", () => {
     state.socketReady = false;
     if (state.runningTaskId || state.chatRunning) handleSocketMessage({ type: "error", error: "Orchestration channel disconnected." });
-    renderChat();
+    renderChat(); renderOffice(); renderSelectedAgent();
     setTimeout(connectSocket, 1800);
   });
   socket.addEventListener("error", () => { state.socketReady = false; });
@@ -858,7 +877,7 @@ $("#chat-form").addEventListener("submit", (event) => {
   state.chatRunning = true;
   input.value = "";
   resizeChatInput();
-  renderChat();
+  renderChat(); renderOffice(); renderSelectedAgent();
   addActivity("Office manager received a message");
   try {
     state.socket.send(JSON.stringify({

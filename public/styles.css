@@ -97,11 +97,14 @@ h1, h2, p { margin: 0; }
 .desk-agent .avatar::after { position: absolute; left: 1px; bottom: 0; width: 51px; height: 40px; content: ""; border: 5px solid #111719; border-radius: 18px 18px 3px 3px; background: linear-gradient(90deg, #263a48 0 18%, #37566a 19% 81%, #263a48 82%); box-shadow: inset 0 7px #1d2d37; }
 .desk-agent .nameplate { position: absolute; z-index: 6; top: 104px; left: 17px; right: 17px; height: 28px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #718086; background: #0b1113; font-size: 10px; white-space: nowrap; }
 .desk-agent .nameplate i { width: 8px; height: 8px; border-radius: 50%; background: #5c676b; }
-.desk-agent.active .nameplate i { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.desk-agent.online .nameplate i { background: var(--green); box-shadow: 0 0 8px var(--green); }
 .desk-agent.selected { outline: 0; }
 .desk-agent:only-child { left: 24px; right: auto; }
 .desk-agent:nth-child(1) { left: 10%; top: 12%; }.desk-agent:nth-child(2) { left: 42%; top: 12%; }.desk-agent:nth-child(3) { right: 9%; top: 12%; }
 .desk-agent:nth-child(4) { left: 7%; bottom: 4%; }.desk-agent:nth-child(5) { left: 40%; bottom: 1%; }.desk-agent:nth-child(6) { right: 7%; bottom: 4%; }
+.desk-agent.manager:first-child { left: 24px; right: auto; }
+.desk-agent.manager .nameplate { border-color: var(--green); }
+.desk-agent.manager .monitor { outline-color: var(--green); box-shadow: inset 0 0 14px #31ed8144, 3px 4px 0 #080c0e; }
 .desk-agent:nth-child(2n) .avatar::before { background: linear-gradient(90deg, #4c2f19 0 28%, #8a5d30 29% 72%, #4c2f19 73%); box-shadow: inset 0 -5px #d19a61; }
 .desk-agent:nth-child(2n) .avatar::after { background: linear-gradient(90deg, #31434a 0 18%, #49616b 19% 81%, #31434a 82%); }
 .desk-agent:nth-child(3n) .avatar::before { background: linear-gradient(90deg, #101516 0 30%, #272f31 31% 69%, #101516 70%); box-shadow: inset 0 -5px #966346; }
