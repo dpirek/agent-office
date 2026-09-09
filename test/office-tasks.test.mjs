@@ -178,6 +178,9 @@ test("a running office task can be stopped and late worker updates are ignored",
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(store.getOfficeTasks()[0].status, "cancelled");
   assert.equal(cancelOfficeTask(store, manager, { id: created.id }).status, "cancelled");
+  const missingWorkerTask = manager.cancelTask({ messageId: "already-removed" });
+  assert.equal(missingWorkerTask.state, "cancelled");
+  assert.equal(missingWorkerTask.recordMissing, true);
 });
 
 test("stopping a stale running task succeeds when the worker already stopped", (context) => {
@@ -196,6 +199,19 @@ test("stopping a stale running task succeeds when the worker already stopped", (
   const stopped = cancelOfficeTask(store, manager, { id: created.id });
   assert.equal(stopped.status, "cancelled");
   assert.match(stopped.error, /stopped by the office manager/i);
+});
+
+test("a stop request cannot overwrite work that completed concurrently", (context) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "agent-office-cancel-race-"));
+  const store = createUiStateStore(path.join(directory, "state.sqlite"));
+  context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const created = createOfficeTask(store, { title: "Fast work" });
+  store.assignOfficeTask(created.id, { agent: "Builder", messageId: "fast-message" });
+  store.completeOfficeTask(created.id, { status: "completed", result: "Finished first." });
+
+  const result = store.cancelOfficeTask(created.id, { error: "Stop requested." });
+  assert.equal(result.status, "completed");
+  assert.equal(result.result, "Finished first.");
 });
 
 test("tasks can be deleted after dependents and running work is protected", (context) => {
