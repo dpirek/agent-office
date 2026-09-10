@@ -63,12 +63,23 @@ h1, h2, p { margin: 0; }
 .panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .panel-header { width: 100%; height: 43px; min-height: 43px; flex: 0 0 43px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 0 13px; background: #0a1012; }
 .panel-header > div:first-child { display: flex; align-items: center; gap: 12px; }
-.panel-header h2 { font-size: 13px; letter-spacing: .055em; }
+.panel-header h2 { font-size: 13px; letter-spacing: .055em; white-space: nowrap; }
 .header-icon { width: 21px; font-size: 18px; text-align: center; }
+.panel-header-actions { min-width: 0; height: 100%; display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.panel-collapse-button { width: 29px; height: 29px; flex: 0 0 29px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line-dim); background: transparent; color: var(--muted); }
+.panel-collapse-button:hover { border-color: var(--line); background: #fff1; color: var(--text); }
+.panel-collapse-button:focus-visible { outline: 1px solid var(--green); outline-offset: 1px; }
+.panel-toggle-symbol { font-size: 16px; line-height: 1; transform: translateY(-1px); }
+.panel.is-minimized { height: 43px; min-height: 43px !important; align-self: start; }
+.panel.is-minimized > :not(.panel-header) { display: none !important; }
+.panel.is-minimized > .panel-header { border-bottom: 0; }
 .panel-meta, .streaming { color: #aab5b9; font-size: 10px; }
 .header-action { height: 27px; padding: 0 10px; border: 1px solid var(--line); background: #11191c; color: var(--green); font-size: 9px; }
 .header-action:hover { background: #1b272a; }
 .registry-header-actions { display: flex; align-items: center; gap: 10px; }
+.agent-registry-panel .panel-header > div:first-child { gap: 8px; }
+.agent-registry-panel .panel-header h2 { font-size: 11px; }
+.agent-registry-panel .registry-header-actions { gap: 6px; }
 .panel-body { min-width: 0; min-height: 0; flex: 1 1 auto; background-color: #080e10; box-shadow: inset 0 0 0 1px #11191c; }
 
 .office-panel { display: flex; flex-direction: column; }
