@@ -40,7 +40,7 @@ h1, h2, p { margin: 0; }
 .sidebar-brand-row { min-width: 0; display: flex; align-items: center; gap: 10px; }
 .sidebar-brand h1 { font-size: 18px; line-height: 1.05; letter-spacing: .075em; text-transform: uppercase; text-shadow: 0 0 14px #fff2; }
 .sidebar-mantra { margin-top: 12px; color: #bac5ca; font-size: 8px; line-height: 1.55; letter-spacing: .07em; }
-.sidebar-health { min-width: 0; display: flex; align-items: center; gap: 6px; color: #c1cbd0; font-size: 7px; }
+.sidebar-health { min-width: 0; display: flex; align-items: center; gap: 6px; margin-left: auto; color: #c1cbd0; font-size: 7px; }
 .sidebar-health .status-dot { width: 8px; height: 8px; }
 .sidebar-context { margin-top: 10px; overflow-wrap: anywhere; color: #7f8d92; font-size: 7px; line-height: 1.45; letter-spacing: 0; }
 .nav-items { min-height: 0; flex: 1 1 auto; overflow-y: auto; }
@@ -418,7 +418,6 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .registry-table { width: 100%; border-collapse: collapse; font-size: 9px; }
 .registry-table th, .registry-table td { height: 31px; padding: 6px 9px; border-right: 1px solid var(--line-dim); border-bottom: 1px solid var(--line-dim); text-align: left; }
 .registry-table th { color: var(--muted); font-weight: 400; }
-.registry-table td:nth-child(4) { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #bdc8cc; }
 .registry-status { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
 .registry-status::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
 .registry-status.connected { color: var(--green); }
