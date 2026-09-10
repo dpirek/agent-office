@@ -66,11 +66,27 @@ const subAgentManager = new SubAgentManager({
   materializeArtifacts: (task, artifacts) => sharedWorkspace.storeTaskArtifacts(task, artifacts),
   onWorkerRegistered(worker) {
     uiStateStore.upsertRegisteredWorker(worker);
+    uiStateStore.recordSystemActivity({
+      category: "agent", source: worker.name,
+      message: `Worker connected · ${worker.url}`, tone: "success",
+      metadata: { url: worker.url, tokenName: worker.tokenName || "" },
+    });
   },
   onWorkerDisconnected(worker) {
     uiStateStore.markRegisteredWorkerOffline(worker.name);
+    uiStateStore.recordSystemActivity({
+      category: "agent", source: worker.name,
+      message: `Worker disconnected · ${worker.url}`, tone: "error",
+      metadata: { url: worker.url },
+    });
   },
   onDirectMessage(state, message) {
+    uiStateStore.recordSystemActivity({
+      category: "agent", source: message.agent || "Worker",
+      message: `Direct message ${state}${message.error ? ` · ${message.error}` : ""}`,
+      tone: state === "completed" ? "success" : state === "failed" ? "error" : "",
+      metadata: { messageId: message.messageId },
+    });
     officeChatService?.postMessage(state === "completed" ? {
       author: message.agent,
       username: message.agent,
@@ -85,9 +101,20 @@ const subAgentManager = new SubAgentManager({
     taskProgressMonitor?.handleDirectMessage(state, message);
   },
   onTaskAssigned(task) {
+    uiStateStore.recordSystemActivity({
+      category: "task", source: task.agent || "Office Manager",
+      message: `Task assigned · ${task.title || task.taskId}`, tone: "tool",
+      metadata: { taskId: task.taskId, messageId: task.messageId },
+    });
     officeChatService?.postAssignment(task);
   },
   onTaskEvent(event, task) {
+    uiStateStore.recordSystemActivity({
+      category: "task", source: task.agent || "Worker",
+      message: `Task ${event} · ${task.title || task.taskId}`,
+      tone: event === "completed" ? "success" : ["failed", "timed_out", "cancelled"].includes(event) ? "error" : "",
+      metadata: { taskId: task.taskId, messageId: task.messageId },
+    });
     const summary = String(task.text || task.error || "").slice(0, 20_000);
     uiStateStore.recordOfficeMemory({
       kind: "task",
@@ -228,10 +255,22 @@ const handleWebSocket = createWebSocketHandler({
   createAgentSession,
   getRigConfigurations: () => uiStateStore.getRigConfigurations(),
   normalizeToolPermissions,
+  onConnectionEvent(state, details) {
+    uiStateStore.recordSystemActivity({
+      category: "network", source: "Office Manager",
+      message: `Orchestration WebSocket ${state}${details.detail ? ` · ${details.detail}` : ""}`,
+      tone: state === "connected" ? "success" : "error",
+      metadata: details,
+    });
+  },
   resolveWorkspace,
 });
 
 const uiStateStore = await initializeUiStateStore(uiStateDatabasePath, configPath);
+uiStateStore.recordSystemActivity({
+  category: "system", source: "System",
+  message: "Agent Office server initialized", tone: "success",
+});
 async function runOfficeManager(request, { refine = true } = {}) {
     const rigConfigurations = uiStateStore.getRigConfigurations();
     const activeConfiguration = rigConfigurations.configurations.find(
@@ -391,6 +430,19 @@ periodicOperationScheduler.start();
 
 server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  const requestStartedAt = Date.now();
+  res.once("finish", () => {
+    try {
+      uiStateStore.recordSystemActivity({
+        category: "network", source: "HTTP",
+        message: `${req.method} ${url.pathname} → ${res.statusCode} · ${Date.now() - requestStartedAt}ms`,
+        tone: res.statusCode >= 400 ? "error" : "tool",
+        metadata: { method: req.method, path: url.pathname, statusCode: res.statusCode },
+      });
+    } catch (error) {
+      if (!storeClosed) console.error("Unable to record HTTP activity:", error);
+    }
+  });
   const handleApiRequest = createApiRouter({
     uiStateStore,
     defaultWorkspace,

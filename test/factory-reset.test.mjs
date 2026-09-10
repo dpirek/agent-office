@@ -41,6 +41,7 @@ test("factory reset restores a fresh database and clears managed files", async (
   store.recordOfficeMemory({ kind: "system", status: "info", title: "Before reset" });
   store.createOfficeTask({ title: "Before reset" });
   store.createOfficeChatMessage({ author: "Human", username: "human", kind: "user", text: "Before reset" });
+  store.recordSystemActivity({ category: "system", source: "System", message: "Before reset" });
   store.setWorkerToken("a".repeat(32), "Reset test token");
   store.upsertRegisteredWorker({
     name: "Reset Worker",
@@ -64,6 +65,7 @@ test("factory reset restores a fresh database and clears managed files", async (
   assert.deepEqual(store.getOfficeMemory(), []);
   assert.deepEqual(store.getOfficeTasks(), []);
   assert.deepEqual(store.getOfficeChatMessages(), []);
+  assert.deepEqual(store.getSystemActivity(), []);
   assert.equal(store.getWorkerToken(), "");
   assert.equal(store.getWorkerTokenName(), "");
   assert.deepEqual(store.getRegisteredWorkers(), []);

@@ -166,8 +166,13 @@ function addActivity(text, tone = "") {
 
 function addLog(source, text, tone = "") {
   state.logs.push({ at: Date.now(), source, text, tone });
-  state.logs = state.logs.slice(-120);
+  state.logs = state.logs.slice(-500);
   renderLogs();
+  void fetch("/api/system-logs", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ category: "browser", source, message: text, tone }),
+  }).catch(() => {});
 }
 
 function normalizeTaskStatus(status) {
@@ -318,9 +323,24 @@ function renderActivity() {
 
 function renderLogs() {
   const node = $("#system-log");
-  const entries = state.logs.slice(-9);
+  const entries = state.logs.slice(-200);
   node.innerHTML = entries.length ? entries.map((entry) => `<div class="log-line"><time>${clock(entry.at)}</time><b>${escapeHtml(entry.source)}</b><span class="${entry.tone}">${escapeHtml(entry.text)}</span></div>`).join("") : `<div class="log-line"><time>--:--:--</time><b>System</b><span>No events recorded.</span></div>`;
   node.scrollTop = node.scrollHeight;
+}
+
+async function loadSystemLogs() {
+  try {
+    const data = await fetchJson("/api/system-logs?limit=500");
+    state.logs = (data.logs || []).map((entry) => ({
+      at: entry.createdAt,
+      source: entry.source,
+      text: entry.message,
+      tone: entry.tone || "",
+    }));
+    renderLogs();
+  } catch {
+    // Preserve the most recent local events while the server is unreachable.
+  }
 }
 
 function renderChat() {
@@ -949,11 +969,15 @@ function eventLabel(event) {
 function handleSocketMessage(message) {
   if (message.type === "ready") {
     state.socketReady = true;
-    addLog("System", `Orchestrator connected · ${message.model}`, "success");
+    addLog("Network", "Orchestration channel ready", "success");
     renderChat(); renderOffice(); renderSelectedAgent();
     return;
   }
-  if (message.type === "info") { addActivity(message.message); return; }
+  if (message.type === "info") {
+    addActivity(message.message);
+    addLog("System", message.message);
+    return;
+  }
   if (message.type === "tool") {
     addActivity(`Dispatching ${message.name}`, "tool");
     addLog("Coordinator", `Tool call: ${message.name}`, "tool");
@@ -962,7 +986,11 @@ function handleSocketMessage(message) {
   }
   if (message.type === "agent_event") {
     const label = eventLabel(message.event || {});
-    if (label) addActivity(label, message.event?.type === "final" ? "success" : "");
+    if (label) {
+      const tone = message.event?.type === "final" ? "success" : "";
+      addActivity(label, tone);
+      addLog("Orchestrator", label, tone);
+    }
     return;
   }
   if (message.type === "answer_start") {
@@ -1042,12 +1070,16 @@ function connectSocket() {
     try { handleSocketMessage(JSON.parse(event.data)); } catch (error) { addLog("System", error.message, "error"); }
   });
   socket.addEventListener("close", () => {
+    addLog("Network", "Orchestration channel disconnected", "error");
     state.socketReady = false;
     if (state.runningTaskId || state.chatRunning) handleSocketMessage({ type: "error", error: "Orchestration channel disconnected." });
     renderChat(); renderOffice(); renderSelectedAgent();
     setTimeout(connectSocket, 1800);
   });
-  socket.addEventListener("error", () => { state.socketReady = false; });
+  socket.addEventListener("error", () => {
+    state.socketReady = false;
+    addLog("Network", "Orchestration channel error", "error");
+  });
 }
 
 function refreshOrchestratorConnection() {
@@ -1583,6 +1615,7 @@ setInterval(() => void loadMemory({ quiet: true }), 5000);
 setInterval(() => {
   if (document.body.dataset.page === "chat") void loadOfficeChat({ quiet: true });
   if (document.body.dataset.page === "workspace") void loadSharedWorkspace({ quiet: true });
+  if (document.body.dataset.page === "dashboard") void loadSystemLogs();
 }, 2000);
 
 renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat(); renderSharedWorkspace();
@@ -1599,3 +1632,4 @@ void loadSkills();
 void loadMemory();
 void loadOfficeChat();
 void loadSharedWorkspace();
+void loadSystemLogs();
