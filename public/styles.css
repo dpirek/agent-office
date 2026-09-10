@@ -125,10 +125,8 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 .detail-row label { border-right: 1px solid var(--line-dim); color: #a9b4b8; font-size: 9px; }
 .detail-row .green { color: var(--green); }
 
-.activity-panel { display: flex; flex-direction: column; }
-.activity-log, .system-log { flex: 1; min-height: 0; overflow: auto; padding: 7px 10px; color: #b9c3c7; font-size: 10px; }
+.system-log { flex: 1; min-height: 0; overflow: auto; padding: 7px 10px; color: #b9c3c7; font-size: 10px; }
 .log-line { display: grid; grid-template-columns: 75px 80px minmax(0, 1fr); gap: 7px; line-height: 1.5; }
-.activity-log .log-line { grid-template-columns: 75px minmax(0, 1fr); }
 .log-line time { color: #a0abb0; font-variant-numeric: tabular-nums; }
 .log-line b { font-weight: 400; color: #d7dfdd; }
 .log-line .success { color: var(--green); }.log-line .error { color: var(--red); }.log-line .tool { color: var(--blue); }
@@ -147,7 +145,7 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 .route-page-body strong { color: var(--text); font-size: 18px; letter-spacing: .05em; text-transform: uppercase; }
 .route-page-body p { max-width: 620px; }
 body[data-page="tasks"] .task-panel { grid-column: 1 / -1; grid-row: 1 / 3; }
-body[data-page="dashboard"] .right-column { grid-template-rows: minmax(180px, 1.1fr) minmax(70px, .45fr) minmax(100px, .65fr) minmax(160px, .95fr) minmax(70px, .45fr); }
+body[data-page="dashboard"] .right-column { grid-template-rows: minmax(180px, 1.1fr) minmax(100px, .65fr) minmax(160px, .95fr) minmax(70px, .45fr); }
 body:not([data-page="dashboard"]) .office-panel,
 body:not([data-page="dashboard"]) .right-column,
 body:not([data-page="dashboard"]) .chat-panel,
@@ -494,7 +492,7 @@ select {
   .right-column { min-height: 0; display: flex; flex-direction: column; }
   .right-column > .panel:not(.is-minimized) { flex: none; }
   .selected-panel:not(.is-minimized) { min-height: 385px; }
-  .activity-panel:not(.is-minimized), .logs-panel:not(.is-minimized) { min-height: 190px; }
+  .logs-panel:not(.is-minimized) { min-height: 190px; }
   .agent-registry-panel:not(.is-minimized) { min-height: 220px; }
   .dashboard-office-chat-panel:not(.is-minimized) { min-height: 420px; }
   .office-panel:not(.is-minimized) { min-height: 500px; }

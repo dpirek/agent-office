@@ -161,7 +161,6 @@ function syncCollapsedPanelLayout() {
 function addActivity(text, tone = "") {
   state.activity.push({ at: Date.now(), text, tone });
   state.activity = state.activity.slice(-80);
-  renderActivity();
 }
 
 function addLog(source, text, tone = "") {
@@ -312,13 +311,6 @@ function renderSelectedAgent() {
   $("#selected-description").textContent = agent.description;
   $("#selected-portrait").innerHTML = `<img src="/assets/avatars/${officeSprite(agent, officeAgents().indexOf(agent))}.png" alt="" draggable="false">`;
   $("#agent-details").innerHTML = detailRows(agent).map(([key, value]) => `<div class="detail-row"><label>${escapeHtml(key)}</label><span class="${key === "STATUS" && ["ready", "running"].includes(value) ? "green" : ""}">${escapeHtml(value)}</span></div>`).join("");
-}
-
-function renderActivity() {
-  const node = $("#activity-log");
-  const entries = state.activity.slice(-8);
-  node.innerHTML = entries.length ? entries.map((entry) => `<div class="log-line"><time>${clock(entry.at)}</time><span class="${entry.tone}">${escapeHtml(entry.text)}</span></div>`).join("") : `<div class="log-line"><time>--:--:--</time><span>Office initialized. Waiting for a command.</span></div>`;
-  node.scrollTop = node.scrollHeight;
 }
 
 function renderLogs() {
@@ -1032,7 +1024,6 @@ function handleSocketMessage(message) {
     addActivity("✓ Task completed", "success");
     addLog("Coordinator", "Task completed successfully", "success");
     setAgentState("Coordinator", "ready");
-    $("#streaming-label").textContent = "Complete";
     state.runningTaskId = null;
     showToast("Task completed. Select the task to inspect its status.");
     void refreshDashboard({ quiet: true });
@@ -1054,7 +1045,6 @@ function handleSocketMessage(message) {
     addActivity(`Error: ${message.error}`, "error");
     addLog("Coordinator", message.error, "error");
     setAgentState("Coordinator", "ready");
-    $("#streaming-label").textContent = "Stopped";
     state.runningTaskId = null;
     showToast(message.error, true);
   }
@@ -1618,7 +1608,7 @@ setInterval(() => {
   if (document.body.dataset.page === "dashboard") void loadSystemLogs();
 }, 2000);
 
-renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat(); renderSharedWorkspace();
+renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat(); renderSharedWorkspace();
 syncOfficeBoardComposerHeight();
 window.addEventListener("resize", syncOfficeBoardComposerHeight);
 window.visualViewport?.addEventListener("resize", syncOfficeBoardComposerHeight);
