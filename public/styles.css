@@ -37,9 +37,10 @@ h1, h2, p { margin: 0; }
 .workspace { height: 100%; min-height: 0; display: grid; grid-template-columns: 176px minmax(0, 1fr); gap: 10px; }
 .sidebar { min-height: 0; display: flex; flex-direction: column; }
 .sidebar-brand { flex: 0 0 auto; display: flex; flex-direction: column; padding: 18px 14px 15px; border-bottom: 1px solid var(--line); }
+.sidebar-brand-row { min-width: 0; display: flex; align-items: center; gap: 10px; }
 .sidebar-brand h1 { font-size: 18px; line-height: 1.05; letter-spacing: .075em; text-transform: uppercase; text-shadow: 0 0 14px #fff2; }
 .sidebar-mantra { margin-top: 12px; color: #bac5ca; font-size: 8px; line-height: 1.55; letter-spacing: .07em; }
-.sidebar-health { height: 32px; display: flex; align-items: center; gap: 9px; margin-top: 15px; padding: 0 9px; border: 1px solid var(--line-dim); color: #c1cbd0; font-size: 8px; }
+.sidebar-health { min-width: 0; display: flex; align-items: center; gap: 6px; color: #c1cbd0; font-size: 7px; }
 .sidebar-health .status-dot { width: 8px; height: 8px; }
 .sidebar-context { margin-top: 10px; overflow-wrap: anywhere; color: #7f8d92; font-size: 7px; line-height: 1.45; letter-spacing: 0; }
 .nav-items { min-height: 0; flex: 1 1 auto; overflow-y: auto; }
@@ -273,6 +274,13 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .markdown-body a { color: var(--green); text-decoration: underline; text-underline-offset: 2px; }
 .markdown-body mark { background: transparent; color: var(--green); font-weight: 700; }
 .markdown-body hr { height: 1px; margin: 10px 0; border: 0; background: var(--line-dim); }
+.markdown-table-wrap { max-width: 100%; margin: 8px 0; overflow-x: auto; }
+.markdown-body table { width: 100%; border-collapse: collapse; font-size: inherit; }
+.markdown-body th, .markdown-body td { padding: 6px 8px; border: 1px solid var(--line-dim); text-align: left; vertical-align: top; }
+.markdown-body th { background: #09110e; color: #dce8e3; font-weight: 700; }
+.markdown-body tr:nth-child(even) td { background: rgb(255 255 255 / 2%); }
+.markdown-body .markdown-align-center { text-align: center; }
+.markdown-body .markdown-align-right { text-align: right; }
 .markdown-image-link { display: block; margin: 8px 0; }
 .markdown-image { display: block; max-width: min(100%, 680px); max-height: 520px; border: 1px solid #355245; object-fit: contain; }
 .office-board-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 9px; margin: 0 18px 18px; border: 1px solid var(--line); background: #080d0f; padding: 8px; }

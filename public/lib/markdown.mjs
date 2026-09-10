@@ -50,6 +50,65 @@ function renderInlineMarkdown(value) {
   return html;
 }
 
+function splitTableRow(line) {
+  let source = String(line || "").trim();
+  if (!source.includes("|")) return null;
+  if (source.startsWith("|")) source = source.slice(1);
+  if (source.endsWith("|")) {
+    let backslashes = 0;
+    for (let index = source.length - 2; index >= 0 && source[index] === "\\"; index -= 1) backslashes += 1;
+    if (backslashes % 2 === 0) source = source.slice(0, -1);
+  }
+
+  const cells = [""];
+  let codeFenceLength = 0;
+  for (let index = 0; index < source.length;) {
+    if (source[index] === "`") {
+      let runLength = 1;
+      while (source[index + runLength] === "`") runLength += 1;
+      if (!codeFenceLength) codeFenceLength = runLength;
+      else if (codeFenceLength === runLength) codeFenceLength = 0;
+      cells[cells.length - 1] += source.slice(index, index + runLength);
+      index += runLength;
+      continue;
+    }
+    if (source[index] === "|" && !codeFenceLength) {
+      let backslashes = 0;
+      for (let previous = index - 1; previous >= 0 && source[previous] === "\\"; previous -= 1) backslashes += 1;
+      if (backslashes % 2 === 1) {
+        cells[cells.length - 1] = `${cells[cells.length - 1].slice(0, -1)}|`;
+      } else {
+        cells.push("");
+      }
+      index += 1;
+      continue;
+    }
+    cells[cells.length - 1] += source[index];
+    index += 1;
+  }
+  return cells.map((cell) => cell.trim());
+}
+
+function tableDefinition(lines, index) {
+  if (index + 1 >= lines.length) return null;
+  const headers = splitTableRow(lines[index]);
+  const delimiters = splitTableRow(lines[index + 1]);
+  if (!headers || !delimiters || headers.length !== delimiters.length) return null;
+  if (!delimiters.every((cell) => /^:?-{3,}:?$/.test(cell))) return null;
+  const alignments = delimiters.map((cell) => {
+    if (cell.startsWith(":") && cell.endsWith(":")) return "center";
+    if (cell.endsWith(":")) return "right";
+    if (cell.startsWith(":")) return "left";
+    return "";
+  });
+  return { headers, alignments };
+}
+
+function tableCell(tag, value, alignment) {
+  const className = alignment ? ` class="markdown-align-${alignment}"` : "";
+  return `<${tag}${className}>${renderInlineMarkdown(value)}</${tag}>`;
+}
+
 function isBlockStart(line) {
   return /^\s*(?:```|#{1,6}\s|[-+*]\s+|\d+[.)]\s+|>\s?|(?:-{3,}|\*{3,})\s*$)/.test(line);
 }
@@ -68,6 +127,21 @@ function renderMarkdown(value) {
       if (index < lines.length) index += 1;
       const language = String(fence[1] || "").replace(/[^A-Za-z0-9_-]/g, "");
       output.push(`<pre><code${language ? ` class="language-${language}"` : ""}>${escapeHtml(code.join("\n"))}</code></pre>`);
+      continue;
+    }
+    const table = tableDefinition(lines, index);
+    if (table) {
+      const header = table.headers.map((cell, cellIndex) => tableCell("th", cell, table.alignments[cellIndex])).join("");
+      const rows = [];
+      index += 2;
+      while (index < lines.length && lines[index].trim()) {
+        const cells = splitTableRow(lines[index]);
+        if (!cells) break;
+        const normalizedCells = table.headers.map((_headerCell, cellIndex) => cells[cellIndex] || "");
+        rows.push(`<tr>${normalizedCells.map((cell, cellIndex) => tableCell("td", cell, table.alignments[cellIndex])).join("")}</tr>`);
+        index += 1;
+      }
+      output.push(`<div class="markdown-table-wrap"><table><thead><tr>${header}</tr></thead>${rows.length ? `<tbody>${rows.join("")}</tbody>` : ""}</table></div>`);
       continue;
     }
     const heading = /^\s*(#{1,6})\s+(.+)$/.exec(line);
@@ -108,7 +182,7 @@ function renderMarkdown(value) {
     }
     const paragraph = [line];
     index += 1;
-    while (index < lines.length && lines[index].trim() && !isBlockStart(lines[index])) paragraph.push(lines[index++]);
+    while (index < lines.length && lines[index].trim() && !isBlockStart(lines[index]) && !tableDefinition(lines, index)) paragraph.push(lines[index++]);
     output.push(`<p>${renderInlineMarkdown(paragraph.join("\n"))}</p>`);
   }
   return output.join("") || "<p></p>";
