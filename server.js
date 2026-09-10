@@ -38,6 +38,7 @@ import {
   resolveOfficeWorkspaceRoot,
   resolveSharedWorkspaceRoot,
 } from "./lib/workspace-roots.js";
+import { createWorkerArtifactStore } from "./lib/worker-artifacts.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageMetadata = JSON.parse(await fs.readFile(path.join(__dirname, "package.json"), "utf8"));
@@ -68,8 +69,16 @@ let taskReviewTrigger;
 let taskProgressMonitor;
 
 const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
+const workerArtifactStore = createWorkerArtifactStore({ root: sharedWorkspaceRoot });
+await workerArtifactStore.clearStaleUploads();
 const subAgentManager = new SubAgentManager({
-  materializeArtifacts: (task, artifacts) => sharedWorkspace.storeTaskArtifacts(task, artifacts),
+  createArtifactUpload: (task) => workerArtifactStore.issueTaskUpload(task),
+  discardArtifactUploads: (taskId) => workerArtifactStore.discardTask(taskId),
+  materializeArtifacts: (task, artifacts, uploadedArtifactIds) => sharedWorkspace.storeTaskArtifacts(
+    task,
+    artifacts,
+    workerArtifactStore.resolve(task.taskId, uploadedArtifactIds),
+  ),
   onWorkerRegistered(worker) {
     uiStateStore.upsertRegisteredWorker(worker);
     uiStateStore.recordSystemActivity({
@@ -469,6 +478,7 @@ server = http.createServer(async (req, res) => {
     subAgentManager,
     officeChatService,
     sharedWorkspaceRoot,
+    workerArtifactStore,
     factoryReset: async () => {
       const activeWorkerTasks = subAgentManager.listTasks().filter((task) => (
         !["completed", "failed", "timed_out", "cancelled"].includes(task.state)

@@ -14,7 +14,7 @@ ws://OFFICE_HOST:OFFICE_PORT/ws/workers
 
 Use `wss://` whenever the connection crosses an untrusted network.
 
-Create the credential from **Agents → Live Worker Registry → Generate Token**. The generated value is stored by the office and activated immediately. As an alternative bootstrap method, set `AI_HARNESS_WORKER_TOKEN` before the office starts; the environment value seeds the credential only when no stored token exists. If neither source has configured a token, worker registration is disabled.
+Create the credential from **Dashboard → Live Worker Registry → Generate Token**. The generated value is stored by the office and activated immediately. As an alternative bootstrap method, set `AI_HARNESS_WORKER_TOKEN` before the office starts; the environment value seeds the credential only when no stored token exists. If neither source has configured a token, worker registration is disabled.
 
 The generated token is revealed once. Copy it into the worker's secret store before closing the dialog. A worker can provide the credential either:
 
@@ -112,13 +112,19 @@ The worker is visible and assignable only while this socket remains connected. R
 
 ## 3. Task delivery
 
-The office sends each assignment over the registered socket:
+The office sends each assignment over the registered socket. Every task includes a task-specific artifact upload credential:
 
 ```json
 {
   "type": "task",
   "taskId": "task-generated-uuid",
   "priority": "high",
+  "artifactUpload": {
+    "url": "/api/worker-artifacts?taskId=task-generated-uuid&name=<filename>",
+    "token": "task-specific-upload-token",
+    "method": "POST",
+    "contentType": "application/octet-stream"
+  },
   "message": {
     "messageId": "msg-generated-uuid",
     "role": "manager",
@@ -137,6 +143,7 @@ The office sends each assignment over the registered socket:
 - `message.messageId` identifies the assignment message. Copy it to `inReplyTo` when sending updates.
 - `priority` is `low`, `medium`, or `high`.
 - Task instructions are found in text parts of `message.parts`.
+- `artifactUpload.token` is unique to this task. Do not log, reuse, or send it in a task update.
 - For a dependent task, the office prepends a `Prerequisite work` section containing completed upstream results and delivered-file references. Treat that section as input to the current task and continue from it instead of repeating the prerequisite work. Relative `/api/shared-workspace-file` URIs resolve against the office server's HTTP origin (the same host and port used for this WebSocket connection, with `ws`/`wss` changed to `http`/`https`).
 
 A worker may receive more than one task on the same connection. It must either process them concurrently or maintain its own queue without blocking the socket receive loop.
@@ -231,6 +238,30 @@ An acknowledgement means the office accepted the update. It does not authorize t
 
 ## 5. Successful completion and deliverables
 
+Upload each deliverable before sending the final update:
+
+```http
+POST /api/worker-artifacts?taskId=task-generated-uuid&name=release.zip HTTP/1.1
+Authorization: Bearer task-specific-upload-token
+Content-Type: application/octet-stream
+
+<raw file bytes>
+```
+
+The filename must be a plain filename, each file may be at most 100 MB, and a task may upload at most 100 files. A successful upload returns:
+
+```json
+{
+  "ok": true,
+  "artifactId": "artifact-generated-uuid",
+  "name": "release.zip",
+  "mimeType": "application/zip",
+  "size": 12480
+}
+```
+
+Keep every returned `artifactId` and reference it in the final WebSocket update:
+
 A successful task ends with exactly one `completed` update:
 
 ```json
@@ -252,30 +283,15 @@ A successful task ends with exactly one `completed` update:
       }
     ]
   },
-  "artifacts": [
-    {
-      "artifactId": "workspace-generated-uuid",
-      "name": "release.zip",
-      "parts": [
-        {
-          "kind": "file",
-          "file": {
-            "name": "release.zip",
-            "mimeType": "application/zip",
-            "uri": "https://worker.example.com/artifacts/release.zip"
-          }
-        }
-      ],
-      "metadata": {
-        "fileCount": 3,
-        "size": 12480
-      }
-    }
-  ]
+  "uploadedArtifactIds": ["artifact-generated-uuid"]
 }
 ```
 
-Artifact requirements:
+The upload token expires when the task completes, fails, times out, or is cancelled. Uploads made with another task's token, unknown artifact IDs, and IDs from another task are rejected. Unreferenced staged uploads are deleted when the task ends.
+
+For backward compatibility, the office also accepts the older `artifacts` array containing worker-hosted HTTP(S) file URLs. New integrations should use `artifactUpload` and `uploadedArtifactIds` so workers do not need to host files.
+
+Legacy artifact requirements:
 
 - `artifacts` must be an array when provided.
 - Every artifact part must have `kind: "file"` and a `file` object.

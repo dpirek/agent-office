@@ -27,7 +27,7 @@ The first client message must identify and authenticate the worker:
 }
 ```
 
-Generate the token from **Agents → Live Worker Registry → Generate Token** or bootstrap it with the office's `AI_HARNESS_WORKER_TOKEN`. It may instead be supplied as an `Authorization: Bearer …` header. A successful registration returns a `registered` message containing the normalized worker record.
+Generate the token from **Dashboard → Live Worker Registry → Generate Token** or bootstrap it with the office's `AI_HARNESS_WORKER_TOKEN`. It may instead be supplied as an `Authorization: Bearer …` header. A successful registration returns a `registered` message containing the normalized worker record.
 
 ## Receive a task
 
@@ -36,6 +36,12 @@ Generate the token from **Agents → Live Worker Registry → Generate Token** o
   "type": "task",
   "taskId": "task-generated-uuid",
   "priority": "high",
+  "artifactUpload": {
+    "url": "/api/worker-artifacts?taskId=task-generated-uuid&name=<filename>",
+    "token": "task-specific-upload-token",
+    "method": "POST",
+    "contentType": "application/octet-stream"
+  },
   "message": {
     "messageId": "msg-generated-uuid",
     "role": "manager",
@@ -94,6 +100,18 @@ Abort the matching model request, commands, child processes, and artifact upload
 
 ## Complete with deliverables
 
+First upload the raw file bytes to the task-specific URL supplied with the assignment:
+
+```http
+POST /api/worker-artifacts?taskId=task-generated-uuid&name=release.zip HTTP/1.1
+Authorization: Bearer task-specific-upload-token
+Content-Type: application/octet-stream
+
+<raw file bytes>
+```
+
+The response contains an `artifactId`. Reference that ID in the final socket update:
+
 ```json
 {
   "type": "task_update",
@@ -105,13 +123,8 @@ Abort the matching model request, commands, child processes, and artifact upload
     "role": "agent",
     "parts": [{ "kind": "text", "mimeType": "text/markdown", "text": "The release is ready." }]
   },
-  "artifacts": [{
-    "artifactId": "workspace-generated-uuid",
-    "name": "release.zip",
-    "parts": [{ "kind": "file", "file": { "name": "release.zip", "mimeType": "application/zip", "uri": "https://worker.example.com/release.zip" } }],
-    "metadata": { "fileCount": 3, "size": 12480 }
-  }]
+  "uploadedArtifactIds": ["artifact-generated-uuid"]
 }
 ```
 
-Worker-reported final states are `completed` or `failed`; the office may additionally finalize an assignment as `cancelled` or `timed_out`. The office downloads final deliverables before acknowledging completion. ZIP files are extracted into a task-specific shared-workspace folder and then deleted; non-archive files are copied there directly. Local file links are attached to the corresponding task and chat message and are available on `/workspace`.
+Worker-reported final states are `completed` or `failed`; the office may additionally finalize an assignment as `cancelled` or `timed_out`. The office stores final deliverables before acknowledging completion. ZIP files are extracted into a task-specific shared-workspace folder and then deleted; non-archive files are copied there directly. Local file links are attached to the corresponding task and chat message and are available on `/workspace`. The older worker-hosted `artifacts` URL array remains supported for compatibility.
