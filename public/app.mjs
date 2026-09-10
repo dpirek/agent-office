@@ -1,5 +1,6 @@
 import Router from "./lib/router.mjs";
 import { renderChatArtifacts, renderMarkdown } from "./lib/markdown.mjs";
+import { appendUniqueMention } from "./lib/mentions.mjs";
 import { createClientId } from "./lib/client-id.mjs";
 import { initPanelMinimizing } from "./lib/panel-minimize.mjs";
 import { initPanelResizing } from "./lib/panel-resize.mjs";
@@ -230,11 +231,15 @@ function officeSprite(agent, index = 0) {
 
 function renderOffice() {
   const floor = $("#agent-floor");
-  floor.innerHTML = officeAgents().slice(0, 8).map((agent, index) => `
+  const visibleAgents = officeAgents()
+    .map((agent, index) => ({ agent, index }))
+    .filter(({ agent }) => agent.status !== "offline")
+    .slice(0, 8);
+  floor.innerHTML = visibleAgents.length ? visibleAgents.map(({ agent, index }) => `
     <button class="desk-agent ${agent.internal ? "manager" : ""} ${["ready", "running"].includes(agent.status) ? "online" : ""} ${agent.status === "running" ? "active" : ""} ${agent.name === state.selectedAgent ? "selected" : ""}" data-agent="${escapeHtml(agent.name)}" aria-label="Select ${escapeHtml(agent.name)}">
       <img class="desk-sprite" src="/assets/office/${officeSprite(agent, index)}.png" alt="" draggable="false">
       <span class="nameplate"><i></i>${escapeHtml(agent.name)}</span>
-    </button>`).join("");
+    </button>`).join("") : `<div class="office-empty"><strong>NO AGENTS ONLINE</strong><span>Waiting for an agent to connect.</span></div>`;
   $$(".desk-agent", floor).forEach((button) => button.addEventListener("click", () => {
     state.selectedAgent = button.dataset.agent;
     renderOffice();
@@ -250,9 +255,8 @@ function renderAgentRegistry() {
       <td>${escapeHtml(worker.name)}</td>
       <td><span class="registry-status ${worker.status === "connected" ? "connected" : "offline"}">${worker.status === "connected" ? "CONNECTED" : "OFFLINE"}</span></td>
       <td>${escapeHtml(worker.tokenName || "—")}</td>
-      <td title="${escapeHtml(worker.url)}">${escapeHtml(worker.url)}</td>
       <td>${escapeHtml([...(worker.capabilities?.skills || []).map((skill) => skill.name), ...(worker.capabilities?.tools || [])].slice(0, 4).join(", ") || "REGISTERED")}</td>
-    </tr>`).join("") : `<tr class="empty-row"><td colspan="5">WAITING FOR AUTHENTICATED WEBSOCKET WORKERS</td></tr>`;
+    </tr>`).join("") : `<tr class="empty-row"><td colspan="4">WAITING FOR AUTHENTICATED WEBSOCKET WORKERS</td></tr>`;
 }
 
 function renderWorkerTokenState() {
@@ -1133,8 +1137,7 @@ $("#office-chat-members").addEventListener("click", (event) => {
   const member = event.target.closest(".office-chat-member[data-username]");
   if (!member) return;
   const input = $("#office-board-input");
-  const mention = `@${member.dataset.username} `;
-  input.value = input.value ? `${input.value.trimEnd()} ${mention}` : mention;
+  input.value = appendUniqueMention(input.value, member.dataset.username);
   resizeOfficeBoardInput();
   input.focus();
 });
