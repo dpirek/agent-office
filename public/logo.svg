@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">AI Agent Office</title>
+  <rect width="64" height="64" fill="#080c0e"/>
+  <rect x="4.5" y="4.5" width="55" height="55" fill="#0b1113" stroke="#718086"/>
+  <rect x="8.5" y="8.5" width="47" height="47" fill="none" stroke="#293438"/>
+  <path d="M18 19l13 13-13 13" fill="none" stroke="#eef2f0" stroke-width="5" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M35 45h13" fill="none" stroke="#40e58c" stroke-width="5" stroke-linecap="square"/>
+</svg>
