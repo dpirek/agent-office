@@ -82,7 +82,7 @@ Workers connect to:
 ws://HOST:PORT/ws/workers
 ```
 
-In the dashboard, open **Agents → Live Worker Registry → Generate Token**, copy the one-time value, and use it in the worker's registration message or as a bearer token. You can alternatively seed the first token with `AI_HARNESS_WORKER_TOKEN` in `.env`.
+On **Dashboard → Live Worker Registry**, generate a token, copy the one-time value, and use it in the worker's registration message or as a bearer token. You can alternatively seed the first token with `AI_HARNESS_WORKER_TOKEN` in `.env`.
 
 The complete registration, task, progress, cancellation, artifact, and reconnection protocol is documented in [Agent Worker Integration Specification](doc/sub-agent-spec.md). See [Sequential task orchestration](doc/task-orchestration.md) for dependency and review behavior, and [Worker WebSocket API](doc/worker-websocket-api.md) for the transport-level API reference.
 

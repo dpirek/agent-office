@@ -58,7 +58,7 @@ h1, h2, p { margin: 0; }
 .panel-width-resizer::before { position: absolute; inset: 0 4px; content: ""; background: var(--line-dim); transition: background .12s, box-shadow .12s; }
 .panel-width-resizer span { position: absolute; top: 50%; left: 2px; width: 6px; height: 34px; border: 1px solid var(--line); background: #0b1113; transform: translateY(-50%); }
 .panel-width-resizer:hover::before, .panel-width-resizer:focus-visible::before, .panel-width-resizer.is-dragging::before { background: var(--green); box-shadow: 0 0 7px #43ec8d77; }
-body[data-page="dashboard"] .panel-width-resizer, body[data-page="agents"] .panel-width-resizer { display: block; }
+body[data-page="dashboard"] .panel-width-resizer { display: block; }
 body.is-resizing-panels { cursor: col-resize; user-select: none; }
 .panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .panel-header { width: 100%; height: 43px; min-height: 43px; flex: 0 0 43px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 0 13px; background: #0a1012; }
@@ -134,7 +134,7 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 
 .bottom-grid { display: contents; }
 .task-panel { grid-column: 1; grid-row: 3; }
-.chat-panel { grid-column: 1; grid-row: 1 / 3; }
+.chat-panel { grid-column: 1; grid-row: 2; }
 .route-page-panel { grid-column: 1 / -1; grid-row: 2 / 4; }
 .operations-panel { grid-column: 1 / -1; grid-row: 2 / 4; }
 .settings-panel { grid-column: 1 / -1; grid-row: 2 / 4; }
@@ -146,9 +146,7 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 .route-page-body strong { color: var(--text); font-size: 18px; letter-spacing: .05em; text-transform: uppercase; }
 .route-page-body p { max-width: 620px; }
 body[data-page="tasks"] .task-panel { grid-column: 1 / -1; grid-row: 1 / 3; }
-body[data-page="dashboard"] .right-column { grid-template-rows: minmax(255px, 1fr) 205px; }
-body[data-page="agents"] .office-panel { grid-row: 2 / 4; }
-body[data-page="agents"] .right-column { grid-template-rows: minmax(255px, 1fr) 155px 205px; }
+body[data-page="dashboard"] .right-column { grid-template-rows: minmax(210px, 1fr) minmax(100px, .55fr) minmax(140px, .75fr) minmax(120px, .65fr); }
 body:not([data-page="dashboard"]) .office-panel,
 body:not([data-page="dashboard"]) .right-column,
 body:not([data-page="dashboard"]) .chat-panel,

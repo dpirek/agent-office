@@ -21,7 +21,6 @@
         <div class="nav-items">
           <a class="nav-item active" href="/dashboard" data-section="dashboard" aria-label="Dashboard"><span class="nav-icon" aria-hidden="true">▣</span>DASHBOARD</a>
           <a class="nav-item" href="/chat" data-section="chat" aria-label="Office chat"><span class="nav-icon" aria-hidden="true">◫</span>CHAT</a>
-          <a class="nav-item" href="/agents" data-section="agents" aria-label="Agents"><span class="nav-icon" aria-hidden="true">♙</span>AGENTS</a>
           <a class="nav-item" href="/tasks" data-section="tasks" aria-label="Tasks"><span class="nav-icon" aria-hidden="true">▤</span>TASKS</a>
           <a class="nav-item" href="/workspace" data-section="workspace" aria-label="Workspace"><span class="nav-icon" aria-hidden="true">▦</span>WORKSPACE</a>
           <a class="nav-item" href="/operations" data-section="operations" aria-label="Operations"><span class="nav-icon" aria-hidden="true">◷</span>OPERATIONS</a>
@@ -33,7 +32,7 @@
 
       <main class="main-content">
         <section class="operations-grid">
-          <section class="panel office-panel" data-view="agents">
+          <section class="panel office-panel" data-view="dashboard">
             <header class="panel-header"><div><span class="header-icon">▦</span><h2>AGENT OFFICE</h2></div><span class="panel-meta" id="office-meta">LIVE FLOOR</span></header>
             <div class="office panel-body" id="agent-office">
               <div class="agent-floor" id="agent-floor"></div>
@@ -41,7 +40,7 @@
           </section>
 
           <aside class="right-column">
-            <section class="panel selected-panel" data-view="agents">
+            <section class="panel selected-panel" data-view="dashboard">
               <header class="panel-header"><div><span class="header-icon">⇆</span><h2>SELECTED AGENT</h2></div></header>
               <div class="panel-body selected-body">
                 <div class="agent-summary">
@@ -53,12 +52,12 @@
               </div>
             </section>
 
-            <section class="panel activity-panel" data-view="dashboard agents">
+            <section class="panel activity-panel" data-view="dashboard">
               <header class="panel-header"><div><span class="header-icon">ⓘ</span><h2>AGENT ACTIVITY</h2></div><span class="streaming" id="streaming-label">Standing by…</span></header>
               <div class="activity-log panel-body" id="activity-log" aria-live="polite"></div>
             </section>
 
-            <section class="panel agent-registry-panel" data-view="agents">
+            <section class="panel agent-registry-panel" data-view="dashboard">
               <header class="panel-header"><div><span class="header-icon">♙</span><h2>LIVE WORKER REGISTRY</h2></div><div class="registry-header-actions"><span class="panel-meta" id="worker-token-status">TOKEN NOT SET</span><button class="header-action icon-button" id="generate-worker-token" type="button" aria-label="Generate worker token" title="Generate worker token"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="4"></circle><path d="M12 12h8M17 12v3M20 12v2"></path></svg></button></div></header>
               <div class="panel-body registry-body">
                 <table class="registry-table"><thead><tr><th>NAME</th><th>STATUS</th><th>TOKEN NAME</th><th>WEBSOCKET URL</th><th>CAPABILITIES</th></tr></thead><tbody id="agent-registry-body"></tbody></table>

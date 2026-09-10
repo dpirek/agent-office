@@ -23,7 +23,6 @@ const ROLE_AGENTS = [
 const PAGES = {
   dashboard: { path: "/dashboard", title: "Dashboard" },
   chat: { path: "/chat", title: "Central Office" },
-  agents: { path: "/agents", title: "Agents" },
   tasks: { path: "/tasks", title: "Tasks" },
   workspace: { path: "/workspace", title: "Workspace" },
   operations: { path: "/operations", title: "Operations" },
