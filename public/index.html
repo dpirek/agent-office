@@ -64,6 +64,11 @@
               </div>
             </section>
 
+            <section class="panel dashboard-office-chat-panel" data-view="dashboard">
+              <header class="panel-header"><div><span class="header-icon">◫</span><h2>OFFICE CHAT</h2></div><span class="panel-meta" id="dashboard-office-chat-status">LIVE FEED</span></header>
+              <div class="office-board-messages dashboard-office-board-messages panel-body" id="dashboard-office-board-messages" aria-live="polite"></div>
+            </section>
+
             <section class="panel logs-panel" data-view="dashboard">
               <header class="panel-header"><div><span class="header-icon">▤</span><h2>SYSTEM LOGS</h2></div></header>
               <div class="system-log panel-body" id="system-log"></div>
@@ -251,5 +256,6 @@
   </dialog>
   <div class="toast" id="toast" role="status"></div>
   <script type="module" src="/app.mjs"></script>
+  <script type="module" src="/lib/dashboard-office-chat.mjs"></script>
 </body>
 </html>

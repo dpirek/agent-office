@@ -146,7 +146,7 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 .route-page-body strong { color: var(--text); font-size: 18px; letter-spacing: .05em; text-transform: uppercase; }
 .route-page-body p { max-width: 620px; }
 body[data-page="tasks"] .task-panel { grid-column: 1 / -1; grid-row: 1 / 3; }
-body[data-page="dashboard"] .right-column { grid-template-rows: minmax(210px, 1fr) minmax(100px, .55fr) minmax(140px, .75fr) minmax(120px, .65fr); }
+body[data-page="dashboard"] .right-column { grid-template-rows: minmax(180px, 1.1fr) minmax(70px, .45fr) minmax(100px, .65fr) minmax(130px, .85fr) minmax(70px, .45fr); }
 body:not([data-page="dashboard"]) .office-panel,
 body:not([data-page="dashboard"]) .right-column,
 body:not([data-page="dashboard"]) .chat-panel,
@@ -227,6 +227,10 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .office-chat-heading strong { font-size: 13px; }
 .office-chat-heading span { color: var(--muted); font-size: 9px; }
 .office-board-messages { min-height: 0; overflow: auto; padding: 10px 0 18px; }
+.dashboard-office-board-messages { padding-block: 4px 10px; box-shadow: inset 0 0 0 1px #11191c; }
+.dashboard-office-board-messages .office-board-message { grid-template-columns: 30px minmax(0, 1fr); gap: 9px; padding: 8px 10px; }
+.dashboard-office-board-messages .office-board-avatar { width: 30px; height: 30px; }
+.dashboard-office-board-messages .human-avatar-icon { width: 19px; height: 19px; }
 .office-board-empty { height: 100%; display: grid; place-content: center; gap: 8px; color: var(--muted); text-align: center; }
 .office-board-empty strong { color: var(--text); font-size: 13px; }
 .office-board-message { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 11px; padding: 10px 18px; }
@@ -481,6 +485,7 @@ select {
   .selected-panel:not(.is-minimized) { min-height: 385px; }
   .activity-panel:not(.is-minimized), .logs-panel:not(.is-minimized) { min-height: 190px; }
   .agent-registry-panel:not(.is-minimized) { min-height: 220px; }
+  .dashboard-office-chat-panel:not(.is-minimized) { min-height: 420px; }
   .office-panel:not(.is-minimized) { min-height: 500px; }
   .office { min-height: 455px; }
   .agent-floor { inset: 22% 3% 7%; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: space-around; gap: 14px 4px; }
