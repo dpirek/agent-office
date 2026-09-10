@@ -10,6 +10,7 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const startedAt = Date.now();
 const sessionId = createClientId();
+let officeBoardMarkup = null;
 
 const ROLE_AGENTS = [
   { name: "Researcher", role: "Research Specialist", description: "Finds evidence and explores the problem space", tools: "browser, search, filesystem" },
@@ -359,7 +360,7 @@ function renderOfficeChat({ preserveScroll = false } = {}) {
   const board = $("#office-board-messages");
   const wasAtBottom = board.scrollHeight - board.scrollTop - board.clientHeight < 70;
   const messages = state.officeChatMessages;
-  board.innerHTML = messages.length ? messages.map((message) => `
+  const nextOfficeBoardMarkup = messages.length ? messages.map((message) => `
     <article class="office-board-message ${escapeHtml(message.kind)}${message.streaming ? " streaming" : ""}">
       <div class="office-board-avatar"${message.kind === "user" ? ` title="You · Human"` : ""}>${chatAvatar(message)}</div>
       <div class="office-board-message-body">
@@ -368,8 +369,13 @@ function renderOfficeChat({ preserveScroll = false } = {}) {
         ${message.artifacts?.length ? `<div class="office-board-artifacts">${renderChatArtifacts(message.artifacts)}</div>` : ""}
       </div>
     </article>`).join("") : `<div class="office-board-empty"><strong># CENTRAL-OFFICE IS READY</strong><span>Mention @office-manager or a registered agent to begin.</span></div>`;
+  const messagesChanged = nextOfficeBoardMarkup !== officeBoardMarkup;
+  if (messagesChanged) {
+    board.innerHTML = nextOfficeBoardMarkup;
+    officeBoardMarkup = nextOfficeBoardMarkup;
+  }
   const followLatest = document.body.dataset.page === "chat" && window.matchMedia("(max-width: 1100px)").matches;
-  if (followLatest || !preserveScroll || wasAtBottom) scrollOfficeChatToLatest();
+  if (messagesChanged && (followLatest || !preserveScroll || wasAtBottom)) scrollOfficeChatToLatest();
   $("#office-chat-status").textContent = "LIVE CHANNEL";
 }
 
