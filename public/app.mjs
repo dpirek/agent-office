@@ -211,13 +211,25 @@ function currentAgent() {
   return agents.find((agent) => agent.name === state.selectedAgent) || agents[0];
 }
 
+const OFFICE_SPRITES = ["researcher", "developer", "designer", "qa-tester", "deployment-engineer", "analyst", "support-agent"];
+
+function officeSprite(agent, index = 0) {
+  if (agent.internal) return "manager";
+  const identity = `${agent.name} ${agent.role}`.toLowerCase();
+  const roleSprite = [
+    ["research", "researcher"], ["develop", "developer"], ["cod", "developer"],
+    ["design", "designer"], ["qa", "qa-tester"], ["test", "qa-tester"],
+    ["deploy", "deployment-engineer"], ["devops", "deployment-engineer"],
+    ["analy", "analyst"], ["support", "support-agent"],
+  ].find(([keyword]) => identity.includes(keyword))?.[1];
+  return roleSprite || OFFICE_SPRITES[Math.max(0, index - 1) % OFFICE_SPRITES.length];
+}
+
 function renderOffice() {
   const floor = $("#agent-floor");
-  floor.innerHTML = officeAgents().slice(0, 6).map((agent) => `
+  floor.innerHTML = officeAgents().slice(0, 8).map((agent, index) => `
     <button class="desk-agent ${agent.internal ? "manager" : ""} ${["ready", "running"].includes(agent.status) ? "online" : ""} ${agent.status === "running" ? "active" : ""} ${agent.name === state.selectedAgent ? "selected" : ""}" data-agent="${escapeHtml(agent.name)}" aria-label="Select ${escapeHtml(agent.name)}">
-      <span class="monitor"><i></i></span>
-      <span class="desk-top"><i class="keyboard"></i></span>
-      <span class="chair"></span><span class="avatar"></span>
+      <img class="desk-sprite" src="/assets/office/${officeSprite(agent, index)}.png" alt="" draggable="false">
       <span class="nameplate"><i></i>${escapeHtml(agent.name)}</span>
     </button>`).join("");
   $$(".desk-agent", floor).forEach((button) => button.addEventListener("click", () => {
@@ -275,7 +287,7 @@ function renderSelectedAgent() {
     $("#selected-name").textContent = "No agent selected";
     $("#selected-status").textContent = "unregistered";
     $("#selected-description").textContent = "Waiting for a WebSocket worker to connect";
-    $("#selected-portrait span").textContent = "—";
+    $("#selected-portrait").innerHTML = "<span>—</span>";
     $(".agent-summary-copy .status-dot").classList.add("empty");
     $("#agent-details").innerHTML = `<div class="detail-row"><label>STATUS</label><span>No registered agents</span></div>`;
     return;
@@ -284,7 +296,7 @@ function renderSelectedAgent() {
   $("#selected-name").textContent = agent.name;
   $("#selected-status").textContent = agent.status;
   $("#selected-description").textContent = agent.description;
-  $("#selected-portrait span").textContent = agent.name.slice(0, 1);
+  $("#selected-portrait").innerHTML = `<img src="/assets/office/${officeSprite(agent, officeAgents().indexOf(agent))}.png" alt="" draggable="false">`;
   $("#agent-details").innerHTML = detailRows(agent).map(([key, value]) => `<div class="detail-row"><label>${escapeHtml(key)}</label><span class="${key === "STATUS" && ["ready", "running"].includes(value) ? "green" : ""}">${escapeHtml(value)}</span></div>`).join("");
 }
 

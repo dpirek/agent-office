@@ -85,48 +85,27 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 .panel-body { min-width: 0; min-height: 0; flex: 1 1 auto; background-color: #080e10; box-shadow: inset 0 0 0 1px #11191c; }
 
 .office-panel { display: flex; flex-direction: column; }
-.office { position: relative; flex: 1; min-height: 0; overflow: hidden; border: 4px solid #0b1012; background-color: #202b2f; background-image: linear-gradient(#2b373b 1px, transparent 1px), linear-gradient(90deg, #2b373b 1px, transparent 1px); background-size: 32px 32px; box-shadow: inset 0 0 0 1px #677277, inset 0 -18px 0 #0a0f11, inset 0 -20px 0 #58656a; }
-.office::before { position: absolute; left: 0; right: 0; top: 0; height: 124px; content: ""; background: linear-gradient(#101719cc, #182124f5); border-bottom: 2px solid #3c484d; }
-.windows { position: absolute; z-index: 1; top: 6px; left: 18%; right: 18%; height: 92px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
-.windows i { position: relative; border: 6px solid #101618; border-bottom-width: 12px; background: linear-gradient(#677987 0 13%, #8697a2 14% 19%, #36495b 20% 55%, #203444 56%); box-shadow: inset 0 0 0 1px #6b777b; }
-.windows i::after { position: absolute; left: 0; right: 0; top: 16px; height: 3px; content: ""; background: #161e21; box-shadow: 0 7px #161e21; }
-.agent-floor { position: absolute; z-index: 5; inset: 90px 15px 22px; }
+.office { position: relative; flex: 1; min-height: 0; overflow: hidden; border: 4px solid #0b1012; background: #b6b3ae url("/assets/office/background.png") center / 100% 100% no-repeat; box-shadow: inset 0 0 0 1px #677277; image-rendering: pixelated; }
+.agent-floor { position: absolute; z-index: 5; inset: 25% 5% 8%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); align-items: center; justify-items: center; gap: 2% 1%; }
 .office-empty { position: absolute; inset: 0; display: grid; place-content: center; gap: 8px; color: #8f9ba0; text-align: center; }
 .office-empty strong { color: #dbe2e0; font-size: 14px; letter-spacing: .06em; }
-.desk-agent { position: absolute; width: 174px; height: 132px; padding: 0; border: 0; background: transparent; filter: drop-shadow(5px 7px 2px #05070888); cursor: pointer; color: var(--text); }
-.desk-agent::before, .desk-agent::after { position: absolute; z-index: 1; top: 73px; width: 8px; height: 34px; content: ""; border: 1px solid #526066; background: #101719; }
-.desk-agent::before { left: 10px; }.desk-agent::after { right: 10px; }
-.desk-agent .monitor { position: absolute; z-index: 1; top: 0; left: 49px; width: 77px; height: 52px; border: 6px solid #090d0e; outline: 1px solid #748087; background: #020604; box-shadow: inset 0 0 12px #31ed8122, 3px 4px 0 #080c0e; }
-.desk-agent .monitor::before { position: absolute; left: 32px; bottom: -15px; width: 8px; height: 12px; content: ""; background: #11191c; border-inline: 1px solid #526066; }
-.desk-agent .monitor::after { position: absolute; left: 22px; bottom: -18px; width: 29px; height: 4px; content: ""; background: #11191c; border: 1px solid #526066; }
-.desk-agent .monitor i { position: absolute; inset: 3px 4px; overflow: hidden; border: 1px solid #173a25; background: repeating-linear-gradient(0deg, #020604 0 3px, #07150d 3px 4px); color: #45f08c; box-shadow: inset 0 0 8px #31ed8133; }
-.desk-agent .monitor i::before { position: absolute; top: 2px; left: 4px; content: ">_"; color: #57ff9b; font: 700 8px/1 monospace; text-shadow: 0 0 4px #45f08c; }
-.desk-agent .monitor i::after { position: absolute; top: 15px; left: 5px; width: 27px; height: 2px; content: ""; background: #43e886; box-shadow: 9px 5px #2dbb6a, 2px 10px #43e886, 17px 15px #278e55; opacity: .9; }
-.desk-agent .desk-top { position: absolute; z-index: 2; top: 52px; left: 0; width: 174px; height: 29px; border: 3px solid #171b1c; background: linear-gradient(#8a623e 0 6px, #5b402d 7px 100%); box-shadow: inset 0 0 0 1px #a98258; clip-path: polygon(3% 0, 97% 0, 100% 100%, 0 100%); }
-.desk-agent .keyboard { position: absolute; top: 8px; left: 59px; width: 58px; height: 11px; border: 2px solid #111719; background: repeating-linear-gradient(90deg, #6e7b80 0 4px, #252e32 4px 6px); transform: perspective(25px) rotateX(12deg); }
-.desk-agent .chair { position: absolute; z-index: 3; top: 67px; left: 55px; width: 64px; height: 48px; border: 5px solid #101719; background: #273237; box-shadow: inset 0 0 0 2px #46545a; }
-.desk-agent .chair::after { position: absolute; left: 24px; bottom: -14px; width: 7px; height: 14px; content: ""; background: #111719; box-shadow: -17px 12px 0 -2px #111719, 17px 12px 0 -2px #111719; }
-.desk-agent .avatar { position: absolute; z-index: 4; top: 34px; left: 61px; width: 53px; height: 68px; border: 0; background: transparent; box-shadow: none; }
-.desk-agent .avatar::before { position: absolute; top: 0; left: 12px; width: 30px; height: 31px; content: ""; border: 4px solid #111719; border-radius: 45% 45% 38% 38%; background: linear-gradient(90deg, #151b1d 0 28%, #5a3b26 29% 72%, #151b1d 73%); box-shadow: inset 0 -5px #a87350; }
-.desk-agent .avatar::after { position: absolute; left: 1px; bottom: 0; width: 51px; height: 40px; content: ""; border: 5px solid #111719; border-radius: 18px 18px 3px 3px; background: linear-gradient(90deg, #263a48 0 18%, #37566a 19% 81%, #263a48 82%); box-shadow: inset 0 7px #1d2d37; }
-.desk-agent .nameplate { position: absolute; z-index: 6; top: 104px; left: 17px; right: 17px; height: 28px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #718086; background: #0b1113; font-size: 10px; white-space: nowrap; }
+.desk-agent { position: relative; width: min(100%, 205px); aspect-ratio: 1 / 1.05; padding: 0 0 22px; border: 0; outline: 0; background: transparent; cursor: pointer; color: var(--text); transition: transform .12s ease, filter .12s ease; }
+.desk-agent:hover, .desk-agent:focus-visible { z-index: 2; transform: translateY(-3px) scale(1.03); }
+.desk-agent:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.desk-sprite { width: 100%; height: calc(100% - 16px); display: block; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(5px 7px 2px #05070866); user-select: none; }
+.desk-agent:not(.online) .desk-sprite { filter: grayscale(.55) brightness(.72) drop-shadow(5px 7px 2px #05070866); }
+.desk-agent .nameplate { position: absolute; z-index: 6; right: 8%; bottom: 0; left: 8%; height: 27px; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; border: 1px solid #718086; background: #0b1113ee; box-shadow: 0 3px 8px #0008; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .desk-agent .nameplate i { width: 8px; height: 8px; border-radius: 50%; background: #5c676b; }
 .desk-agent.online .nameplate i { background: var(--green); box-shadow: 0 0 8px var(--green); }
-.desk-agent.selected { outline: 0; }
-.desk-agent:only-child { left: 24px; right: auto; }
-.desk-agent:nth-child(1) { left: 10%; top: 12%; }.desk-agent:nth-child(2) { left: 42%; top: 12%; }.desk-agent:nth-child(3) { right: 9%; top: 12%; }
-.desk-agent:nth-child(4) { left: 7%; bottom: 4%; }.desk-agent:nth-child(5) { left: 40%; bottom: 1%; }.desk-agent:nth-child(6) { right: 7%; bottom: 4%; }
-.desk-agent.manager:first-child { left: 24px; right: auto; }
+.desk-agent.active .nameplate i { background: var(--red); box-shadow: 0 0 8px var(--red); }
+.desk-agent.selected .nameplate { border-color: var(--green); box-shadow: 0 0 0 1px #173d2a, 0 3px 8px #0008; }
 .desk-agent.manager .nameplate { border-color: var(--green); }
-.desk-agent.manager .monitor { outline-color: var(--green); box-shadow: inset 0 0 14px #31ed8144, 3px 4px 0 #080c0e; }
-.desk-agent:nth-child(2n) .avatar::before { background: linear-gradient(90deg, #4c2f19 0 28%, #8a5d30 29% 72%, #4c2f19 73%); box-shadow: inset 0 -5px #d19a61; }
-.desk-agent:nth-child(2n) .avatar::after { background: linear-gradient(90deg, #31434a 0 18%, #49616b 19% 81%, #31434a 82%); }
-.desk-agent:nth-child(3n) .avatar::before { background: linear-gradient(90deg, #101516 0 30%, #272f31 31% 69%, #101516 70%); box-shadow: inset 0 -5px #966346; }
 
 .selected-panel { display: flex; flex-direction: column; }
 .selected-body { display: flex; flex-direction: column; overflow: hidden; }
 .agent-summary { min-height: 99px; display: grid; grid-template-columns: 83px minmax(0, 1fr); align-items: center; gap: 13px; padding: 10px; }
-.portrait { width: 82px; height: 77px; display: grid; place-items: center; border: 1px solid var(--line); background: radial-gradient(circle, #46535a, #141b1e 65%); box-shadow: inset 0 0 0 5px #111719; font-size: 30px; }
+.portrait { width: 82px; height: 77px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(circle, #46535a, #141b1e 65%); box-shadow: inset 0 0 0 5px #111719; font-size: 30px; }
+.portrait img { width: 112%; height: 112%; object-fit: contain; image-rendering: pixelated; transform: translateY(7%); }
 .agent-summary-copy { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 .agent-summary-copy > strong { font-size: 14px; }
 .agent-summary-copy > span { display: flex; align-items: center; gap: 9px; color: #c1cbd0; font-size: 10px; }
@@ -503,7 +482,7 @@ select {
   .agent-registry-panel:not(.is-minimized) { min-height: 220px; }
   .office-panel:not(.is-minimized) { min-height: 500px; }
   .office { min-height: 455px; }
-  .agent-floor { inset: 92px 12px 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(174px, 1fr)); align-content: space-around; justify-items: center; gap: 14px; }
+  .agent-floor { inset: 22% 3% 7%; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: space-around; gap: 14px 4px; }
   .desk-agent, .desk-agent:only-child, .desk-agent.manager:first-child, .desk-agent:nth-child(n) { position: relative; inset: auto; }
   .chat-panel:not(.is-minimized) { min-height: 560px; }
   body[data-page="dashboard"] .bottom-grid { order: -1; }
@@ -542,7 +521,7 @@ select {
   .office-panel:not(.is-minimized) { min-height: 650px; }
   .office { min-height: 605px; }
   .agent-floor { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 2px; }
-  .desk-agent { transform: scale(.84); }
+  .desk-agent { width: min(100%, 190px); }
   .desk-agent:only-child { grid-column: 1 / -1; justify-self: center; }
   .agent-summary { grid-template-columns: 65px 1fr; }.portrait { width: 64px; height: 66px; }
   .agent-form-body { grid-template-columns: 1fr; }.agent-form-body p { grid-column: 1; }
