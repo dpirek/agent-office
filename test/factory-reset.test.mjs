@@ -41,7 +41,13 @@ test("factory reset restores a fresh database and clears managed files", async (
   store.recordOfficeMemory({ kind: "system", status: "info", title: "Before reset" });
   store.createOfficeTask({ title: "Before reset" });
   store.createOfficeChatMessage({ author: "Human", username: "human", kind: "user", text: "Before reset" });
-  store.setWorkerToken("a".repeat(32));
+  store.setWorkerToken("a".repeat(32), "Reset test token");
+  store.upsertRegisteredWorker({
+    name: "Reset Worker",
+    url: "ws://127.0.0.1:9000/workers",
+    tokenName: "Reset test token",
+    capabilities: { skills: [], tools: ["read_file"], mcp: false, workspaceArtifacts: true },
+  });
 
   const filesRemoved = await clearManagedDirectory(sharedWorkspace, { protectedPaths: [directory] });
   const result = store.factoryReset();
@@ -59,6 +65,8 @@ test("factory reset restores a fresh database and clears managed files", async (
   assert.deepEqual(store.getOfficeTasks(), []);
   assert.deepEqual(store.getOfficeChatMessages(), []);
   assert.equal(store.getWorkerToken(), "");
+  assert.equal(store.getWorkerTokenName(), "");
+  assert.deepEqual(store.getRegisteredWorkers(), []);
   assert.equal(store.getRigConfigurations().configurations.length, 1);
 });
 

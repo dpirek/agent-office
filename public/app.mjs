@@ -53,6 +53,7 @@ const state = {
   officeTasks: [],
   workers: [],
   workerTokenConfigured: false,
+  workerTokenName: "",
   operations: [],
   systemPrompts: [],
   settingsTab: "prompts",
@@ -246,13 +247,15 @@ function renderAgentRegistry() {
   body.innerHTML = state.workers.length ? state.workers.map((worker) => `
     <tr>
       <td>${escapeHtml(worker.name)}</td>
+      <td><span class="registry-status ${worker.status === "connected" ? "connected" : "offline"}">${worker.status === "connected" ? "CONNECTED" : "OFFLINE"}</span></td>
+      <td>${escapeHtml(worker.tokenName || "—")}</td>
       <td title="${escapeHtml(worker.url)}">${escapeHtml(worker.url)}</td>
       <td>${escapeHtml([...(worker.capabilities?.skills || []).map((skill) => skill.name), ...(worker.capabilities?.tools || [])].slice(0, 4).join(", ") || "REGISTERED")}</td>
-    </tr>`).join("") : `<tr class="empty-row"><td colspan="3">WAITING FOR AUTHENTICATED WEBSOCKET WORKERS</td></tr>`;
+    </tr>`).join("") : `<tr class="empty-row"><td colspan="5">WAITING FOR AUTHENTICATED WEBSOCKET WORKERS</td></tr>`;
 }
 
 function renderWorkerTokenState() {
-  $("#worker-token-status").textContent = state.workerTokenConfigured ? "TOKEN CONFIGURED" : "TOKEN NOT SET";
+  $("#worker-token-status").textContent = state.workerTokenConfigured ? `TOKEN: ${state.workerTokenName || "CONFIGURED"}` : "TOKEN NOT SET";
   const action = state.workerTokenConfigured ? "Regenerate worker token" : "Generate worker token";
   $("#generate-worker-token").setAttribute("aria-label", action);
   $("#generate-worker-token").title = action;
@@ -814,7 +817,7 @@ function mergeConfiguredAgents(workers) {
       id: `worker-${index + 1}`,
       url: worker.url,
       configured: true,
-      status: previous.get(worker.name)?.status || "ready",
+      status: worker.status === "connected" ? (previous.get(worker.name)?.status === "running" ? "running" : "ready") : "offline",
     };
   });
   state.agents = normalized;
@@ -890,6 +893,7 @@ async function refreshDashboard({ quiet = false } = {}) {
     state.officeTasks = officeTasks.tasks || [];
     state.workers = subAgents.workers || [];
     state.workerTokenConfigured = subAgents.workerTokenConfigured === true;
+    state.workerTokenName = subAgents.workerTokenName || "";
     state.operations = operations.operations || [];
     mergeConfiguredAgents(state.workers);
     $("#health-dot").className = "status-dot online";
@@ -1139,22 +1143,54 @@ $$('.tabs button').forEach((button) => button.addEventListener("click", () => {
 }));
 
 const workerTokenDialog = $("#worker-token-dialog");
-$("#generate-worker-token").addEventListener("click", async () => {
+$("#generate-worker-token").addEventListener("click", () => {
+  $("#worker-token-dialog-title").textContent = "GENERATE WORKER TOKEN";
+  $("#worker-token-help").textContent = "Name this credential so registered workers can show which token they used.";
+  $("#worker-token-name").value = state.workerTokenName || "Office workers";
+  $("#worker-token-name").disabled = false;
+  $("#worker-token-value").value = "";
+  $("#worker-token-secret").hidden = true;
+  $("#copy-worker-token").hidden = true;
+  $("#confirm-generate-worker-token").hidden = false;
+  workerTokenDialog.showModal();
+  $("#worker-token-name").focus();
+  $("#worker-token-name").select();
+});
+$("#confirm-generate-worker-token").addEventListener("click", async () => {
+  const name = $("#worker-token-name").value.trim();
+  if (!name) {
+    showToast("Enter a token name.", true);
+    $("#worker-token-name").focus();
+    return;
+  }
   const button = $("#generate-worker-token");
+  const confirmButton = $("#confirm-generate-worker-token");
   button.disabled = true;
+  confirmButton.disabled = true;
   try {
-    const response = await fetch("/api/worker-token", { method: "POST" });
+    const response = await fetch("/api/worker-token", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     state.workerTokenConfigured = true;
+    state.workerTokenName = data.name;
     renderWorkerTokenState();
+    $("#worker-token-dialog-title").textContent = "WORKER TOKEN GENERATED";
+    $("#worker-token-help").textContent = `Token “${data.name}” is ready.`;
+    $("#worker-token-name").disabled = true;
     $("#worker-token-value").value = data.token;
-    workerTokenDialog.showModal();
+    $("#worker-token-secret").hidden = false;
+    $("#copy-worker-token").hidden = false;
+    confirmButton.hidden = true;
     $("#worker-token-value").select();
   } catch (error) {
     showToast(error.message, true);
   } finally {
     button.disabled = false;
+    confirmButton.disabled = false;
   }
 });
 $("#copy-worker-token").addEventListener("click", async () => {
@@ -1167,7 +1203,10 @@ $("#copy-worker-token").addEventListener("click", async () => {
   }
   showToast("Worker token copied.");
 });
-workerTokenDialog.addEventListener("close", () => { $("#worker-token-value").value = ""; });
+workerTokenDialog.addEventListener("close", () => {
+  $("#worker-token-value").value = "";
+  $("#worker-token-name").disabled = false;
+});
 
 const taskDialog = $("#task-dialog");
 function openTaskDialog() {

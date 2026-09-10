@@ -64,6 +64,12 @@ let taskProgressMonitor;
 const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
 const subAgentManager = new SubAgentManager({
   materializeArtifacts: (task, artifacts) => sharedWorkspace.storeTaskArtifacts(task, artifacts),
+  onWorkerRegistered(worker) {
+    uiStateStore.upsertRegisteredWorker(worker);
+  },
+  onWorkerDisconnected(worker) {
+    uiStateStore.markRegisteredWorkerOffline(worker.name);
+  },
   onDirectMessage(state, message) {
     officeChatService?.postMessage(state === "completed" ? {
       author: message.agent,
@@ -378,7 +384,7 @@ if (environmentFileDetected) {
   applyEnvironmentSettings(uiStateStore, process.env, __dirname);
 }
 if (process.env.AI_HARNESS_WORKER_TOKEN?.trim() && !uiStateStore.getWorkerToken()) {
-  uiStateStore.setWorkerToken(process.env.AI_HARNESS_WORKER_TOKEN);
+  uiStateStore.setWorkerToken(process.env.AI_HARNESS_WORKER_TOKEN, "Environment worker token");
 }
 const periodicOperationScheduler = new PeriodicOperationScheduler({ uiStateStore, subAgentManager });
 periodicOperationScheduler.start();
@@ -425,6 +431,7 @@ server = http.createServer(async (req, res) => {
 const handleWorkerWebSocket = createWorkerWebSocketHandler({
   subAgentManager,
   getToken: () => uiStateStore.getWorkerToken(),
+  getTokenName: () => uiStateStore.getWorkerTokenName(),
 });
 attachWebSocketServer(server, handleWebSocket, "/ws", { "/ws/workers": handleWorkerWebSocket });
 
