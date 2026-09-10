@@ -322,7 +322,7 @@ Report an unrecoverable task failure with:
 
 ## 7. Heartbeats
 
-Standard WebSocket ping/pong frames are supported. A worker may also send an application heartbeat:
+The office sends a standard WebSocket ping every 15 seconds and marks the worker offline if the next heartbeat interval passes without any response or other socket activity. Standards-compliant WebSocket clients answer these ping frames automatically. A worker may also send an application heartbeat:
 
 ```json
 { "type": "ping" }
