@@ -310,7 +310,7 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .operation-actions button { padding: 3px 7px; border: 1px solid var(--line-dim); background: transparent; font-size: 8px; }
 .operation-actions .delete-operation { color: var(--red); }
 
-.settings-tabs { flex: 0 0 39px; display: flex; border-bottom: 1px solid var(--line); box-shadow: none; }
+.settings-tabs { flex: 0 0 39px; display: flex; overflow-x: auto; border-bottom: 1px solid var(--line); box-shadow: none; scrollbar-width: thin; }
 .settings-tabs button { min-width: 135px; height: 38px; padding: 0 18px; border: 0; border-right: 1px solid var(--line-dim); background: #080e10; color: var(--muted); font-size: 9px; }
 .settings-tabs button:hover { background: #11191c; color: var(--text); }
 .settings-tabs button.active { color: var(--green); background: #11191c; box-shadow: inset 0 -2px var(--green); }
@@ -358,6 +358,16 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .settings-fields input:focus, .settings-fields select:focus { border-color: var(--green); }
 .provider-settings .settings-actions { margin-top: auto; border-top: 1px solid var(--line-dim); }
 .provider-model-status { margin-right: auto; color: var(--muted); font-size: 8px; }
+.admin-settings { display: flex; flex-direction: column; overflow: auto; }
+.danger-zone { width: min(820px, calc(100% - 32px)); display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 24px 16px; padding: 20px; border: 1px solid var(--red); background: #160d0f; }
+.danger-zone-copy { min-width: 0; display: flex; align-items: flex-start; gap: 14px; }
+.danger-zone-icon { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; border: 1px solid var(--red); color: var(--red); font-size: 16px; }
+.danger-zone-copy div { display: flex; flex-direction: column; gap: 7px; }
+.danger-zone-copy strong { color: #ff9ea5; font-size: 11px; }
+.danger-zone-copy p { max-width: 610px; color: #bba8aa; font-size: 9px; line-height: 1.55; }
+.danger-button { min-width: 128px; height: 34px; padding: 0 14px; border: 1px solid var(--red); background: transparent; color: #ff9ea5; }
+.danger-button:hover { background: #321418; }
+.danger-button:disabled { cursor: default; opacity: .5; }
 
 .skills-summary { flex: 0 0 48px; display: flex; align-items: center; gap: 18px; padding: 0 14px; border-bottom: 1px solid var(--line-dim); box-shadow: none; color: var(--muted); font-size: 9px; }
 .skills-summary strong { color: var(--green); font-size: 11px; }
@@ -540,6 +550,7 @@ select {
   .agent-summary { grid-template-columns: 65px 1fr; }.portrait { width: 64px; height: 66px; }
   .agent-form-body { grid-template-columns: 1fr; }.agent-form-body p { grid-column: 1; }
   .settings-body { display: flex; flex-direction: column; }.prompt-list { max-height: 210px; border-right: 0; border-bottom: 1px solid var(--line); }.prompt-editor { min-height: 520px; }
+  .danger-zone { align-items: stretch; flex-direction: column; }.danger-button { width: 100%; }
   .office-chat-layout { display: flex; flex-direction: column; min-height: 720px; }.office-chat-sidebar { min-height: auto; border-right: 0; border-bottom: 1px solid var(--line); }.office-chat-sidebar h3, .office-chat-members { display: none; }
   body[data-page="chat"] .workspace { height: calc(100dvh - 172px); }
   body[data-page="chat"] .office-chat-layout { height: calc(100% - 43px); min-height: 0; }

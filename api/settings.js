@@ -19,6 +19,7 @@ export function createSettingsApiHandlers({
   fileAccessDisabledByEnvironment = false,
   appVersion = "0.0.0",
   onRigConfigurationsChanged = () => {},
+  factoryReset,
 }) {
   async function handleHealthApi(req, res) {
     const envProvider = normalizeProvider(process.env.AI_PROVIDER);
@@ -250,6 +251,28 @@ export function createSettingsApiHandlers({
     methodNotAllowed(res, "GET, POST, PUT, DELETE");
   }
 
+  async function handleFactoryResetApi(req, res) {
+    if (req.method !== "POST") {
+      methodNotAllowed(res, "POST");
+      return;
+    }
+    if (typeof factoryReset !== "function") {
+      json(res, 503, { ok: false, error: "Factory reset is unavailable." });
+      return;
+    }
+    try {
+      const body = JSON.parse(await readRequestBody(req, 10_000) || "{}");
+      if (body.confirmation !== "FACTORY RESET") {
+        json(res, 400, { ok: false, error: "Factory reset confirmation is required." });
+        return;
+      }
+      const result = await factoryReset();
+      json(res, 200, { ok: true, ...result });
+    } catch (error) {
+      json(res, Number(error.statusCode) || (error instanceof SyntaxError ? 400 : 500), { ok: false, error: error.message });
+    }
+  }
+
   return {
     "/api/health": handleHealthApi,
     "/api/config": handleConfigApi,
@@ -258,5 +281,6 @@ export function createSettingsApiHandlers({
     "/api/rig-configurations": handleRigConfigurationsApi,
     "/api/system-prompts": handleSystemPromptsApi,
     "/api/skills": handleSkillsApi,
+    "/api/factory-reset": handleFactoryResetApi,
   };
 }

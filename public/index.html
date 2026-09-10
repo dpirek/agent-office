@@ -142,6 +142,7 @@
             <button type="button" role="tab" aria-selected="false" data-settings-tab="tools">TOOLS</button>
             <button type="button" role="tab" aria-selected="false" data-settings-tab="mcp">MCP</button>
             <button type="button" role="tab" aria-selected="false" data-settings-tab="provider">PROVIDER</button>
+            <button type="button" role="tab" aria-selected="false" data-settings-tab="admin">SYS ADMIN</button>
           </nav>
           <div class="settings-body settings-view panel-body" data-settings-view="prompts">
             <aside class="prompt-list" id="prompt-list" aria-label="System prompts"></aside>
@@ -174,6 +175,16 @@
             </div>
             <footer class="settings-actions"><span class="provider-model-status" id="provider-model-status">USING SAVED MODEL LIST</span><button id="refresh-provider-models" type="button">REFRESH MODELS</button><button id="reset-provider" type="button">RESET CHANGES</button><button class="primary" id="save-provider" type="submit">SAVE PROVIDER</button></footer>
           </form>
+          <div class="settings-view admin-settings panel-body" data-settings-view="admin" hidden>
+            <div class="settings-section-intro"><strong>SYSTEM ADMINISTRATION</strong><span>Manage destructive, system-wide actions.</span></div>
+            <section class="danger-zone" aria-labelledby="factory-reset-title">
+              <div class="danger-zone-copy">
+                <span class="danger-zone-icon" aria-hidden="true">!</span>
+                <div><strong id="factory-reset-title">FACTORY RESET</strong><p>Erase all office data and delivered files, then restore the database and settings to their original state. Source code and configured coding workspaces are not removed.</p></div>
+              </div>
+              <button class="danger-button" id="factory-reset-button" type="button">FACTORY RESET</button>
+            </section>
+          </div>
         </section>
 
         <section class="panel knowledge-panel" data-view="knowledge" hidden>

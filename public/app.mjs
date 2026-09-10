@@ -530,13 +530,15 @@ function renderSettingsStatus() {
     status.textContent = state.mcpDirty ? "UNSAVED CHANGES" : "SAVED";
   } else if (state.settingsTab === "provider") {
     status.textContent = state.providerDirty ? "UNSAVED CHANGES" : "SAVED";
+  } else if (state.settingsTab === "admin") {
+    status.textContent = "DANGER ZONE";
   } else {
     status.textContent = state.promptDirty ? "UNSAVED CHANGES" : currentSystemPrompt() ? "SAVED" : "SELECT A PROMPT";
   }
 }
 
 function selectSettingsTab(tab) {
-  if (!['prompts', 'tools', 'mcp', 'provider'].includes(tab)) return;
+  if (!['prompts', 'tools', 'mcp', 'provider', 'admin'].includes(tab)) return;
   state.settingsTab = tab;
   $$('[data-settings-tab]').forEach((button) => {
     const active = button.dataset.settingsTab === tab;
@@ -1405,6 +1407,33 @@ $("#provider-form").addEventListener("submit", async (event) => {
   } finally {
     button.disabled = false;
     renderSettingsStatus();
+  }
+});
+
+$("#factory-reset-button").addEventListener("click", async () => {
+  const confirmed = window.confirm(
+    "Factory reset will permanently erase office chats, tasks, memory, operations, skills, settings, worker credentials, and delivered workspace files. Continue?",
+  );
+  if (!confirmed) return;
+  const button = $("#factory-reset-button");
+  button.disabled = true;
+  button.textContent = "RESETTING…";
+  try {
+    const response = await fetch("/api/factory-reset", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ confirmation: "FACTORY RESET" }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("agent-office.") || key.startsWith("agent-worker.")) localStorage.removeItem(key);
+    }
+    window.location.assign("/dashboard");
+  } catch (error) {
+    showToast(error.message, true);
+    button.disabled = false;
+    button.textContent = "FACTORY RESET";
   }
 });
 

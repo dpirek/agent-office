@@ -21,6 +21,7 @@ import { createSharedWorkspace } from "./lib/shared-workspace.js";
 import { FAILURE_RECOVERY_POLICY, SEQUENTIAL_ORCHESTRATION_POLICY, TaskReviewTrigger } from "./lib/task-review-trigger.js";
 import { TaskProgressMonitor, resolveTaskProgressCheckInterval } from "./lib/task-progress-monitor.js";
 import { formatConversationContext } from "./lib/conversation-context.js";
+import { clearManagedDirectory } from "./lib/factory-reset.js";
 import {
   defaultBaseUrlForProvider,
   defaultModelForProvider,
@@ -394,6 +395,27 @@ server = http.createServer(async (req, res) => {
     subAgentManager,
     officeChatService,
     sharedWorkspaceRoot,
+    factoryReset: async () => {
+      const activeWorkerTasks = subAgentManager.listTasks().filter((task) => (
+        !["completed", "failed", "timed_out", "cancelled"].includes(task.state)
+      ));
+      const activeDirectMessages = subAgentManager.listDirectMessages();
+      if (officeManagerBoardRunning || activeWorkerTasks.length > 0 || activeDirectMessages.length > 0) {
+        const error = new Error("Stop active office work before running a factory reset.");
+        error.statusCode = 409;
+        throw error;
+      }
+      periodicOperationScheduler.stop();
+      try {
+        const filesRemoved = await clearManagedDirectory(sharedWorkspaceRoot, {
+          protectedPaths: [runtimeRoot, defaultWorkspace, __dirname],
+        });
+        const database = uiStateStore.factoryReset();
+        return { filesRemoved, database };
+      } finally {
+        periodicOperationScheduler.start();
+      }
+    },
   });
 
   if (await handleApiRequest(req, res, url)) return;
