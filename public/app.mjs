@@ -903,14 +903,14 @@ async function refreshDashboard({ quiet = false } = {}) {
     state.operations = operations.operations || [];
     mergeConfiguredAgents(state.workers);
     $("#health-dot").className = "status-dot online";
-    $("#health-text").textContent = "SYSTEM ONLINE";
+    $("#health-text").textContent = "ONLINE";
     $("#office-meta").textContent = `1 MANAGER · ${subAgents.workers?.length || 0} REMOTE WORKERS`;
     renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderTasks();
     renderChat();
     if (!quiet) addLog("System", "Agent configuration synchronized", "success");
   } catch (error) {
     $("#health-dot").className = "status-dot offline";
-    $("#health-text").textContent = "SYSTEM OFFLINE";
+    $("#health-text").textContent = "OFFLINE";
     if (!quiet) showToast(error.message, true);
   }
 }
