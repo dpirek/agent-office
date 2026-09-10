@@ -235,7 +235,9 @@ function renderAgentRegistry() {
 
 function renderWorkerTokenState() {
   $("#worker-token-status").textContent = state.workerTokenConfigured ? "TOKEN CONFIGURED" : "TOKEN NOT SET";
-  $("#generate-worker-token").textContent = state.workerTokenConfigured ? "REGENERATE TOKEN" : "GENERATE TOKEN";
+  const action = state.workerTokenConfigured ? "Regenerate worker token" : "Generate worker token";
+  $("#generate-worker-token").setAttribute("aria-label", action);
+  $("#generate-worker-token").title = action;
 }
 
 function detailRows(agent) {

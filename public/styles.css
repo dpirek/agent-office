@@ -79,6 +79,8 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 .panel-meta, .streaming { color: #aab5b9; font-size: 10px; }
 .header-action { height: 27px; padding: 0 10px; border: 1px solid var(--line); background: #11191c; color: var(--green); font-size: 9px; }
 .header-action:hover { background: #1b272a; }
+.header-action.icon-button { width: 29px; min-width: 29px; height: 29px; display: grid; place-items: center; padding: 0; }
+.header-action.icon-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: square; stroke-linejoin: miter; stroke-width: 1.5; }
 .registry-header-actions { display: flex; align-items: center; gap: 10px; }
 .agent-registry-panel .panel-header > div:first-child { gap: 8px; }
 .agent-registry-panel .panel-header h2 { font-size: 11px; }
