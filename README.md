@@ -31,7 +31,7 @@ The project has no third-party runtime dependencies, so an install step is not r
 2. Edit `.env` and set at least:
 
    ```dotenv
-   AI_HARNESS_WORKSPACE=/absolute/path/to/your/workspace
+   AI_HARNESS_WORKSPACE=/absolute/path/to/agent-office/.workspace
    AI_PROVIDER=openai
    AI_MODEL=gpt-5.1-codex
    AI_API_KEY=your-api-key
@@ -57,9 +57,9 @@ See [`.env.example`](.env.example) for every supported option. The most useful s
 | --- | --- | --- |
 | `HOST` | HTTP and WebSocket bind address | `127.0.0.1` |
 | `PORT` | Server port | `8010` when unset |
-| `AI_HARNESS_WORKSPACE` | Workspace the office manager may access | Current directory |
+| `AI_HARNESS_WORKSPACE` | Workspace the office manager may access | `.workspace` under the current directory |
 | `AI_HARNESS_DATA_DIR` | Root for the SQLite database and runtime state | Current directory |
-| `AI_HARNESS_SHARED_WORKSPACE` | Storage for worker-delivered artifacts | `.office-workspace` under the runtime root |
+| `AI_HARNESS_SHARED_WORKSPACE` | Storage for worker-delivered artifacts | `deliverables` inside the office workspace |
 | `AI_PROVIDER` | `openai`, `ollama`, or `custom` | `openai` |
 | `AI_MODEL` | Model used by the office manager | Provider default |
 | `AI_BASE_URL` | Provider API endpoint | Provider default |
@@ -72,7 +72,7 @@ Tool access and workflow stages can be enabled or disabled with the `AI_HARNESS_
 
 `AI_HARNESS_ALLOW_INSECURE_WEBSOCKET=true` is intended for trusted development environments and browser shells that permit mixed content. Standard browsers generally block `ws://` from an HTTPS page; for those deployments, configure the HTTPS reverse proxy to forward WebSocket upgrades and keep using `wss://`.
 
-Runtime data is stored in `db/ui-state.sqlite` and `.office-workspace/` by default. Set `AI_HARNESS_DATA_DIR` if you want to keep generated state outside the source checkout.
+Runtime data is stored in `db/ui-state.sqlite` by default. Office Manager files and worker deliverables are isolated under `.workspace/`. Set `AI_HARNESS_DATA_DIR` if you want to keep the SQLite database outside the source checkout.
 
 ## Connecting workers
 

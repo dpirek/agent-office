@@ -33,6 +33,11 @@ import {
   environmentDisablesFileAccess,
   loadEnvironmentFile,
 } from "./lib/env-config.js";
+import {
+  isPathWithin,
+  resolveOfficeWorkspaceRoot,
+  resolveSharedWorkspaceRoot,
+} from "./lib/workspace-roots.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageMetadata = JSON.parse(await fs.readFile(path.join(__dirname, "package.json"), "utf8"));
@@ -43,14 +48,15 @@ const fileAccessDisabledByEnvironment = environmentFileDetected
   && environmentDisablesFileAccess(process.env);
 const publicDir = path.join(__dirname, "public");
 const runtimeRoot = path.resolve(process.env.AI_HARNESS_DATA_DIR || process.cwd());
-const defaultWorkspace = path.resolve(process.env.AI_HARNESS_WORKSPACE || process.cwd());
+const defaultWorkspace = resolveOfficeWorkspaceRoot();
 const configPath = path.join(runtimeRoot, ".ai-harness/config.toml");
 const databaseDir = path.join(runtimeRoot, "db");
 const uiStateDatabasePath = path.join(databaseDir, "ui-state.sqlite");
-const sharedWorkspaceRoot = path.resolve(process.env.AI_HARNESS_SHARED_WORKSPACE || path.join(runtimeRoot, ".office-workspace"));
+const sharedWorkspaceRoot = resolveSharedWorkspaceRoot({ officeWorkspaceRoot: defaultWorkspace });
 
 const defaultPort = Number(process.env.PORT || 8010);
 await fs.mkdir(databaseDir, { recursive: true });
+await fs.mkdir(defaultWorkspace, { recursive: true });
 await fs.mkdir(sharedWorkspaceRoot, { recursive: true });
 const connections = new Set();
 let storeClosed = false;
@@ -160,9 +166,19 @@ async function resolveWorkspace(requested) {
   }
   if (requested.length > 4096) throw new Error("Workspace path is too long.");
   const root = path.resolve(defaultWorkspace, requested.trim());
+  if (!isPathWithin(defaultWorkspace, root)) {
+    throw new Error("Workspace path is outside the managed .workspace directory.");
+  }
   const stat = await fs.stat(root);
   if (!stat.isDirectory()) throw new Error(`Workspace is not a directory: ${requested}`);
-  return fs.realpath(root);
+  const [realDefaultWorkspace, realRoot] = await Promise.all([
+    fs.realpath(defaultWorkspace),
+    fs.realpath(root),
+  ]);
+  if (!isPathWithin(realDefaultWorkspace, realRoot)) {
+    throw new Error("Workspace path resolves outside the managed .workspace directory.");
+  }
+  return realRoot;
 }
 
 async function createAgentSession({
