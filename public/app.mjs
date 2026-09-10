@@ -348,8 +348,19 @@ function renderOfficeChat({ preserveScroll = false } = {}) {
         ${message.artifacts?.length ? `<div class="office-board-artifacts">${renderChatArtifacts(message.artifacts)}</div>` : ""}
       </div>
     </article>`).join("") : `<div class="office-board-empty"><strong># CENTRAL-OFFICE IS READY</strong><span>Mention @office-manager or a registered agent to begin.</span></div>`;
-  if (!preserveScroll || wasAtBottom) board.scrollTop = board.scrollHeight;
+  const followLatest = document.body.dataset.page === "chat" && window.matchMedia("(max-width: 1100px)").matches;
+  if (followLatest || !preserveScroll || wasAtBottom) scrollOfficeChatToLatest();
   $("#office-chat-status").textContent = "LIVE CHANNEL";
+}
+
+function scrollOfficeChatToLatest() {
+  const board = $("#office-board-messages");
+  if (!board) return;
+  const scroll = () => { board.scrollTop = board.scrollHeight; };
+  requestAnimationFrame(scroll);
+  $$("img", board).forEach((image) => {
+    if (!image.complete) image.addEventListener("load", scroll, { once: true });
+  });
 }
 
 async function loadOfficeChat({ quiet = false } = {}) {
@@ -378,6 +389,14 @@ function resizeOfficeBoardInput() {
   const input = $("#office-board-input");
   input.style.height = "31px";
   input.style.height = `${Math.min(130, Math.max(31, input.scrollHeight))}px`;
+  requestAnimationFrame(syncOfficeBoardComposerHeight);
+}
+
+function syncOfficeBoardComposerHeight() {
+  const composer = $("#office-board-form");
+  if (!composer) return;
+  document.documentElement.style.setProperty("--office-board-composer-height", `${composer.offsetHeight}px`);
+  if (document.body.dataset.page === "chat" && window.matchMedia("(max-width: 1100px)").matches) scrollOfficeChatToLatest();
 }
 
 function currentChatReply() {
@@ -1470,6 +1489,9 @@ setInterval(() => {
 }, 2000);
 
 renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat(); renderSharedWorkspace();
+syncOfficeBoardComposerHeight();
+window.addEventListener("resize", syncOfficeBoardComposerHeight);
+window.visualViewport?.addEventListener("resize", syncOfficeBoardComposerHeight);
 initPanelMinimizing({ onChange: syncCollapsedPanelLayout });
 initPanelResizing();
 router.start();

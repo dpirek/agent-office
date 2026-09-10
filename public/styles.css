@@ -502,6 +502,14 @@ select {
   body[data-page="tasks"] .task-panel:not(.is-minimized), .operations-panel:not(.is-minimized), .settings-panel:not(.is-minimized), .knowledge-panel:not(.is-minimized), .memory-panel:not(.is-minimized), .shared-workspace-panel:not(.is-minimized), .office-chat-page:not(.is-minimized) { min-height: calc(100dvh - 192px); }
   .settings-body { grid-template-columns: 220px minmax(0, 1fr); min-height: 600px; }
   .office-chat-layout { grid-template-columns: 190px minmax(0, 1fr); min-height: 650px; }
+  body[data-page="chat"] { overflow: hidden; }
+  body[data-page="chat"] .app-frame { height: 100dvh; min-height: 0; }
+  body[data-page="chat"] .workspace { height: calc(100dvh - 192px); min-height: 0; }
+  body[data-page="chat"] .main-content, body[data-page="chat"] .office-chat-page { height: 100%; min-height: 0 !important; }
+  body[data-page="chat"] .office-chat-layout { height: calc(100% - 43px); min-height: 0; }
+  body[data-page="chat"] .office-chat-main { min-height: 0; flex: 1 1 auto; }
+  body[data-page="chat"] .office-board-messages { padding-bottom: calc(var(--office-board-composer-height, 66px) + 14px); overscroll-behavior: contain; }
+  body[data-page="chat"] .office-board-composer { position: fixed; z-index: 89; right: 12px; bottom: calc(84px + env(safe-area-inset-bottom)); left: 12px; margin: 0; box-shadow: 0 -8px 24px #000b; }
   .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
 }
 @media (max-width: 850px) {
@@ -533,6 +541,9 @@ select {
   .agent-form-body { grid-template-columns: 1fr; }.agent-form-body p { grid-column: 1; }
   .settings-body { display: flex; flex-direction: column; }.prompt-list { max-height: 210px; border-right: 0; border-bottom: 1px solid var(--line); }.prompt-editor { min-height: 520px; }
   .office-chat-layout { display: flex; flex-direction: column; min-height: 720px; }.office-chat-sidebar { min-height: auto; border-right: 0; border-bottom: 1px solid var(--line); }.office-chat-sidebar h3, .office-chat-members { display: none; }
+  body[data-page="chat"] .workspace { height: calc(100dvh - 172px); }
+  body[data-page="chat"] .office-chat-layout { height: calc(100% - 43px); min-height: 0; }
+  body[data-page="chat"] .office-board-composer { right: 8px; bottom: calc(78px + env(safe-area-inset-bottom)); left: 8px; }
 }
 @media (max-width: 380px) {
   .office-panel:not(.is-minimized) { min-height: 970px; }
