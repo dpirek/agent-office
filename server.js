@@ -519,7 +519,11 @@ server.on("connection", (socket) => {
     // Browser refreshes and closed WebSockets commonly reset the TCP stream.
     // Keep those disconnects from becoming unhandled process-level errors.
     if (!["ECONNRESET", "EPIPE"].includes(error.code)) {
-      console.error("Client socket error:", error);
+      if (error.code === "HPE_INVALID_METHOD" && error.rawPacket?.[0] === 0x16 && error.rawPacket?.[1] === 0x03) {
+        console.error("HTTPS/TLS traffic reached the Office HTTP port. Use http:// for uploads to a ws:// Office connection; use https:// only through a TLS-enabled endpoint.");
+      } else {
+        console.error("Client socket error:", error);
+      }
     }
   });
   socket.on("close", () => connections.delete(socket));

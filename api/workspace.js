@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import crypto from "node:crypto";
 
 import {
   createConversationWorkspace,
@@ -26,7 +27,7 @@ const ASSET_CONTENT_TYPES = {
   ".webp": "image/webp",
 };
 
-export function createWorkspaceApiHandlers({ uiStateStore, resolveWorkspace }) {
+export function createWorkspaceApiHandlers({ uiStateStore, resolveWorkspace, officeChatService }) {
   async function resolveWorkspaceFile(workspace, requestedPath) {
     const root = await resolveWorkspace(workspace);
     if (typeof requestedPath !== "string" || !requestedPath.trim()) throw new Error("Select a file.");
@@ -85,13 +86,34 @@ export function createWorkspaceApiHandlers({ uiStateStore, resolveWorkspace }) {
       return;
     }
     try {
+      const agentName = String(req.headers["x-agent-name"] || "").trim();
+      const workerUpload = Boolean(agentName || req.headers.authorization);
+      if (workerUpload) {
+        const supplied = Buffer.from(/^Bearer\s+(.+)$/i.exec(String(req.headers.authorization || ""))?.[1] || "");
+        const expected = Buffer.from(uiStateStore.getWorkerToken() || "");
+        if (!expected.length || supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) {
+          json(res, 401, { ok: false, error: "Worker upload credentials were rejected." });
+          return;
+        }
+        if (!agentName || !uiStateStore.getRegisteredWorkers().some((worker) => worker.name === agentName && worker.status === "connected")) {
+          json(res, 403, { ok: false, error: "x-agent-name must identify a connected registered worker." });
+          return;
+        }
+      }
       const declaredSize = Number(req.headers["content-length"]);
       if (Number.isFinite(declaredSize) && declaredSize > MAX_WORKSPACE_UPLOAD_BYTES) {
         throw new Error("File is too large to upload (100 MB maximum).");
       }
-      const root = await resolveWorkspace(url.searchParams.get("workspace"));
+      const root = await resolveWorkspace(url.searchParams.get("workspace") || (workerUpload ? "." : null));
       const content = await readRequestBuffer(req, MAX_WORKSPACE_UPLOAD_BYTES);
       const uploaded = await saveWorkspaceUpload(root, url.searchParams.get("name"), content);
+      const markdown = String(req.headers["content-type"] || "").split(";", 1)[0].trim().toLowerCase() === "text/markdown";
+      if (workerUpload && uploaded.relativePath === "test.md" && markdown && content.length && officeChatService) {
+        uiStateStore.announceWorkerConnectivity(agentName, () => officeChatService.postMessage({
+          author: "Office Manager", username: "office-manager", kind: "system",
+          text: `${agentName} joined the office and has file sending connectivity. Test file received successfully.`,
+        }));
+      }
       json(res, 201, { ok: true, ...uploaded });
     } catch (error) {
       json(res, 400, { ok: false, error: error.message });

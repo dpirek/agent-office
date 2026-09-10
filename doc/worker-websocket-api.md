@@ -128,3 +128,35 @@ The response contains an `artifactId`. Reference that ID in the final socket upd
 ```
 
 Worker-reported final states are `completed` or `failed`; the office may additionally finalize an assignment as `cancelled` or `timed_out`. The office stores final deliverables before acknowledging completion. ZIP files are extracted into a task-specific shared-workspace folder and then deleted; non-archive files are copied there directly. Local file links are attached to the corresponding task and chat message and are available on `/workspace`. The older worker-hosted `artifacts` URL array remains supported for compatibility.
+# Registration connectivity upload
+
+After receiving `registered`, the worker sends raw Markdown to
+`POST /api/workspace-upload?workspace=<workspace>&name=test.md`.
+The worker's `AI_HARNESS_OFFICE_UPLOAD_WORKSPACE` selects the workspace (default `.`).
+Send `Authorization: Bearer <AI_HARNESS_WORKER_TOKEN>`, `x-agent-name` with the
+registered worker name, `content-length` in bytes, and
+`Content-Type: text/markdown; charset=utf-8`. Include the worker name, connection
+ID, join timestamp, and a connectivity-test message in the Markdown body.
+No task or message ID is required, and the Office does not assign a test task.
+
+Once the file is saved, the Office posts a group-chat notice confirming that
+the agent joined and can send files. This notice is recorded once per worker
+name and is not repeated by upload retries, reconnects, or Office restarts.
+
+Use the Office's HTTP origin: translate `ws://` to `http://` and `wss://` to
+`https://`, keeping the host and port. The built-in Office listener uses HTTP;
+HTTPS requires a TLS-enabled proxy. Sending HTTPS directly to the HTTP port
+produces `HPE_INVALID_METHOD` with a TLS packet beginning `16 03`.
+
+For a local Office on port 8005, configure the worker with:
+
+```dotenv
+AI_HARNESS_OFFICE_URL=ws://127.0.0.1:8005/ws/workers
+AI_HARNESS_OFFICE_HTTP_URL=http://127.0.0.1:8005
+```
+
+`AI_HARNESS_OFFICE_HTTP_URL` is an optional worker override; when omitted,
+uploads derive their HTTP(S) origin from `AI_HARNESS_OFFICE_URL`. Remove or
+correct a stale HTTPS override when connecting directly to the HTTP listener.
+Restart the worker after changing its environment. For a remote worker,
+replace `127.0.0.1` with the Office host reachable from that worker.
