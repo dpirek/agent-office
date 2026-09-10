@@ -3,6 +3,7 @@ import { renderChatArtifacts, renderMarkdown } from "./lib/markdown.mjs";
 import { createClientId } from "./lib/client-id.mjs";
 import { initPanelMinimizing } from "./lib/panel-minimize.mjs";
 import { initPanelResizing } from "./lib/panel-resize.mjs";
+import { revealCreatedTask } from "./lib/task-state.mjs";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -1192,6 +1193,8 @@ $("#task-form").addEventListener("submit", async (event) => {
       priority: $("#task-priority").value,
     });
     taskDialog.close();
+    Object.assign(state, revealCreatedTask(state.officeTasks, result.task, state.taskFilter));
+    renderTasks();
     await refreshDashboard({ quiet: true });
     addActivity(`Created unassigned task: ${result.task.title}`, "success");
     addLog("Coordinator", "Task created and waiting for office manager assignment", "success");
