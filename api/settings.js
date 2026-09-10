@@ -39,6 +39,9 @@ export function createSettingsApiHandlers({
       workspaceConfiguredByEnvironment: Boolean(process.env.AI_HARNESS_WORKSPACE?.trim()),
       environmentFileDetected,
       fileAccessDisabledByEnvironment,
+      allowInsecureWebSocket: /^(1|true|yes|on)$/i.test(
+        String(process.env.AI_HARNESS_ALLOW_INSECURE_WEBSOCKET || "").trim(),
+      ),
     });
   }
 

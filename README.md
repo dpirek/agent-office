@@ -66,8 +66,11 @@ See [`.env.example`](.env.example) for every supported option. The most useful s
 | `AI_API_KEY` | Provider credential | Empty |
 | `AI_HARNESS_WORKER_TOKEN` | Shared credential used for worker registration | Not set |
 | `AI_HARNESS_TASK_PROGRESS_CHECK_INTERVAL_MS` | Interval for checking long-running tasks | `300000` (5 minutes) |
+| `AI_HARNESS_ALLOW_INSECURE_WEBSOCKET` | Force the dashboard connection to use `ws://`, including from an HTTPS page | `false` |
 
 Tool access and workflow stages can be enabled or disabled with the `AI_HARNESS_TOOL_*` and `AI_HARNESS_WORKFLOW_*` variables shown in `.env.example`.
+
+`AI_HARNESS_ALLOW_INSECURE_WEBSOCKET=true` is intended for trusted development environments and browser shells that permit mixed content. Standard browsers generally block `ws://` from an HTTPS page; for those deployments, configure the HTTPS reverse proxy to forward WebSocket upgrades and keep using `wss://`.
 
 Runtime data is stored in `db/ui-state.sqlite` and `.office-workspace/` by default. Set `AI_HARNESS_DATA_DIR` if you want to keep generated state outside the source checkout.
 

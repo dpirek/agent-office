@@ -4,6 +4,7 @@ import { createClientId } from "./lib/client-id.mjs";
 import { initPanelMinimizing } from "./lib/panel-minimize.mjs";
 import { initPanelResizing } from "./lib/panel-resize.mjs";
 import { revealCreatedTask } from "./lib/task-state.mjs";
+import { createOfficeWebSocketUrl } from "./lib/websocket-url.mjs";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -1023,8 +1024,9 @@ function handleSocketMessage(message) {
 }
 
 function connectSocket() {
-  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  const socket = new WebSocket(`${protocol}//${location.host}/ws`);
+  const socket = new WebSocket(createOfficeWebSocketUrl(location, {
+    allowInsecure: state.health?.allowInsecureWebSocket === true,
+  }));
   state.socket = socket;
   socket.addEventListener("open", () => addLog("System", "Live orchestration channel opened", "success"));
   socket.addEventListener("message", (event) => {
@@ -1582,8 +1584,7 @@ window.visualViewport?.addEventListener("resize", syncOfficeBoardComposerHeight)
 initPanelMinimizing({ onChange: syncCollapsedPanelLayout });
 initPanelResizing();
 router.start();
-connectSocket();
-void refreshDashboard();
+void refreshDashboard().finally(connectSocket);
 void loadSystemPrompts();
 void loadConfigurationSettings();
 void loadSkills();
