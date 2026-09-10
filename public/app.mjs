@@ -296,7 +296,7 @@ function renderSelectedAgent() {
   $("#selected-name").textContent = agent.name;
   $("#selected-status").textContent = agent.status;
   $("#selected-description").textContent = agent.description;
-  $("#selected-portrait").innerHTML = `<img src="/assets/office/${officeSprite(agent, officeAgents().indexOf(agent))}.png" alt="" draggable="false">`;
+  $("#selected-portrait").innerHTML = `<img src="/assets/avatars/${officeSprite(agent, officeAgents().indexOf(agent))}.png" alt="" draggable="false">`;
   $("#agent-details").innerHTML = detailRows(agent).map(([key, value]) => `<div class="detail-row"><label>${escapeHtml(key)}</label><span class="${key === "STATUS" && ["ready", "running"].includes(value) ? "green" : ""}">${escapeHtml(value)}</span></div>`).join("");
 }
 
@@ -329,15 +329,19 @@ function renderChat() {
   $("#chat-input").disabled = state.chatRunning;
 }
 
-function chatInitials(name) {
-  return String(name || "?").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-}
-
 function chatAvatar(message) {
   if (message.kind === "user") {
     return `<svg class="human-avatar-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.25"></circle><path d="M5.5 20v-2.2c0-3.7 2.9-6.3 6.5-6.3s6.5 2.6 6.5 6.3V20z"></path></svg>`;
   }
-  return escapeHtml(chatInitials(message.author));
+  const memberIndex = state.officeChatMembers.findIndex((member) => member.username === message.username);
+  const member = state.officeChatMembers[memberIndex];
+  const agent = {
+    name: message.author,
+    role: member?.description || "",
+    internal: message.username === "office-manager",
+  };
+  const sprite = officeSprite(agent, Math.max(1, memberIndex));
+  return `<img class="agent-avatar-sprite" src="/assets/avatars/${sprite}.png" alt="" draggable="false">`;
 }
 
 function renderOfficeChat({ preserveScroll = false } = {}) {
