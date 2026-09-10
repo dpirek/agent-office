@@ -49,12 +49,27 @@ export function renderDashboardOfficeChatMessages(messages = []) {
     </article>`).join("");
 }
 
+export async function postDashboardOfficeChat(fetchImpl, text) {
+  const response = await fetchImpl("/api/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+}
+
 export function initializeDashboardOfficeChat({ documentRef = document, fetchImpl = fetch, intervalMs = 2_000 } = {}) {
   const board = documentRef.querySelector("#dashboard-office-board-messages");
   const status = documentRef.querySelector("#dashboard-office-chat-status");
+  const form = documentRef.querySelector("#dashboard-office-chat-form");
+  const input = documentRef.querySelector("#dashboard-office-chat-input");
+  const sendButton = documentRef.querySelector("#dashboard-office-chat-send");
   if (!board) return () => {};
   let markup = null;
   let loading = false;
+  let posting = false;
 
   const scrollToLatest = () => {
     board.scrollTop = board.scrollHeight;
@@ -83,12 +98,55 @@ export function initializeDashboardOfficeChat({ documentRef = document, fetchImp
     }
   };
 
+  const resizeInput = () => {
+    if (!input) return;
+    input.style.height = "34px";
+    input.style.height = `${Math.min(96, Math.max(34, input.scrollHeight))}px`;
+    input.style.overflowY = input.scrollHeight > 96 ? "auto" : "hidden";
+  };
+  const submit = async (event) => {
+    event.preventDefault();
+    const text = input?.value.trim();
+    if (!text || posting) return;
+    posting = true;
+    if (sendButton) sendButton.disabled = true;
+    if (input) input.disabled = true;
+    if (status) status.textContent = "SENDING…";
+    try {
+      await postDashboardOfficeChat(fetchImpl, text);
+      input.value = "";
+      resizeInput();
+      await refresh();
+    } catch {
+      if (status) status.textContent = "SEND FAILED";
+    } finally {
+      posting = false;
+      if (sendButton) sendButton.disabled = false;
+      if (input) {
+        input.disabled = false;
+        input.focus();
+      }
+    }
+  };
+  const handleKeydown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      form?.requestSubmit();
+    }
+  };
+
   const timer = setInterval(refresh, intervalMs);
   window.addEventListener("routechange", refresh);
+  form?.addEventListener("submit", submit);
+  input?.addEventListener("input", resizeInput);
+  input?.addEventListener("keydown", handleKeydown);
   void refresh();
   return () => {
     clearInterval(timer);
     window.removeEventListener("routechange", refresh);
+    form?.removeEventListener("submit", submit);
+    input?.removeEventListener("input", resizeInput);
+    input?.removeEventListener("keydown", handleKeydown);
   };
 }
 

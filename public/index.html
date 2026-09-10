@@ -67,6 +67,10 @@
             <section class="panel dashboard-office-chat-panel" data-view="dashboard">
               <header class="panel-header"><div><span class="header-icon">◫</span><h2>OFFICE CHAT</h2></div><span class="panel-meta" id="dashboard-office-chat-status">LIVE FEED</span></header>
               <div class="office-board-messages dashboard-office-board-messages panel-body" id="dashboard-office-board-messages" aria-live="polite"></div>
+              <form class="dashboard-office-chat-composer panel-body" id="dashboard-office-chat-form">
+                <textarea id="dashboard-office-chat-input" rows="1" maxlength="100000" required placeholder="Message #central-office · use @name" aria-label="Message central office from dashboard"></textarea>
+                <button class="primary chat-send-button" id="dashboard-office-chat-send" type="submit">SEND</button>
+              </form>
             </section>
 
             <section class="panel logs-panel" data-view="dashboard">
