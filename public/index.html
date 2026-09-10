@@ -57,9 +57,8 @@
                 <div class="agent-summary">
                   <div class="portrait" id="selected-portrait"><span>◉</span></div>
                   <div class="agent-summary-copy"><strong id="selected-name">No agent selected</strong><span><i class="status-dot empty"></i><b id="selected-status">unregistered</b></span><small id="selected-description">Waiting for a WebSocket worker to connect</small></div>
-                  <div class="agent-controls"><button id="pause-button" title="Pause agent">Ⅱ</button><button id="stop-button" title="Clear run">■</button><button title="Agent actions">•••</button></div>
                 </div>
-                <div class="tabs" role="tablist"><button class="active" data-tab="details">DETAILS</button><button data-tab="tasks">TASKS</button><button data-tab="tools">TOOLS</button><button data-tab="memory">MEMORY</button><button data-tab="logs">LOGS</button></div>
+                <div class="tabs" role="tablist" aria-label="Selected agent information"><button class="active" type="button" role="tab" aria-selected="true" data-tab="details">DETAILS</button><button type="button" role="tab" aria-selected="false" data-tab="tasks">TASKS</button><button type="button" role="tab" aria-selected="false" data-tab="capabilities">CAPABILITIES</button><button type="button" role="tab" aria-selected="false" data-tab="memory">MEMORY</button><button type="button" role="tab" aria-selected="false" data-tab="logs">LOGS</button></div>
                 <div class="detail-table" id="agent-details"></div>
               </div>
             </section>

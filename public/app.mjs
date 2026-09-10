@@ -75,7 +75,6 @@ const state = {
   socket: null,
   socketReady: false,
   runningTaskId: null,
-  paused: false,
 };
 
 function escapeHtml(value) {
@@ -230,10 +229,18 @@ function detailRows(agent) {
   const tasks = allTasks().filter((task) => task.agent === agent.name);
   const runningTask = tasks.find((task) => task.status === "running");
   const currentTask = agent.internal && state.chatRunning ? "Handling office conversation" : runningTask?.title || "Standing by";
+  const capabilities = agent.capabilities || {};
+  const skills = (capabilities.skills || []).map((skill) => skill.name || skill.id).filter(Boolean);
+  const capabilityTools = capabilities.tools?.length ? capabilities.tools : agent.tools.split(", ").filter(Boolean);
   const base = {
     details: [["ID", agent.id], ["ROLE", agent.role], ["MODEL", model], ["STATUS", agent.status], ["CURRENT TASK", currentTask], ["WORKSPACE", workspace], ["TOOLS", agent.tools], ["TASKS (SESSION)", String(tasks.length)], ["UPTIME", formatUptime()]],
     tasks: tasks.length ? tasks.slice(0, 9).map((task) => [task.status.toUpperCase(), task.title]) : [["QUEUE", "No tasks assigned in this session"]],
-    tools: agent.tools.split(", ").map((tool, index) => [`TOOL ${index + 1}`, tool]),
+    capabilities: [
+      ["SKILLS", skills.join(", ") || (agent.internal ? "Office orchestration" : "None reported")],
+      ["TOOLS", capabilityTools.join(", ") || "None reported"],
+      ["MCP", capabilities.mcp ? "Enabled" : "Not reported"],
+      ["ARTIFACT DELIVERY", capabilities.workspaceArtifacts ? "Supported" : "Not reported"],
+    ],
     memory: [["SESSION", sessionId.slice(0, 12)], ["CONTEXT", `${tasks.length} task records`], ["PERSISTENCE", "Workspace state enabled"]],
     logs: state.activity.slice(-8).reverse().map((entry) => [clock(entry.at), entry.text]),
   };
@@ -249,12 +256,8 @@ function renderSelectedAgent() {
     $("#selected-portrait span").textContent = "—";
     $(".agent-summary-copy .status-dot").classList.add("empty");
     $("#agent-details").innerHTML = `<div class="detail-row"><label>STATUS</label><span>No registered agents</span></div>`;
-    $("#pause-button").disabled = true;
-    $("#stop-button").disabled = true;
     return;
   }
-  $("#pause-button").disabled = false;
-  $("#stop-button").disabled = false;
   $(".agent-summary-copy .status-dot").classList.remove("empty");
   $("#selected-name").textContent = agent.name;
   $("#selected-status").textContent = agent.status;
@@ -904,12 +907,10 @@ function handleSocketMessage(message) {
     return;
   }
   if (message.type === "run_paused") {
-    state.paused = true; $("#pause-button").classList.add("paused"); $("#pause-button").textContent = "▶";
     addActivity("Workflow paused at a safe boundary");
     return;
   }
   if (message.type === "run_resumed") {
-    state.paused = false; $("#pause-button").classList.remove("paused"); $("#pause-button").textContent = "Ⅱ";
     addActivity("Workflow resumed", "success");
     return;
   }
@@ -981,15 +982,6 @@ function refreshOrchestratorConnection() {
 }
 
 $("#refresh-button").addEventListener("click", () => void refreshDashboard());
-$("#pause-button").addEventListener("click", () => {
-  if ((!state.runningTaskId && !state.chatRunning) || !state.socketReady) { showToast("No active workflow to pause."); return; }
-  state.socket.send(JSON.stringify({ type: state.paused ? "resume" : "pause", sessionId }));
-});
-$("#stop-button").addEventListener("click", () => {
-  if (state.runningTaskId || state.chatRunning) { showToast("Runs stop at safe tool boundaries; pause first if needed."); return; }
-  state.activity = []; renderActivity(); addLog("System", "Activity view cleared");
-});
-
 $("#chat-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const input = $("#chat-input");
@@ -1079,7 +1071,11 @@ $("#office-chat-members").addEventListener("click", (event) => {
 
 $$('.tabs button').forEach((button) => button.addEventListener("click", () => {
   state.activeTab = button.dataset.tab;
-  $$(".tabs button").forEach((entry) => entry.classList.toggle("active", entry === button));
+  $$(".tabs button").forEach((entry) => {
+    const active = entry === button;
+    entry.classList.toggle("active", active);
+    entry.setAttribute("aria-selected", String(active));
+  });
   renderSelectedAgent();
 }));
 
