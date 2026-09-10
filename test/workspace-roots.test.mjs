@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
   isPathWithin,
   resolveOfficeWorkspaceRoot,
@@ -29,6 +31,43 @@ test("explicit workspace locations remain supported", () => {
     officeWorkspaceRoot: workspace,
     configuredSharedWorkspace: " /data/deliveries ",
   }), path.resolve("/data/deliveries"));
+});
+
+test("relative configured paths resolve from the supplied application root", () => {
+  const workspace = resolveOfficeWorkspaceRoot({
+    cwd: "/srv/agent-office", configuredWorkspace: " work ",
+  });
+  assert.equal(workspace, "/srv/agent-office/work");
+  assert.equal(resolveSharedWorkspaceRoot({
+    cwd: "/srv/agent-office", officeWorkspaceRoot: workspace,
+    configuredSharedWorkspace: " deliveries ",
+  }), "/srv/agent-office/deliveries");
+});
+
+test("launching Node outside the source directory does not change workspace roots", () => {
+  const moduleUrl = new URL("../lib/workspace-roots.js", import.meta.url).href;
+  const appRoot = fileURLToPath(new URL("../", import.meta.url));
+  const script = `
+    import { resolveOfficeWorkspaceRoot, resolveSharedWorkspaceRoot } from ${JSON.stringify(moduleUrl)};
+    const workspace = resolveOfficeWorkspaceRoot({ configuredWorkspace: '' });
+    console.log(JSON.stringify({
+      workspace,
+      shared: resolveSharedWorkspaceRoot({ officeWorkspaceRoot: workspace, configuredSharedWorkspace: '' }),
+      configured: resolveOfficeWorkspaceRoot({ configuredWorkspace: './custom' }),
+      configuredShared: resolveSharedWorkspaceRoot({ officeWorkspaceRoot: workspace, configuredSharedWorkspace: './deliveries' }),
+    }));
+  `;
+  const expected = {
+    workspace: path.join(appRoot, ".workspace"),
+    shared: path.join(appRoot, ".workspace/deliverables"),
+    configured: path.join(appRoot, "custom"),
+    configuredShared: path.join(appRoot, "deliveries"),
+  };
+  for (const cwd of [appRoot, path.dirname(appRoot), path.parse(appRoot).root]) {
+    assert.deepEqual(JSON.parse(execFileSync(process.execPath, ["--input-type=module", "-e", script], {
+      cwd, encoding: "utf8",
+    })), expected);
+  }
 });
 
 test("workspace containment rejects parent and sibling paths", () => {

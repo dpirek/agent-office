@@ -57,7 +57,7 @@ See [`.env.example`](.env.example) for every supported option. The most useful s
 | --- | --- | --- |
 | `HOST` | HTTP and WebSocket bind address | `127.0.0.1` |
 | `PORT` | Server port | `8010` when unset |
-| `AI_HARNESS_WORKSPACE` | Workspace the office manager may access | `.workspace` under the current directory |
+| `AI_HARNESS_WORKSPACE` | Workspace the office manager may access | `.workspace` under the application directory |
 | `AI_HARNESS_DATA_DIR` | Root for the SQLite database and runtime state | Current directory |
 | `AI_HARNESS_SHARED_WORKSPACE` | Storage for worker-delivered artifacts | `deliverables` inside the office workspace |
 | `AI_PROVIDER` | `openai`, `ollama`, or `custom` | `openai` |
@@ -73,6 +73,13 @@ Tool access and workflow stages can be enabled or disabled with the `AI_HARNESS_
 `AI_HARNESS_ALLOW_INSECURE_WEBSOCKET=true` is intended for trusted development environments and browser shells that permit mixed content. Standard browsers generally block `ws://` from an HTTPS page; for those deployments, configure the HTTPS reverse proxy to forward WebSocket upgrades and keep using `wss://`.
 
 Runtime data is stored in `db/ui-state.sqlite` by default. Office Manager files and worker deliverables are isolated under `.workspace/`. Set `AI_HARNESS_DATA_DIR` if you want to keep the SQLite database outside the source checkout.
+
+Default and relative `AI_HARNESS_WORKSPACE` and `AI_HARNESS_SHARED_WORKSPACE` paths
+resolve from the directory containing `server.js`, regardless of where Node.js
+is launched. Delivery storage and the workspace file API use these same resolved
+roots. Absolute paths are used as configured. If an earlier launch stored files
+under another directory, set an absolute workspace path to keep using those files;
+existing files are not moved automatically.
 
 ## Connecting workers
 

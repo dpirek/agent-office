@@ -49,11 +49,11 @@ const fileAccessDisabledByEnvironment = environmentFileDetected
   && environmentDisablesFileAccess(process.env);
 const publicDir = path.join(__dirname, "public");
 const runtimeRoot = path.resolve(process.env.AI_HARNESS_DATA_DIR || process.cwd());
-const defaultWorkspace = resolveOfficeWorkspaceRoot();
+const defaultWorkspace = resolveOfficeWorkspaceRoot({ cwd: __dirname });
 const configPath = path.join(runtimeRoot, ".ai-harness/config.toml");
 const databaseDir = path.join(runtimeRoot, "db");
 const uiStateDatabasePath = path.join(databaseDir, "ui-state.sqlite");
-const sharedWorkspaceRoot = resolveSharedWorkspaceRoot({ officeWorkspaceRoot: defaultWorkspace });
+const sharedWorkspaceRoot = resolveSharedWorkspaceRoot({ officeWorkspaceRoot: defaultWorkspace, cwd: __dirname });
 
 const defaultPort = Number(process.env.PORT || 8010);
 await fs.mkdir(databaseDir, { recursive: true });

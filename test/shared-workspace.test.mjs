@@ -4,6 +4,35 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { createSharedWorkspace, extractZip } from "../lib/shared-workspace.js";
+import { createSharedWorkspaceApiHandlers } from "../api/shared-workspace.js";
+import { resolveOfficeWorkspaceRoot, resolveSharedWorkspaceRoot } from "../lib/workspace-roots.js";
+
+test("the workspace API lists and opens files from the delivery storage root", async (context) => {
+  const appRoot = fs.mkdtempSync(path.join(os.tmpdir(), "office-delivery-root-"));
+  context.after(() => fs.rmSync(appRoot, { recursive: true, force: true }));
+  const officeWorkspaceRoot = resolveOfficeWorkspaceRoot({ cwd: appRoot, configuredWorkspace: "custom-work" });
+  const sharedWorkspaceRoot = resolveSharedWorkspaceRoot({ officeWorkspaceRoot, configuredSharedWorkspace: "" });
+  const workspace = createSharedWorkspace({ root: sharedWorkspaceRoot, fetchImpl: async () => new Response("Delivered report") });
+  const [artifact] = await workspace.storeTaskArtifacts({ title: "Report", taskId: "task-1" }, [{
+    name: "report.txt", mimeType: "text/plain", uri: "http://worker.test/report.txt",
+  }]);
+  const handlers = createSharedWorkspaceApiHandlers({ sharedWorkspaceRoot });
+  const response = () => ({
+    status: null, body: null,
+    writeHead(status) { this.status = status; },
+    end(body) { this.body = body; },
+  });
+  const listing = response();
+  await handlers["/api/shared-workspace"]({ method: "GET" }, listing);
+  assert.equal(listing.status, 200);
+  const data = JSON.parse(listing.body);
+  assert.equal(data.root, path.join(appRoot, "custom-work/deliverables"));
+  assert.equal(data.tree[0].children[0].path, artifact.workspacePath);
+  const download = response();
+  await handlers["/api/shared-workspace-file"]({ method: "GET" }, download, new URL(artifact.uri, "http://office.test"));
+  assert.equal(download.status, 200);
+  assert.equal(download.body.toString(), "Delivered report");
+});
 
 function zip(entries) {
   const localParts = [];
