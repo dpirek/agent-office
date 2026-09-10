@@ -1,10 +1,11 @@
 import Router from "./lib/router.mjs";
 import { renderChatArtifacts, renderMarkdown } from "./lib/markdown.mjs";
+import { createClientId } from "./lib/client-id.mjs";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const startedAt = Date.now();
-const sessionId = crypto.randomUUID();
+const sessionId = createClientId();
 
 const ROLE_AGENTS = [
   { name: "Researcher", role: "Research Specialist", description: "Finds evidence and explores the problem space", tools: "browser, search, filesystem" },
