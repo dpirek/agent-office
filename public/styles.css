@@ -32,8 +32,6 @@ h1, h2, p { margin: 0; }
 .topbar, .sidebar, .panel, .metric { border: 1px solid var(--line); background: linear-gradient(120deg, #0a1012f7, #080d0ff7); box-shadow: inset 0 0 0 3px #070b0d, inset 0 0 0 4px var(--line-dim); }
 .topbar { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; min-width: 0; }
 .terminal-logo { display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--line-dim); font-size: 31px; font-weight: 800; }
-.terminal-logo i { font-style: normal; animation: blink 1s steps(1) infinite; }
-@keyframes blink { 50% { opacity: 0; } }
 .brand { align-self: stretch; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 12px 20px; overflow: hidden; }
 .brand h1 { font-size: clamp(20px, 2vw, 29px); line-height: 1; letter-spacing: .075em; text-transform: uppercase; text-shadow: 0 0 14px #fff2; }
 .brand p { margin-top: 7px; color: #bac5ca; letter-spacing: .08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -221,7 +219,6 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .chat-message-content { min-width: 180px; padding: 11px 13px; border: 1px solid var(--line-dim); background: #101719; color: #dce5e2; line-height: 1.55; overflow-wrap: anywhere; }
 .chat-message.user .chat-message-content { border-color: #37604b; background: #10231a; }
 .chat-message.agent .chat-message-content { border-left: 2px solid var(--green); }
-.chat-message.streaming .chat-message-content::after { display: inline-block; width: 7px; height: 12px; margin-left: 4px; background: var(--green); content: ""; vertical-align: -2px; animation: blink 1s steps(1) infinite; }
 .chat-message.error .chat-message-content { border-color: var(--red); border-left-color: var(--red); color: #ffb2b5; }
 .chat-composer { flex: 0 0 auto; min-height: 58px; display: grid; grid-template-columns: minmax(0, 1fr) 92px; align-items: end; gap: 10px; padding: 10px; border-top: 1px solid var(--line); box-shadow: none; }
 .chat-composer textarea { width: 100%; height: 36px; max-height: 160px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 0; outline: 0; overflow-y: hidden; resize: none; background: #05090a; line-height: 1.45; }
@@ -466,42 +463,80 @@ select {
 }
 
 @media (max-width: 1100px) {
-  .workspace { grid-template-columns: 64px minmax(0, 1fr); }
-  .sidebar { overflow: visible; }
-  .nav-items { padding-top: 7px; }
-  .nav-item { position: relative; height: 56px; justify-content: center; gap: 0; padding: 0; font-size: 0; }
+  html, body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: auto; }
+  .app-frame { height: auto; min-height: 100dvh; display: block; padding: 12px 12px calc(84px + env(safe-area-inset-bottom)); }
+  .topbar { height: 86px; grid-template-columns: 56px minmax(0, 1fr) 68px; margin-bottom: 10px; }
+  .terminal-logo { font-size: 29px; }
+  .brand { padding: 10px 15px; }
+  .brand h1 { font-size: 23px; }
+  .brand p { max-width: 100%; }
+  .top-actions { justify-content: center; padding: 0 9px; }
+  .online-pill { width: 48px; min-width: 48px; }
+  .online-pill span:last-child { display: none; }
+  .workspace { display: block; }
+  .sidebar { position: fixed; z-index: 90; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); left: 10px; height: 64px; min-height: 64px; display: block; overflow: hidden; background: #080d0ff2; box-shadow: inset 0 0 0 3px #070b0d, inset 0 0 0 4px var(--line-dim), 0 -8px 25px #000a; backdrop-filter: blur(8px); }
+  .nav-items { height: 100%; display: flex; padding: 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .nav-items::-webkit-scrollbar { display: none; }
+  .nav-item { position: relative; width: auto; height: 54px; min-width: 72px; flex: 1 0 72px; flex-direction: column; justify-content: center; gap: 1px; padding: 0 5px; border: 0; border-right: 1px solid var(--line-dim); font-size: 7px; text-align: center; }
   .nav-item:first-child { border-top: 0; }
-  .nav-icon { width: 40px; height: 40px; display: grid; place-items: center; font-size: 20px; line-height: 1; }
-  .nav-item.active { background: #1e292d; box-shadow: inset 3px 0 var(--green); }
+  .nav-item:last-child { border-right: 0; }
+  .nav-icon { width: 28px; height: 28px; display: grid; place-items: center; font-size: 18px; line-height: 1; }
+  .nav-item.active { background: #1e292d; box-shadow: inset 0 -3px var(--green); }
   .nav-item.active .nav-icon { color: var(--green); text-shadow: 0 0 9px #43ec8d66; }
-  .nav-item::after { position: absolute; z-index: 30; left: calc(100% + 9px); top: 50%; padding: 7px 9px; border: 1px solid var(--line); background: #0b1113; box-shadow: 0 5px 18px #000a; color: var(--text); content: attr(aria-label); font-size: 9px; letter-spacing: .05em; opacity: 0; pointer-events: none; transform: translate(-4px, -50%); transition: opacity .12s, transform .12s; white-space: nowrap; }
-  .nav-item:hover::after, .nav-item:focus-visible::after { opacity: 1; transform: translate(0, -50%); }
-  .main-content { grid-template-columns: var(--main-left-width, minmax(480px, 1.4fr)) 10px minmax(350px, 1fr); }
-}
-@media (max-width: 850px) {
-  html, body { overflow: auto; }
-  .app-frame { height: auto; min-height: 100dvh; grid-template-rows: 96px auto; }
-  .online-pill span:last-child { display: none; }.online-pill { min-width: 48px; }
-  .workspace { grid-template-columns: 1fr; }.sidebar { display: none; }
-  .main-content { display: flex; flex-direction: column; }
+  .main-content { display: flex; flex-direction: column; gap: 10px; }
   .panel-width-resizer { display: none !important; }
-  .operations-grid, .bottom-grid { display: grid; grid-template-columns: 1fr; }
-  .office-panel, .right-column, .chat-panel, .task-panel { grid-column: auto; grid-row: auto; }
-  .office { min-height: 430px; }.right-column { min-height: 510px; }
-  .right-column { grid-template-rows: minmax(255px, 1fr) 155px 205px; }
-  .chat-panel { min-height: 540px; }.task-panel, .logs-panel { min-height: 210px; }
+  .operations-grid, .bottom-grid { display: flex; flex-direction: column; gap: 10px; }
+  .office-panel, .right-column, .chat-panel, .task-panel { width: 100%; grid-column: auto; grid-row: auto; }
+  .right-column > .panel, .main-content > .panel { width: 100%; }
+  .right-column { min-height: 0; display: flex; flex-direction: column; }
+  .right-column > .panel:not(.is-minimized) { flex: none; }
+  .selected-panel:not(.is-minimized) { min-height: 385px; }
+  .activity-panel:not(.is-minimized), .logs-panel:not(.is-minimized) { min-height: 190px; }
+  .agent-registry-panel:not(.is-minimized) { min-height: 220px; }
+  .office-panel:not(.is-minimized) { min-height: 500px; }
+  .office { min-height: 455px; }
+  .agent-floor { inset: 92px 12px 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(174px, 1fr)); align-content: space-around; justify-items: center; gap: 14px; }
+  .desk-agent, .desk-agent:only-child, .desk-agent.manager:first-child, .desk-agent:nth-child(n) { position: relative; inset: auto; }
+  .chat-panel:not(.is-minimized) { min-height: 560px; }
+  body[data-page="dashboard"] .bottom-grid { order: -1; }
+  body[data-page="tasks"] .task-panel:not(.is-minimized), .operations-panel:not(.is-minimized), .settings-panel:not(.is-minimized), .knowledge-panel:not(.is-minimized), .memory-panel:not(.is-minimized), .shared-workspace-panel:not(.is-minimized), .office-chat-page:not(.is-minimized) { min-height: calc(100dvh - 192px); }
   .settings-body { grid-template-columns: 220px minmax(0, 1fr); min-height: 600px; }
   .office-chat-layout { grid-template-columns: 190px minmax(0, 1fr); min-height: 650px; }
+  .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
 }
-@media (max-width: 540px) {
-  .app-frame { padding: 18px; }.topbar { grid-template-columns: 51px 1fr auto; }
-  .brand h1 { font-size: 17px; }.brand p { font-size: 8px; }
-  .office { min-height: 520px; }.agent-floor { inset-inline: 4px; }
-  .desk-agent { transform: scale(.82); transform-origin: top left; }
-  .desk-agent:nth-child(1), .desk-agent:nth-child(4) { left: 0; }.desk-agent:nth-child(3), .desk-agent:nth-child(6) { right: -20px; }
+@media (max-width: 850px) {
+  .brand h1 { font-size: 20px; }
+  .panel-header { padding-inline: 11px; }
+  .panel-header-actions { gap: 7px; }
+}
+@media (max-width: 600px) {
+  .app-frame { padding: 8px 8px calc(78px + env(safe-area-inset-bottom)); }
+  .topbar { height: 76px; grid-template-columns: 45px minmax(0, 1fr) 53px; }
+  .terminal-logo { font-size: 25px; }
+  .brand { padding: 8px 11px; }
+  .brand h1 { font-size: clamp(15px, 5vw, 19px); letter-spacing: .055em; }
+  .brand p:not(.brand-context) { display: none; }
+  .brand .brand-context { margin-top: 7px; font-size: 8px; }
+  .top-actions { padding: 0 6px; }
+  .online-pill { width: 38px; min-width: 38px; height: 38px; }
+  .sidebar { right: 6px; bottom: max(6px, env(safe-area-inset-bottom)); left: 6px; height: 62px; min-height: 62px; }
+  .nav-item { min-width: 64px; flex-basis: 64px; }
+  .panel-header h2 { overflow: hidden; font-size: 11px; text-overflow: ellipsis; }
+  .panel-meta, .streaming { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .agent-registry-panel .panel-meta { display: none; }
+  .office-panel:not(.is-minimized) { min-height: 650px; }
+  .office { min-height: 605px; }
+  .agent-floor { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 2px; }
+  .desk-agent { transform: scale(.84); }
+  .desk-agent:only-child { grid-column: 1 / -1; justify-self: center; }
   .agent-summary { grid-template-columns: 65px 1fr; }.portrait { width: 64px; height: 66px; }
   .agent-form-body { grid-template-columns: 1fr; }.agent-form-body p { grid-column: 1; }
   .settings-body { display: flex; flex-direction: column; }.prompt-list { max-height: 210px; border-right: 0; border-bottom: 1px solid var(--line); }.prompt-editor { min-height: 520px; }
   .office-chat-layout { display: flex; flex-direction: column; min-height: 720px; }.office-chat-sidebar { min-height: auto; border-right: 0; border-bottom: 1px solid var(--line); }.office-chat-sidebar h3, .office-chat-members { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .terminal-logo i { animation: none; }.toast { transition: none; } }
+@media (max-width: 380px) {
+  .office-panel:not(.is-minimized) { min-height: 970px; }
+  .office { min-height: 925px; }
+  .agent-floor { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }

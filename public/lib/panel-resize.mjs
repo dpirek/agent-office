@@ -48,7 +48,7 @@ function initPanelResizing({
 
   function apply(nextRatio = ratio) {
     ratio = normalizePanelRatio(nextRatio, ratio);
-    const compact = window.matchMedia("(max-width: 850px)").matches;
+    const compact = window.matchMedia("(max-width: 1100px)").matches;
     resizer.setAttribute("aria-disabled", String(compact));
     if (compact) {
       container.style.removeProperty("--main-left-width");

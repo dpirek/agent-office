@@ -112,7 +112,12 @@ function renderPage(section) {
   $$(".nav-item").forEach((item) => {
     const active = item.dataset.section === section;
     item.classList.toggle("active", active);
-    if (active) item.setAttribute("aria-current", "page");
+    if (active) {
+      item.setAttribute("aria-current", "page");
+      if (window.matchMedia("(max-width: 1100px)").matches) {
+        queueMicrotask(() => item.scrollIntoView({ block: "nearest", inline: "center" }));
+      }
+    }
     else item.removeAttribute("aria-current");
   });
 
