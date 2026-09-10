@@ -2,6 +2,7 @@ import Router from "./lib/router.mjs";
 import { renderChatArtifacts, renderMarkdown } from "./lib/markdown.mjs";
 import { createClientId } from "./lib/client-id.mjs";
 import { initPanelMinimizing } from "./lib/panel-minimize.mjs";
+import { initPanelResizing } from "./lib/panel-resize.mjs";
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -995,7 +996,6 @@ function refreshOrchestratorConnection() {
   }
 }
 
-$("#refresh-button").addEventListener("click", () => void refreshDashboard());
 $("#chat-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const input = $("#chat-input");
@@ -1464,6 +1464,7 @@ setInterval(() => {
 
 renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderActivity(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat(); renderSharedWorkspace();
 initPanelMinimizing({ onChange: syncCollapsedPanelLayout });
+initPanelResizing();
 router.start();
 connectSocket();
 void refreshDashboard();

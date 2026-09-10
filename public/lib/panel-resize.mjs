@@ -1,201 +1,112 @@
-const STORAGE_KEY = "agent-worker.panel-layout.v1";
-const DEFAULT_LAYOUT = Object.freeze({
-  dashboard: Object.freeze([0.573, 0.427]),
-  rightRail: Object.freeze([0.3725, 0.345, 0.2825]),
-});
+const STORAGE_KEY = "agent-office.panel-widths.v1";
+const DEFAULT_PANEL_RATIO = 0.627;
+const MIN_LEFT_WIDTH = 360;
+const MIN_RIGHT_WIDTH = 320;
 
-function normalizedShares(value, length, fallback) {
-  if (!Array.isArray(value) || value.length !== length || value.some((part) => !Number.isFinite(part) || part <= 0)) {
-    return [...fallback];
-  }
-  const total = value.reduce((sum, part) => sum + part, 0);
-  return value.map((part) => part / total);
+function normalizePanelRatio(value, fallback = DEFAULT_PANEL_RATIO) {
+  return Number.isFinite(value) && value > 0 && value < 1 ? value : fallback;
 }
 
-function readLayout(storage) {
+function readPanelRatio(storage) {
   try {
     const saved = JSON.parse(storage.getItem(STORAGE_KEY));
-    return {
-      dashboard: normalizedShares(saved?.dashboard, 2, DEFAULT_LAYOUT.dashboard),
-      rightRail: normalizedShares(saved?.rightRail, 3, DEFAULT_LAYOUT.rightRail),
-    };
+    return normalizePanelRatio(saved?.main);
   } catch {
-    return {
-      dashboard: [...DEFAULT_LAYOUT.dashboard],
-      rightRail: [...DEFAULT_LAYOUT.rightRail],
-    };
+    return DEFAULT_PANEL_RATIO;
   }
 }
 
-function writeLayout(storage, layout) {
+function writePanelRatio(storage, ratio) {
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(layout));
+    storage.setItem(STORAGE_KEY, JSON.stringify({ main: ratio }));
   } catch {
     // Resizing should continue when storage is unavailable or full.
   }
 }
 
-function setTrackShares(layout) {
-  const vertical = layout.axis() === "y";
-  const minimized = layout.panels.map((panel) => vertical && panel.classList.contains("is-minimized"));
-  const activeTotal = layout.shares.reduce((total, share, index) => total + (minimized[index] ? 0 : share), 0);
-  layout.shares.forEach((share, index) => {
-    const panel = layout.panels[index];
-    const panelStyle = getComputedStyle(panel);
-    const headerHeight = panel.querySelector(".panel-head")?.getBoundingClientRect().height || 58;
-    const borderHeight = Number.parseFloat(panelStyle.borderTopWidth) + Number.parseFloat(panelStyle.borderBottomWidth);
-    const trackSize = minimized[index] ? `${headerHeight + borderHeight}px` : `${share / activeTotal}fr`;
-    layout.container.style.setProperty(`--${layout.prefix}-${index + 1}`, trackSize);
-  });
+function clampPanelWidth(width, availableWidth, minLeft = MIN_LEFT_WIDTH, minRight = MIN_RIGHT_WIDTH) {
+  const safeAvailable = Math.max(1, availableWidth);
+  const safeMinimum = Math.min(minLeft, Math.max(0, safeAvailable - minRight));
+  const safeMaximum = Math.max(safeMinimum, safeAvailable - Math.min(minRight, safeAvailable / 2));
+  return Math.max(safeMinimum, Math.min(safeMaximum, width));
 }
 
-function initPanelResizing({ storage = window.localStorage } = {}) {
-  const dashboard = document.querySelector(".dashboard");
-  const rightRail = document.querySelector(".right-rail");
-  if (!dashboard || !rightRail) return;
+function initPanelResizing({
+  storage = window.localStorage,
+  container = document.querySelector(".main-content"),
+  resizer = document.querySelector("#main-panel-resizer"),
+} = {}) {
+  if (!container || !resizer) return null;
 
-  const layouts = {
-    dashboard: {
-      container: dashboard,
-      panels: [dashboard.querySelector("testing-repl"), rightRail],
-      prefix: "dashboard-track",
-      shares: null,
-      defaults: DEFAULT_LAYOUT.dashboard,
-      axis: () => window.innerWidth <= 760 ? "y" : "x",
-      minSize: 180,
-    },
-    "right-rail": {
-      container: rightRail,
-      panels: [
-        rightRail.querySelector("recent-tasks-panel"),
-        rightRail.querySelector("agent-info-panel"),
-        rightRail.querySelector("worker-logs-panel"),
-      ],
-      prefix: "right-track",
-      shares: null,
-      defaults: DEFAULT_LAYOUT.rightRail,
-      axis: () => window.innerWidth > 640 && window.innerWidth <= 760 ? "x" : "y",
-      minSize: 72,
-    },
-  };
-  const saved = readLayout(storage);
-  layouts.dashboard.shares = saved.dashboard;
-  layouts["right-rail"].shares = saved.rightRail;
+  let ratio = readPanelRatio(storage);
+  let dragging = false;
 
-  function applyLayout(layout) {
-    setTrackShares(layout);
+  function dimensions() {
+    const handleWidth = resizer.getBoundingClientRect().width || 10;
+    return { bounds: container.getBoundingClientRect(), available: Math.max(1, container.clientWidth - handleWidth) };
   }
 
-  function save() {
-    writeLayout(storage, {
-      dashboard: layouts.dashboard.shares,
-      rightRail: layouts["right-rail"].shares,
-    });
-  }
-
-  function updateSeparator(resizer, layout) {
-    const axis = layout.axis();
-    const boundary = Number(resizer.dataset.index);
-    const position = layout.shares.slice(0, boundary + 1).reduce((sum, share) => sum + share, 0);
-    const disabled = layout.panels[boundary].classList.contains("is-minimized")
-      || layout.panels[boundary + 1].classList.contains("is-minimized");
-    resizer.dataset.axis = axis;
-    resizer.classList.toggle("is-disabled", disabled);
-    resizer.setAttribute("aria-disabled", String(disabled));
-    resizer.setAttribute("aria-orientation", axis === "x" ? "vertical" : "horizontal");
-    resizer.setAttribute("aria-valuenow", String(Math.round(position * 100)));
-  }
-
-  function updateSeparators() {
-    document.querySelectorAll("layout-resizer").forEach((resizer) => {
-      const layout = layouts[resizer.dataset.layout];
-      if (layout) updateSeparator(resizer, layout);
-    });
-  }
-
-  function refresh() {
-    for (const layout of Object.values(layouts)) applyLayout(layout);
-    updateSeparators();
-  }
-
-  refresh();
-
-  document.querySelectorAll("layout-resizer").forEach((resizer) => {
-    const layout = layouts[resizer.dataset.layout];
-    const boundary = Number(resizer.dataset.index);
-    if (!layout || !Number.isInteger(boundary)) return;
-    let drag = null;
-
-    function resizePair(delta) {
-      const combinedSize = drag.sizes[boundary] + drag.sizes[boundary + 1];
-      const minimum = Math.min(layout.minSize, combinedSize / 3);
-      const firstSize = Math.max(minimum, Math.min(combinedSize - minimum, drag.sizes[boundary] + delta));
-      const nextShares = [...drag.shares];
-      const combinedShare = drag.shares[boundary] + drag.shares[boundary + 1];
-      nextShares[boundary] = combinedShare * firstSize / combinedSize;
-      nextShares[boundary + 1] = combinedShare - nextShares[boundary];
-      layout.shares = nextShares;
-      applyLayout(layout);
-      updateSeparator(resizer, layout);
+  function apply(nextRatio = ratio) {
+    ratio = normalizePanelRatio(nextRatio, ratio);
+    const compact = window.matchMedia("(max-width: 850px)").matches;
+    resizer.setAttribute("aria-disabled", String(compact));
+    if (compact) {
+      container.style.removeProperty("--main-left-width");
+      return;
     }
+    const { available } = dimensions();
+    const width = clampPanelWidth(available * ratio, available);
+    ratio = width / available;
+    container.style.setProperty("--main-left-width", `${Math.round(width)}px`);
+    resizer.setAttribute("aria-valuenow", String(Math.round(ratio * 100)));
+  }
 
-    resizer.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0 || resizer.classList.contains("is-disabled")) return;
-      const axis = layout.axis();
-      drag = {
-        axis,
-        coordinate: axis === "x" ? event.clientX : event.clientY,
-        shares: [...layout.shares],
-        sizes: layout.panels.map((panel) => axis === "x" ? panel.getBoundingClientRect().width : panel.getBoundingClientRect().height),
-      };
-      resizer.setPointerCapture(event.pointerId);
-      resizer.classList.add("is-dragging");
-      document.body.classList.add("is-resizing");
-      event.preventDefault();
-    });
+  function resizeAt(clientX) {
+    const { bounds, available } = dimensions();
+    const width = clampPanelWidth(clientX - bounds.left, available);
+    apply(width / available);
+  }
 
-    resizer.addEventListener("pointermove", (event) => {
-      if (!drag || !resizer.hasPointerCapture(event.pointerId)) return;
-      const coordinate = drag.axis === "x" ? event.clientX : event.clientY;
-      resizePair(coordinate - drag.coordinate);
-    });
-
-    function finishDrag(event) {
-      if (!drag) return;
-      if (resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
-      drag = null;
-      resizer.classList.remove("is-dragging");
-      document.body.classList.remove("is-resizing");
-      save();
-    }
-
-    resizer.addEventListener("pointerup", finishDrag);
-    resizer.addEventListener("pointercancel", finishDrag);
-    resizer.addEventListener("keydown", (event) => {
-      if (resizer.classList.contains("is-disabled")) return;
-      const axis = layout.axis();
-      const direction = axis === "x"
-        ? { ArrowLeft: -1, ArrowRight: 1 }[event.key]
-        : { ArrowUp: -1, ArrowDown: 1 }[event.key];
-      if (!direction) return;
-      const sizes = layout.panels.map((panel) => axis === "x" ? panel.getBoundingClientRect().width : panel.getBoundingClientRect().height);
-      drag = { axis, coordinate: 0, shares: [...layout.shares], sizes };
-      resizePair(direction * (event.shiftKey ? 48 : 16));
-      drag = null;
-      save();
-      event.preventDefault();
-    });
-    resizer.addEventListener("dblclick", () => {
-      if (resizer.classList.contains("is-disabled")) return;
-      layout.shares = [...layout.defaults];
-      applyLayout(layout);
-      updateSeparators();
-      save();
-    });
+  resizer.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || resizer.getAttribute("aria-disabled") === "true") return;
+    dragging = true;
+    resizer.setPointerCapture(event.pointerId);
+    resizer.classList.add("is-dragging");
+    document.body.classList.add("is-resizing-panels");
+    resizeAt(event.clientX);
+    event.preventDefault();
   });
-
-  window.addEventListener("resize", refresh);
-  return { refresh };
+  resizer.addEventListener("pointermove", (event) => {
+    if (!dragging || !resizer.hasPointerCapture(event.pointerId)) return;
+    resizeAt(event.clientX);
+  });
+  function finish(event) {
+    if (!dragging) return;
+    if (resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
+    dragging = false;
+    resizer.classList.remove("is-dragging");
+    document.body.classList.remove("is-resizing-panels");
+    writePanelRatio(storage, ratio);
+  }
+  resizer.addEventListener("pointerup", finish);
+  resizer.addEventListener("pointercancel", finish);
+  resizer.addEventListener("keydown", (event) => {
+    const direction = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
+    if (!direction || resizer.getAttribute("aria-disabled") === "true") return;
+    const { available } = dimensions();
+    const step = event.shiftKey ? 48 : 16;
+    apply((available * ratio + direction * step) / available);
+    writePanelRatio(storage, ratio);
+    event.preventDefault();
+  });
+  resizer.addEventListener("dblclick", () => {
+    ratio = DEFAULT_PANEL_RATIO;
+    apply();
+    writePanelRatio(storage, ratio);
+  });
+  window.addEventListener("resize", () => apply());
+  apply();
+  return { refresh: apply };
 }
 
-export { DEFAULT_LAYOUT, STORAGE_KEY, initPanelResizing, normalizedShares };
+export { DEFAULT_PANEL_RATIO, MIN_LEFT_WIDTH, MIN_RIGHT_WIDTH, STORAGE_KEY, clampPanelWidth, initPanelResizing, normalizePanelRatio, readPanelRatio };
