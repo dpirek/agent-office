@@ -67,10 +67,30 @@ See [`.env.example`](.env.example) for every supported option. The most useful s
 | `AI_HARNESS_WORKER_TOKEN` | Shared credential used for worker registration | Not set |
 | `AI_HARNESS_TASK_PROGRESS_CHECK_INTERVAL_MS` | Interval for checking long-running tasks | `300000` (5 minutes) |
 | `AI_HARNESS_ALLOW_INSECURE_WEBSOCKET` | Force the dashboard connection to use `ws://`, including from an HTTPS page | `false` |
+| `AI_HARNESS_WEBSOCKET_URL` | Separate public dashboard WebSocket endpoint, accepting HTTP(S) or WS(S) URLs | Page host with `/ws` |
 
 Tool access and workflow stages can be enabled or disabled with the `AI_HARNESS_TOOL_*` and `AI_HARNESS_WORKFLOW_*` variables shown in `.env.example`.
 
 `AI_HARNESS_ALLOW_INSECURE_WEBSOCKET=true` is intended for trusted development environments and browser shells that permit mixed content. Standard browsers generally block `ws://` from an HTTPS page; for those deployments, configure the HTTPS reverse proxy to forward WebSocket upgrades and keep using `wss://`.
+
+To use a separate domain, set this in `.env` and restart Office:
+
+```dotenv
+AI_HARNESS_WEBSOCKET_URL=http://office-server.yourdomain.com
+```
+
+This connects the dashboard to `ws://office-server.yourdomain.com/ws`.
+HTTP maps to WS and HTTPS maps to WSS. An explicit path, port, and query are
+preserved; an origin alone gets `/ws`. This setting takes precedence over
+`AI_HARNESS_ALLOW_INSECURE_WEBSOCKET`. Leave it unset to follow the page host
+and protocol. It advertises the dashboard connection URL; configure that host
+or its proxy to reach Office's existing listener. Worker registration URLs are
+configured separately in each worker.
+
+The setting cannot override browser mixed-content restrictions: an HTTPS page
+normally needs a `wss://` endpoint, even on a different domain. For that setup,
+use `https://office-server.yourdomain.com` with TLS at its proxy; the proxy can
+still forward to Office over plain HTTP.
 
 Runtime data is stored in `db/ui-state.sqlite` by default. Office Manager files and worker deliverables are isolated under `.workspace/`. Set `AI_HARNESS_DATA_DIR` if you want to keep the SQLite database outside the source checkout.
 

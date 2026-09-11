@@ -39,12 +39,14 @@ import {
   resolveSharedWorkspaceRoot,
 } from "./lib/workspace-roots.js";
 import { createWorkerArtifactStore } from "./lib/worker-artifacts.js";
+import { normalizeOfficeWebSocketUrl } from "./public/lib/websocket-url.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageMetadata = JSON.parse(await fs.readFile(path.join(__dirname, "package.json"), "utf8"));
 const appVersion = String(packageMetadata.version || "0.0.0");
 const environmentFilePath = path.join(__dirname, ".env");
 const environmentFileDetected = loadEnvironmentFile(environmentFilePath);
+const webSocketUrl = normalizeOfficeWebSocketUrl(process.env.AI_HARNESS_WEBSOCKET_URL);
 const fileAccessDisabledByEnvironment = environmentFileDetected
   && environmentDisablesFileAccess(process.env);
 const publicDir = path.join(__dirname, "public");
@@ -469,6 +471,7 @@ server = http.createServer(async (req, res) => {
     }
   });
   const handleApiRequest = createApiRouter({
+    webSocketUrl,
     uiStateStore,
     defaultWorkspace,
     resolveWorkspace,

@@ -1051,9 +1051,21 @@ function handleSocketMessage(message) {
 }
 
 function connectSocket() {
-  const socket = new WebSocket(createOfficeWebSocketUrl(location, {
-    allowInsecure: state.health?.allowInsecureWebSocket === true,
-  }));
+  let socket;
+  try {
+    socket = new WebSocket(createOfficeWebSocketUrl(location, {
+      allowInsecure: state.health?.allowInsecureWebSocket === true,
+      configuredUrl: state.health?.webSocketUrl,
+    }));
+  } catch (error) {
+    state.socketReady = false;
+    const message = error.name === "SecurityError"
+      ? "Browser blocked the WebSocket connection. An HTTPS dashboard normally requires a wss:// endpoint."
+      : `Unable to connect to Office: ${error.message}`;
+    addLog("Network", message, "error");
+    showToast(message, true);
+    return;
+  }
   state.socket = socket;
   socket.addEventListener("open", () => addLog("System", "Live orchestration channel opened", "success"));
   socket.addEventListener("message", (event) => {

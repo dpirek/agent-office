@@ -18,6 +18,7 @@ export function createSettingsApiHandlers({
   environmentFileDetected = false,
   fileAccessDisabledByEnvironment = false,
   appVersion = "0.0.0",
+  webSocketUrl = "",
   onRigConfigurationsChanged = () => {},
   factoryReset,
 }) {
@@ -27,6 +28,7 @@ export function createSettingsApiHandlers({
     json(res, 200, {
       ok: true,
       version: appVersion,
+      webSocketUrl,
       provider: envProvider,
       model: process.env.AI_MODEL || defaultModelForProvider(envProvider),
       ollamaModel: process.env.OLLAMA_MODEL || "llama3.1",
