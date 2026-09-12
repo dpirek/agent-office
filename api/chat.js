@@ -7,10 +7,15 @@ export function createChatApiHandlers({ officeChatService }) {
       return;
     }
     if (req.method === "GET") {
-      json(res, 200, { ok: true, ...officeChatService.list({
-        after: Number(url.searchParams.get("after")) || 0,
-        limit: Number(url.searchParams.get("limit")) || 200,
-      }) });
+      try {
+        json(res, 200, { ok: true, ...officeChatService.list({
+          projectId: url.searchParams.get("projectId") || "central-office",
+          after: Number(url.searchParams.get("after")) || 0,
+          limit: Number(url.searchParams.get("limit")) || 200,
+        }) });
+      } catch (error) {
+        json(res, 400, { ok: false, error: error.message });
+      }
       return;
     }
     if (req.method !== "POST") {

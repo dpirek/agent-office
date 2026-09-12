@@ -81,7 +81,7 @@ test("simple agent questions use direct messages without creating tasks", (conte
   const result = chat.postUserMessage({ text: "@dave-the-developer what version are you using?" });
   assert.equal(result.managerMentioned, false);
   assert.equal(result.dispatches[0].kind, "direct_message");
-  assert.deepEqual(sent, [{ agent: "Dave the Developer", text: "@dave-the-developer what version are you using?" }]);
+  assert.deepEqual(sent, [{ agent: "Dave the Developer", projectId: "central-office", text: "@dave-the-developer what version are you using?" }]);
   assert.deepEqual(store.getOfficeTasks(), []);
 });
 

@@ -47,6 +47,8 @@ const TOOL_DETAILS = {
 };
 
 const state = {
+  projectId: localStorage.getItem("office-project") || "central-office",
+  projects: [],
   agents: [],
   selectedAgent: "Office Manager",
   activeTab: "details",
@@ -184,6 +186,7 @@ function allTasks() {
   const officeTasks = state.officeTasks.map((task) => ({
     id: task.id,
     title: task.title,
+    projectId: task.projectId,
     agent: task.agent || "UNASSIGNED",
     status: normalizeTaskStatus(task.status),
     priority: task.priority || "medium",
@@ -384,7 +387,7 @@ function renderOfficeChat({ preserveScroll = false } = {}) {
         <div class="office-board-message-text markdown-body">${renderMarkdown(message.text)}</div>
         ${message.artifacts?.length ? `<div class="office-board-artifacts">${renderChatArtifacts(message.artifacts)}</div>` : ""}
       </div>
-    </article>`).join("") : `<div class="office-board-empty"><strong># CENTRAL-OFFICE IS READY</strong><span>Mention @office-manager or a registered agent to begin.</span></div>`;
+    </article>`).join("") : `<div class="office-board-empty"><strong># ${escapeHtml(state.projects.find((project) => project.id === state.projectId)?.name.toUpperCase() || "CENTRAL OFFICE")} IS READY</strong><span>Mention @office-manager or a registered agent to begin.</span></div>`;
   const messagesChanged = nextOfficeBoardMarkup !== officeBoardMarkup;
   if (messagesChanged) {
     board.innerHTML = nextOfficeBoardMarkup;
@@ -407,8 +410,12 @@ function scrollOfficeChatToLatest() {
 
 async function loadOfficeChat({ quiet = false } = {}) {
   try {
-    const data = await fetchJson("/api/chat?limit=300");
+    const projectId = state.projectId;
+    const data = await fetchJson(`/api/chat?limit=300&projectId=${encodeURIComponent(projectId)}`);
+    if (projectId !== state.projectId) return;
     state.officeChatMessages = data.messages || [];
+    state.chatMessages = state.officeChatMessages.filter((message) => ["user", "manager"].includes(message.kind)).map((message) => ({ role: message.kind === "user" ? "user" : "agent", text: message.text }));
+    renderChat();
     state.officeChatMembers = data.members || [];
     renderOfficeChat({ preserveScroll: true });
   } catch (error) {
@@ -417,6 +424,7 @@ async function loadOfficeChat({ quiet = false } = {}) {
 }
 
 async function postOfficeChat(payload) {
+  payload = { ...payload, projectId: state.projectId };
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -479,7 +487,7 @@ function renderTasks() {
     const dependencyState = dependencies.length === 0 ? "READY" : waiting.length ? `WAITING ${waiting.length}` : "MET";
     const dependencyTitle = dependencies.map((id) => tasksById.get(id)?.title || id).join(", ");
     return `<tr>
-    <td>${index + 1}</td><td title="${escapeHtml(task.title)}">${escapeHtml(task.title)}</td><td>${escapeHtml(task.agent)}</td>
+    <td>${index + 1}</td><td title="${escapeHtml(task.title)}">${escapeHtml(task.title)}<small class="task-project-label">${escapeHtml(state.projects.find((project) => project.id === task.projectId)?.name || "Central Office")}</small></td><td>${escapeHtml(task.agent)}</td>
     <td class="status-${task.status}">${escapeHtml(task.status)}</td><td class="priority-${task.priority}">${escapeHtml(task.priority)}</td>
     <td title="${escapeHtml(dependencyTitle)}">${dependencyState}</td>
     <td><span class="progress-cell"><span class="progress"><i style="width:${task.progress}%"></i></span>${task.progress}%</span></td><td>${shortTime(task.createdAt)}</td>
@@ -509,19 +517,21 @@ function renderSharedWorkspace() {
   $("#workspace-file-count").textContent = `${files.length} FILE${files.length === 1 ? "" : "S"}`;
   const folders = state.sharedWorkspaceTree.filter((entry) => entry.type === "directory");
   const rootFiles = state.sharedWorkspaceTree.filter((entry) => entry.type === "file");
-  const groups = [...(rootFiles.length ? [{ name: "SHARED ROOT", children: rootFiles }] : []), ...folders];
+  const groups = [...(rootFiles.length ? [{ name: "PROJECT FILES", children: rootFiles }] : []), ...folders];
   browser.innerHTML = groups.length ? groups.map((folder) => {
     const entries = workspaceFiles(folder.children || []);
     return `<section class="workspace-folder">
       <header><div><span>▤</span><strong>${escapeHtml(folder.name)}</strong></div><small>${entries.length} FILE${entries.length === 1 ? "" : "S"}</small></header>
-      <div class="workspace-folder-files">${entries.length ? entries.map((file) => `<a class="workspace-file" href="/api/shared-workspace-file?path=${encodeURIComponent(file.path)}" target="_blank" rel="noopener noreferrer"><span>▱</span><strong>${escapeHtml(file.nestedPath)}</strong><small>${formatBytes(file.size)}</small><time>${scheduleTime(file.modifiedAt)}</time><b>OPEN ↗</b></a>`).join("") : `<div class="workspace-empty-folder">EMPTY TASK FOLDER</div>`}</div>
+      <div class="workspace-folder-files">${entries.length ? entries.map((file) => `<a class="workspace-file" href="/api/shared-workspace-file?path=${encodeURIComponent(file.path)}" target="_blank" rel="noopener noreferrer"><span>▱</span><strong>${escapeHtml(file.nestedPath)}</strong><small>${formatBytes(file.size)}</small><time>${scheduleTime(file.modifiedAt)}</time><b>OPEN ↗</b></a>`).join("") : `<div class="workspace-empty-folder">EMPTY PROJECT FOLDER</div>`}</div>
     </section>`;
-  }).join("") : `<div class="workspace-empty"><strong>NO DELIVERED FILES</strong><span>Completed worker artifacts will appear here in task-specific folders.</span></div>`;
+  }).join("") : `<div class="workspace-empty"><strong>NO PROJECT FILES</strong><span>Project files and worker deliveries will appear here.</span></div>`;
 }
 
 async function loadSharedWorkspace({ quiet = false } = {}) {
   try {
-    const data = await fetchJson("/api/shared-workspace");
+    const projectId = state.projectId;
+    const data = await fetchJson(`/api/shared-workspace?projectId=${encodeURIComponent(projectId)}`);
+    if (projectId !== state.projectId) return;
     state.sharedWorkspaceRoot = data.root || "";
     state.sharedWorkspaceTree = data.tree || [];
     renderSharedWorkspace();
@@ -856,6 +866,7 @@ async function fetchJson(url) {
 }
 
 async function createTask(payload) {
+  payload = { ...payload, projectId: state.projectId };
   const response = await fetch("/api/tasks", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -870,7 +881,7 @@ async function stopTask(id) {
   const response = await fetch("/api/tasks", {
     method: "DELETE",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ id, action: "cancel" }),
+    body: JSON.stringify({ id, action: "cancel", projectId: state.projectId }),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
@@ -881,7 +892,7 @@ async function deleteTask(id) {
   const response = await fetch("/api/tasks", {
     method: "DELETE",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ id, action: "delete" }),
+    body: JSON.stringify({ id, action: "delete", projectId: state.projectId }),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
@@ -903,12 +914,14 @@ async function mutateOperation(method, payload) {
 
 async function refreshDashboard({ quiet = false } = {}) {
   try {
+    const projectId = state.projectId;
     const [health, subAgents, operations, officeTasks] = await Promise.all([
       fetchJson("/api/health"),
       fetchJson("/api/sub-agents"),
       fetchJson("/api/operations"),
-      fetchJson("/api/tasks"),
+      fetchJson(`/api/tasks?projectId=${encodeURIComponent(projectId)}`),
     ]);
+    if (projectId !== state.projectId) return;
     state.health = health;
     $("#header-context").textContent = `v${health.version || "0.0.0"} · Workspace ${health.workspace || "—"}`;
     state.orchestrator = subAgents.orchestrator;
@@ -1090,42 +1103,17 @@ function refreshOrchestratorConnection() {
   }
 }
 
-$("#chat-form").addEventListener("submit", (event) => {
+$("#chat-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const input = $("#chat-input");
-  const prompt = input.value.trim();
+  const input = $("#chat-input"), prompt = input.value.trim(), projectId = state.projectId;
   if (!prompt) return;
-  if (!state.socketReady || !state.health?.workspace) {
-    showToast("The office manager is still connecting.", true);
-    return;
-  }
-  if (state.chatRunning) {
-    showToast("Wait for the current response to finish.");
-    return;
-  }
-  const history = state.chatMessages
-    .filter((message) => !message.streaming && !message.error && message.text)
-    .map(({ role, text }) => ({ role, text }));
-  state.chatMessages.push(
-    { role: "user", text: prompt },
-    { role: "agent", text: "", streaming: true },
-  );
-  state.chatRunning = true;
-  input.value = "";
-  resizeChatInput();
-  renderChat(); renderOffice(); renderSelectedAgent();
-  addActivity("Office manager received a message");
+  $("#send-chat").disabled = true;
   try {
-    state.socket.send(JSON.stringify({
-      type: "prompt",
-      prompt,
-      history,
-      sessionId,
-      workspace: state.health.workspace,
-    }));
-  } catch (error) {
-    handleSocketMessage({ type: "error", error: error.message });
-  }
+    await postOfficeChat({ text: `@office-manager ${prompt}` });
+    if (state.projectId === projectId) input.value = "";
+    await loadOfficeChat();
+  } catch (error) { showToast(error.message, true); }
+  finally { renderChat(); }
 });
 $("#chat-input").addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
@@ -1148,7 +1136,7 @@ $("#office-board-form").addEventListener("submit", async (event) => {
   sendButton.disabled = true;
   try {
     const result = await postOfficeChat({ text: prompt });
-    input.value = "";
+    if (state.projectId === result.message.projectId) input.value = "";
     resizeOfficeBoardInput();
     await loadOfficeChat({ quiet: true });
     const failed = result.dispatches?.filter((dispatch) => !dispatch.ok) || [];
@@ -1615,7 +1603,7 @@ setInterval(renderSelectedAgent, 1000);
 setInterval(() => void refreshDashboard({ quiet: true }), 2500);
 setInterval(() => void loadMemory({ quiet: true }), 5000);
 setInterval(() => {
-  if (document.body.dataset.page === "chat") void loadOfficeChat({ quiet: true });
+  if (["chat", "dashboard"].includes(document.body.dataset.page)) void loadOfficeChat({ quiet: true });
   if (document.body.dataset.page === "workspace") void loadSharedWorkspace({ quiet: true });
   if (document.body.dataset.page === "dashboard") void loadSystemLogs();
 }, 2000);
@@ -1635,3 +1623,79 @@ void loadMemory();
 void loadOfficeChat();
 void loadSharedWorkspace();
 void loadSystemLogs();
+
+function renderProjects() {
+  const project = state.projects.find((entry) => entry.id === state.projectId);
+  if (!project) return;
+  $("#project-select").innerHTML = state.projects.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.name)}</option>`).join("");
+  $("#project-select").value = project.id;
+  $("#project-status").value = project.status;
+  $("#project-description").textContent = project.description;
+  $("#project-chat-title").textContent = project.name.toUpperCase();
+  $("#project-chat-rooms").innerHTML = state.projects.map((entry) => `<button class="office-chat-channel project-room${entry.id === project.id ? " active" : ""}" type="button" data-project-id="${escapeHtml(entry.id)}" ${entry.id === project.id ? 'aria-current="true"' : ""}><span>#</span><strong>${escapeHtml(entry.name)}</strong></button>`).join("");
+  $("#project-room-heading").textContent = `# ${project.name}`;
+  $("#office-board-input").placeholder = `Message #${project.name} · use @name`;
+  $("#dashboard-office-chat-input").placeholder = `Message #${project.name} · use @name`;
+  document.body.dataset.projectId = project.id;
+}
+async function loadProjects() {
+  const data = await fetchJson("/api/projects");
+  state.projects = data.projects;
+  if (!state.projects.some((entry) => entry.id === state.projectId)) state.projectId = "central-office";
+  renderProjects();
+}
+async function switchProject(id) {
+  state.projectId = id;
+  localStorage.setItem("office-project", id);
+  state.officeChatMessages = [];
+  state.chatMessages = [];
+  $("#chat-input").value = "";
+  state.officeTasks = [];
+  state.localTasks = [];
+  state.sharedWorkspaceTree = [];
+  $("#office-board-input").value = "";
+  renderProjects(); renderChat(); renderOfficeChat(); renderTasks(); renderSharedWorkspace();
+  window.dispatchEvent(new Event("projectchange"));
+  await Promise.all([loadOfficeChat(), refreshDashboard({ quiet: true }), loadSharedWorkspace({ quiet: true })]);
+}
+$("#project-select").addEventListener("change", (event) => void switchProject(event.target.value));
+let editingProjectId = null;
+function openProjectDialog(edit) {
+  const project = edit ? state.projects.find((entry) => entry.id === state.projectId) : null;
+  editingProjectId = project?.id || null;
+  $("#project-dialog-title").textContent = edit ? "Edit project" : "New project";
+  $("#project-name").value = project?.name || "";
+  $("#project-summary").value = project?.description || "";
+  $("#project-dialog").showModal();
+}
+$("#new-project-button").addEventListener("click", () => openProjectDialog(false));
+$("#edit-project-button").addEventListener("click", () => openProjectDialog(true));
+$("#cancel-project-button").addEventListener("click", () => $("#project-dialog").close());
+async function saveProject(payload, method = "PUT") {
+  const response = await fetch("/api/projects", { method, headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error);
+  await loadProjects();
+  return data.project;
+}
+$("#project-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = event.submitter;
+  if (button) button.disabled = true;
+  try {
+    const project = await saveProject({ id: editingProjectId, name: $("#project-name").value, description: $("#project-summary").value }, editingProjectId ? "PUT" : "POST");
+    $("#project-dialog").close();
+    await switchProject(project.id);
+  } catch (error) { showToast(error.message, true); }
+  finally { if (button) button.disabled = false; }
+});
+$("#project-status").addEventListener("change", async (event) => {
+  try { await saveProject({ id: state.projectId, status: event.target.value }); }
+  catch (error) { renderProjects(); showToast(error.message, true); }
+});
+void loadProjects().then(() => switchProject(state.projectId)).catch((error) => showToast(error.message, true));
+
+$("#project-chat-rooms").addEventListener("click", (event) => {
+  const room = event.target.closest("[data-project-id]");
+  if (room) void switchProject(room.dataset.projectId);
+});

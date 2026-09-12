@@ -35,4 +35,6 @@ test("existing task databases migrate to support cancelled tasks", (context) => 
   const cancelled = store.completeOfficeTask("legacy-task", { status: "cancelled", error: "Stopped." });
   assert.equal(cancelled.status, "cancelled");
   assert.equal(cancelled.title, "Legacy work");
+  assert.equal(cancelled.projectId, "central-office");
+  assert.equal(store.requireProject("central-office").name, "Central Office");
 });

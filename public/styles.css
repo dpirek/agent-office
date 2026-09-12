@@ -545,3 +545,35 @@ select {
   .agent-floor { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+.project-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid #34423c; background: #101a16; color: #c8d8ce; }
+.project-toolbar label { font-size: 11px; letter-spacing: 1px; }
+.project-toolbar select, .project-toolbar button, .project-form input, .project-form textarea, .project-form button { background: #17241d; color: #dfebdf; border: 1px solid #425747; padding: 8px 10px; font: inherit; border-radius: 4px; }
+.project-toolbar select { max-width: 260px; }
+#project-description { font-size: 12px; color: #9caf9f; flex-basis: 100%; overflow-wrap: anywhere; }
+#project-description:empty { display: none; }
+#project-dialog { width: min(460px, calc(100vw - 32px)); background: #101a16; color: #dfebdf; border: 1px solid #425747; padding: 24px; }
+#project-dialog::backdrop { background: #000a; }
+.project-form { display: flex; flex-direction: column; gap: 12px; }
+.project-form > div { display: flex; justify-content: flex-end; gap: 10px; }
+.task-project-label { display: block; color: #92ad99; font-size: 10px; margin-top: 4px; }
+
+.project-content { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.project-content > .main-content { flex: 1; }
+.project-toolbar { flex: 0 0 auto; margin-bottom: 10px; border-color: var(--line-dim); background: var(--panel); }
+#project-description { max-height: 32px; overflow: auto; }
+@media (max-width: 1100px) {
+  body[data-page="chat"] .project-content { height: 100%; }
+  body[data-page="chat"] .project-content > .main-content { height: auto; overflow: hidden; }
+  body[data-page="chat"] .office-chat-page { flex: 1; }
+  .project-toolbar { gap: 6px; padding: 8px; }
+  .project-toolbar select { min-width: 0; max-width: 180px; }
+  .project-toolbar button { font-size: 10px; padding: 7px; }
+}
+
+#project-chat-rooms { display: flex; flex-direction: column; gap: 6px; max-height: 40%; overflow: auto; }
+.project-room { width: 100%; flex-shrink: 0; text-align: left; font: inherit; }
+.project-room:not(.active) { background: transparent; border-color: transparent; opacity: .7; }
+.project-room strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.office-board-empty { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 1100px) { #project-chat-rooms { flex-direction: row; max-height: none; } .project-room { width: auto; max-width: 240px; } }

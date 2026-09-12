@@ -1,3 +1,4 @@
+import { createProjectApiHandlers } from "./projects.js";
 import { createSettingsApiHandlers } from "./settings.js";
 import { createSubAgentApiHandlers } from "./sub-agents.js";
 import { createTaskApiHandlers } from "./tasks.js";
@@ -11,6 +12,7 @@ import { createWorkerArtifactApiHandlers } from "./worker-artifacts.js";
 
 export function createApiRouter(options) {
   const routes = new Map(Object.entries({
+    ...createProjectApiHandlers(options),
     ...createSettingsApiHandlers(options),
     ...createSubAgentApiHandlers(options),
     ...createTaskApiHandlers(options),

@@ -1,3 +1,4 @@
+import { DEFAULT_PROJECT_ID, projectStore, projectWorkspace, prepareProjectContext } from "./lib/projects.js";
 import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
@@ -105,6 +106,7 @@ const subAgentManager = new SubAgentManager({
       metadata: { messageId: message.messageId },
     });
     officeChatService?.postMessage(state === "completed" ? {
+      projectId: message.projectId,
       author: message.agent,
       username: message.agent,
       kind: "agent",
@@ -113,6 +115,7 @@ const subAgentManager = new SubAgentManager({
       author: "Office Manager",
       username: "office-manager",
       kind: "system",
+      projectId: message.projectId,
       text: `Direct message to @${String(message.agent || "agent").toLowerCase().replace(/[^a-z0-9]+/g, "-")} failed: ${message.error}`,
     });
     taskProgressMonitor?.handleDirectMessage(state, message);
@@ -198,6 +201,7 @@ async function createAgentSession({
   onTextDelta,
   providerSettings = {},
   root,
+  projectId,
   toolPermissions,
 }) {
   const storedSettings = uiStateStore.getAll().providerSettings || {};
@@ -227,8 +231,14 @@ async function createAgentSession({
   const localTools = disabled.has("tools") ? [] : createTools({
     root,
     approve: async () => true,
-    subAgentManager,
-    uiStateStore,
+    subAgentManager: projectId ? new Proxy(subAgentManager, {
+      get(target, key) {
+        if (["queue", "delegate", "sendDirectMessage"].includes(key)) return (args) => target[key]({ ...args, projectId });
+        const value = target[key];
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) : subAgentManager,
+    uiStateStore: projectId ? projectStore(uiStateStore, projectId) : uiStateStore,
   }).filter((tool) => (
     toolPermissions[tool.name] === true &&
     (tool.name !== "delegate_to_sub_agent" || subAgentManager.listWorkers().length > 0)
@@ -298,7 +308,13 @@ uiStateStore.recordSystemActivity({
   category: "system", source: "System",
   message: "Agent Office server initialized", tone: "success",
 });
-async function runOfficeManager(request, { refine = true } = {}) {
+for (const project of uiStateStore.getProjects()) await projectWorkspace(sharedWorkspaceRoot, project.id);
+let officeManagerProjectId = null;
+async function runOfficeManager(request, { refine = true, projectId = DEFAULT_PROJECT_ID } = {}) {
+    officeManagerProjectId = projectId;
+    const context = await prepareProjectContext(uiStateStore, sharedWorkspaceRoot, projectId, request);
+    const { root } = context;
+    request = context.request;
     const rigConfigurations = uiStateStore.getRigConfigurations();
     const activeConfiguration = rigConfigurations.configurations.find(
       (configuration) => configuration.id === rigConfigurations.activeConfigurationId,
@@ -308,7 +324,8 @@ async function runOfficeManager(request, { refine = true } = {}) {
       disabledSteps,
       emit: () => {},
       onTextDelta: () => {},
-      root: await resolveWorkspace(defaultWorkspace),
+      root,
+      projectId,
       toolPermissions: normalizeToolPermissions(activeConfiguration?.toolPermissions),
     });
     const prompt = !refine || disabledSteps.includes("composer")
@@ -320,6 +337,7 @@ async function runOfficeManager(request, { refine = true } = {}) {
       username: "office-manager",
       kind: "manager",
       text: output || "Done.",
+      projectId,
     });
     return output;
 }
@@ -327,7 +345,7 @@ async function runOfficeManager(request, { refine = true } = {}) {
 function enqueueOfficeManager(run) {
   const execute = async () => {
     officeManagerBoardRunning = true;
-    try { return await run(); } finally { officeManagerBoardRunning = false; }
+    try { return await run(); } finally { officeManagerBoardRunning = false; officeManagerProjectId = null; }
   };
   const result = officeManagerQueue.then(execute, execute);
   officeManagerQueue = result.catch(() => undefined);
@@ -336,12 +354,12 @@ function enqueueOfficeManager(run) {
 
 function handleOfficeManagerMention({ message, text }) {
   return enqueueOfficeManager(async () => {
-    const recent = officeChatService.list({ limit: 40 }).messages
+    const recent = officeChatService.list({ limit: 40, projectId: message.projectId }).messages
       .filter((entry) => entry.id !== message.id)
       .map((entry) => ({ label: entry.author, text: entry.text, isUser: entry.kind === "user" }));
     const conversation = formatConversationContext(recent, text);
-    const request = `You were addressed as @office-manager in #central-office. Respond to the current request and coordinate work through the office task tools when delegation is needed. Any task assignment you make will be announced on the board automatically.\n\n${SEQUENTIAL_ORCHESTRATION_POLICY}\n\n${conversation}`;
-    return runOfficeManager(request);
+    const request = `You were addressed as @office-manager in this project’s chat room. Respond to the current request and coordinate work through the office task tools when delegation is needed. Any task assignment you make will be announced on the board automatically.\n\n${SEQUENTIAL_ORCHESTRATION_POLICY}\n\n${conversation}`;
+    return runOfficeManager(request, { projectId: message.projectId });
   });
 }
 
@@ -349,21 +367,22 @@ officeChatService = createOfficeChatService({
   uiStateStore,
   subAgentManager,
   onManagerMention: handleOfficeManagerMention,
-  isManagerTyping: () => officeManagerBoardRunning,
+  isManagerTyping: (projectId) => officeManagerBoardRunning && officeManagerProjectId === projectId,
 });
 taskReviewTrigger = new TaskReviewTrigger({
   review: async ({ event, task }) => {
     await new Promise((resolve) => setImmediate(resolve));
     return enqueueOfficeManager(async () => {
-      const tasks = uiStateStore.getOfficeTasks({ limit: 200 });
+      const projectId = task.projectId || DEFAULT_PROJECT_ID;
+      const tasks = uiStateStore.getOfficeTasks({ limit: 200, projectId });
       const settled = tasks.find((entry) => entry.messageId === task.messageId || entry.workerTaskId === task.taskId);
-      const recent = officeChatService.list({ limit: 30 }).messages
+      const recent = officeChatService.list({ limit: 30, projectId }).messages
         .map((entry) => ({ label: entry.author, text: entry.text, isUser: entry.kind === "user" }));
       const reviewRequest = `A delegated task has ${event}. Review its outcome and decide whether the next stage should be assigned. Use manage_office_tasks to read the current queue before acting.\n\nSettled task:\n${JSON.stringify(settled || task, null, 2)}\n\nCurrent task queue:\n${JSON.stringify(tasks, null, 2)}`;
       const conversation = formatConversationContext(recent, reviewRequest);
       const recovery = ["failed", "timed_out"].includes(event) ? `\n\n${FAILURE_RECOVERY_POLICY}` : "";
       const request = `${SEQUENTIAL_ORCHESTRATION_POLICY}${recovery}\n\n${conversation}`;
-      return runOfficeManager(request, { refine: false });
+      return runOfficeManager(request, { refine: false, projectId });
     });
   },
   onError(error, { task }) {
@@ -371,6 +390,7 @@ taskReviewTrigger = new TaskReviewTrigger({
       author: "Office Manager",
       username: "office-manager",
       kind: "system",
+      projectId: task.projectId,
       text: `Automatic review after “${task.title || "task"}” failed: ${error.message}`,
     });
   },
@@ -387,6 +407,7 @@ taskProgressMonitor = new TaskProgressMonitor({
       kind: "manager",
       text: `@${agentUsername(task.agent)} Status check: “${task.title}” has been running longer than ${taskProgressCheckIntervalMs} ms. Please report progress, blockers, next step, and ETA.`,
       taskId: task.messageId,
+      projectId: task.projectId,
     });
     uiStateStore.recordOfficeMemory({
       kind: "system",
@@ -411,16 +432,18 @@ taskProgressMonitor = new TaskProgressMonitor({
       details: { intervalMs: taskProgressCheckIntervalMs, messageId: task.messageId },
     });
     void enqueueOfficeManager(async () => {
-      const tasks = uiStateStore.getOfficeTasks({ limit: 200 });
-      const recent = officeChatService.list({ limit: 30 }).messages
+      const projectId = task.projectId || DEFAULT_PROJECT_ID;
+      const tasks = uiStateStore.getOfficeTasks({ limit: 200, projectId });
+      const recent = officeChatService.list({ limit: 30, projectId }).messages
         .map((entry) => ({ label: entry.author, text: entry.text, isUser: entry.kind === "user" }));
       const progressRequest = `A periodic progress check returned for the running task below. Assess whether work is progressing, blocked, or needs a different approach. Do not create a duplicate task merely because it is still running. If it is blocked, explain the intervention and use manage_office_tasks to cancel and replan only when justified.\n\nTask:\n${JSON.stringify(task, null, 2)}\n\nWorker status:\n${message.text}\n\nCurrent task queue:\n${JSON.stringify(tasks, null, 2)}`;
       const conversation = formatConversationContext(recent, progressRequest);
-      return runOfficeManager(`${SEQUENTIAL_ORCHESTRATION_POLICY}\n\n${FAILURE_RECOVERY_POLICY}\n\n${conversation}`, { refine: false });
+      return runOfficeManager(`${SEQUENTIAL_ORCHESTRATION_POLICY}\n\n${FAILURE_RECOVERY_POLICY}\n\n${conversation}`, { refine: false, projectId });
     }).catch((error) => officeChatService.postMessage({
       author: "Office Manager",
       username: "office-manager",
       kind: "system",
+      projectId: task.projectId,
       text: `Unable to review the progress update for “${task.title}”: ${error.message}`,
     }));
   },
@@ -432,6 +455,7 @@ taskProgressMonitor = new TaskProgressMonitor({
       kind: "system",
       text: `Progress check for “${title}” failed: ${error.message}`,
       taskId: task?.messageId,
+      projectId: task?.projectId,
     });
     uiStateStore.recordOfficeMemory({
       kind: "system",

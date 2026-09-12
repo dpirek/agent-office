@@ -32,6 +32,15 @@
         </div>
       </nav>
 
+      <div class="project-content">
+        <section class="project-toolbar" aria-label="Project context">
+          <label for="project-select">PROJECT</label>
+          <select id="project-select" aria-label="Current project"><option value="central-office">Central Office</option></select>
+          <select id="project-status" aria-label="Project status"><option value="active">Active</option><option value="paused">Paused</option><option value="completed">Completed</option><option value="archived">Archived</option></select>
+          <button id="edit-project-button" type="button">Edit project</button>
+          <button id="new-project-button" type="button">+ New project</button>
+          <span id="project-description"></span>
+        </section>
       <main class="main-content">
         <section class="operations-grid">
           <section class="panel office-panel" data-view="dashboard">
@@ -112,16 +121,16 @@
         </section>
 
         <section class="panel office-chat-page" data-view="chat" hidden>
-          <header class="panel-header"><div><span class="header-icon">◫</span><h2>CENTRAL OFFICE</h2></div><span class="panel-meta" id="office-chat-status">LIVE CHANNEL</span></header>
+          <header class="panel-header"><div><span class="header-icon">◫</span><h2 id="project-chat-title">CENTRAL OFFICE</h2></div><span class="panel-meta" id="office-chat-status">LIVE CHANNEL</span></header>
           <div class="office-chat-layout panel-body">
             <aside class="office-chat-sidebar">
-              <div class="office-chat-channel"><span>#</span><strong>central-office</strong></div>
+              <nav id="project-chat-rooms" aria-label="Project chat rooms"></nav>
               <h3>PEOPLE</h3>
               <div class="office-chat-members" id="office-chat-members"></div>
             </aside>
             <section class="office-chat-main">
               <header class="office-chat-heading">
-                <div><strong># central-office</strong><span>Shared coordination channel for the whole agent office</span></div>
+                <div><strong id="project-room-heading"># central-office</strong><span>Project chat, tasks, and files</span></div>
                 <span id="office-chat-member-count">1 MEMBER</span>
               </header>
               <div class="office-board-messages" id="office-board-messages" aria-live="polite"></div>
@@ -202,6 +211,7 @@
           </div>
         </section>
       </main>
+      </div>
     </div>
 
   </div>
@@ -258,5 +268,13 @@
   <div class="toast" id="toast" role="status"></div>
   <script type="module" src="/app.mjs"></script>
   <script type="module" src="/lib/dashboard-office-chat.mjs"></script>
-</body>
+<dialog id="project-dialog">
+      <form id="project-form" class="project-form">
+        <h2 id="project-dialog-title">New project</h2>
+        <label for="project-name">Name</label><input id="project-name" required maxlength="100" autocomplete="off">
+        <label for="project-summary">Description</label><textarea id="project-summary" maxlength="10000" rows="4"></textarea>
+        <div><button type="button" id="cancel-project-button">Cancel</button><button type="submit">Save project</button></div>
+      </form>
+    </dialog>
+  </body>
 </html>

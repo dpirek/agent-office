@@ -130,3 +130,46 @@ Agent Office can grant models file, shell, network, browser, and MCP access. Kee
 ## License
 
 ISC
+
+### Projects
+
+Use the project selector to create or switch projects. Each project has its own
+persistent chat room, task queue, description, status, and workspace folder.
+The Chat sidebar lists the project rooms. Dashboard chat and the manager chat
+both use the selected project's history. Tasks show their project name.
+
+The Office Manager receives the selected project's status, description, recent
+chat history, task list, and files. Task tools are scoped to that project;
+dependencies cannot cross projects. Worker assignment/result messages, progress
+checks, and automatic task reviews retain the originating project even if the
+user switches rooms while work is running. Worker task and direct-message
+payloads include `projectId`; task payloads also include the project folder as
+`workspace`. Remote workers should use this identifier to scope their own files
+and conversation state.
+
+New project files and delivered artifacts are stored under
+`AI_HARNESS_SHARED_WORKSPACE/<projectId>/` (by default,
+`.workspace/deliverables/<projectId>/`). Renaming a project preserves its ID,
+folder, tasks, and history. Status can be `active`, `paused`, `completed`, or
+`archived`; status describes the project and does not cancel running tasks.
+
+SQLite migrations run automatically at startup. Existing chat and task records
+belong to the built-in `central-office` project. Existing delivered-file URLs
+remain valid; pre-project delivery folders stay at their original locations and
+are available from the unfiltered shared-workspace API.
+
+| API | Behavior |
+| --- | --- |
+| `GET /api/projects` | List projects, descriptions, statuses, and timestamps |
+| `POST /api/projects` | Create with `{ "name": "Website", "description": "Public site" }` |
+| `PUT /api/projects` | Update `{ "id": "…", "name": "…", "description": "…", "status": "paused" }`; omitted fields stay unchanged |
+| `GET /api/chat?projectId=…` | Read that room's latest messages; supports `after` and `limit` |
+| `POST /api/chat` | Send `{ "projectId": "…", "text": "…" }` |
+| `GET /api/tasks?projectId=…` | Read the project's tasks |
+| `POST /api/tasks` | Create with `projectId`, `title`, and optional `priority` / `dependsOn` |
+| `PUT /api/tasks`, `DELETE /api/tasks` | Accept `projectId` alongside existing task arguments to enforce project ownership |
+| `GET /api/shared-workspace?projectId=…` | List only the project's files; existing file URLs remain supported |
+
+Omitting `projectId` from chat/task creation uses `central-office`. Omitting it
+from task or workspace listing retains the existing office-wide API view.
+Projects can be archived without deleting their history or files.

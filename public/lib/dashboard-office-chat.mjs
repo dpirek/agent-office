@@ -36,7 +36,7 @@ function avatarMarkup(message) {
 
 export function renderDashboardOfficeChatMessages(messages = []) {
   if (!messages.length) {
-    return `<div class="office-board-empty"><strong># CENTRAL-OFFICE IS READY</strong><span>Messages from the office will appear here.</span></div>`;
+    return `<div class="office-board-empty"><strong>PROJECT CHAT IS READY</strong><span>Messages from the office will appear here.</span></div>`;
   }
   return messages.map((message) => `
     <article class="office-board-message ${escapeHtml(message.kind)}${message.streaming ? " streaming" : ""}">
@@ -49,11 +49,11 @@ export function renderDashboardOfficeChatMessages(messages = []) {
     </article>`).join("");
 }
 
-export async function postDashboardOfficeChat(fetchImpl, text) {
+export async function postDashboardOfficeChat(fetchImpl, text, projectId) {
   const response = await fetchImpl("/api/chat", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, ...(projectId ? { projectId } : {}) }),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
@@ -67,6 +67,7 @@ export function initializeDashboardOfficeChat({ documentRef = document, fetchImp
   const input = documentRef.querySelector("#dashboard-office-chat-input");
   const sendButton = documentRef.querySelector("#dashboard-office-chat-send");
   if (!board) return () => {};
+  const currentProject = () => documentRef.body.dataset.projectId || "central-office";
   let markup = null;
   let loading = false;
   let posting = false;
@@ -81,9 +82,11 @@ export function initializeDashboardOfficeChat({ documentRef = document, fetchImp
     if (documentRef.body.dataset.page !== "dashboard" || loading) return;
     loading = true;
     try {
-      const response = await fetchImpl("/api/chat?limit=300", { cache: "no-store" });
+      const projectId = currentProject();
+      const response = await fetchImpl(`/api/chat?limit=300${projectId === "central-office" ? "" : `&projectId=${encodeURIComponent(projectId)}`}`, { cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      if (projectId !== currentProject()) return;
       const nextMarkup = renderDashboardOfficeChatMessages(data.messages || []);
       if (nextMarkup !== markup) {
         board.innerHTML = nextMarkup;
@@ -113,7 +116,7 @@ export function initializeDashboardOfficeChat({ documentRef = document, fetchImp
     if (input) input.disabled = true;
     if (status) status.textContent = "SENDING…";
     try {
-      await postDashboardOfficeChat(fetchImpl, text);
+      await postDashboardOfficeChat(fetchImpl, text, currentProject());
       input.value = "";
       resizeInput();
       await refresh();
@@ -135,6 +138,13 @@ export function initializeDashboardOfficeChat({ documentRef = document, fetchImp
     }
   };
 
+  const projectChanged = () => {
+    board.innerHTML = "";
+    markup = null;
+    if (input) input.value = "";
+    void refresh();
+  };
+  window.addEventListener("projectchange", projectChanged);
   const timer = setInterval(refresh, intervalMs);
   window.addEventListener("routechange", refresh);
   form?.addEventListener("submit", submit);
@@ -143,6 +153,7 @@ export function initializeDashboardOfficeChat({ documentRef = document, fetchImp
   void refresh();
   return () => {
     clearInterval(timer);
+    window.removeEventListener("projectchange", projectChanged);
     window.removeEventListener("routechange", refresh);
     form?.removeEventListener("submit", submit);
     input?.removeEventListener("input", resizeInput);

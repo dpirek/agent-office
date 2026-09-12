@@ -1,3 +1,4 @@
+import { projectWorkspace } from "../lib/projects.js";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { json, methodNotAllowed } from "./http.js";
@@ -40,13 +41,16 @@ async function listDirectory(root, directory = root, state = { count: 0 }) {
   return output;
 }
 
-export function createSharedWorkspaceApiHandlers({ sharedWorkspaceRoot }) {
-  async function handleSharedWorkspaceApi(req, res) {
+export function createSharedWorkspaceApiHandlers({ sharedWorkspaceRoot, uiStateStore }) {
+  async function handleSharedWorkspaceApi(req, res, url) {
     if (req.method !== "GET") return methodNotAllowed(res, "GET");
     try {
       await fs.mkdir(sharedWorkspaceRoot, { recursive: true });
-      const tree = await listDirectory(sharedWorkspaceRoot);
-      json(res, 200, { ok: true, root: sharedWorkspaceRoot, tree });
+      const projectId = url?.searchParams.get("projectId");
+      if (projectId) uiStateStore.requireProject(projectId);
+      const root = projectId ? await projectWorkspace(sharedWorkspaceRoot, projectId) : sharedWorkspaceRoot;
+      const tree = await listDirectory(sharedWorkspaceRoot, root);
+      json(res, 200, { ok: true, root, tree });
     } catch (error) {
       json(res, 500, { ok: false, error: error.message });
     }
