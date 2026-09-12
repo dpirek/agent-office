@@ -19,7 +19,7 @@ test("the workspace API lists and opens files from the delivery storage root", a
   const handlers = createSharedWorkspaceApiHandlers({ sharedWorkspaceRoot });
   const response = () => ({
     status: null, body: null,
-    writeHead(status) { this.status = status; },
+    writeHead(status, headers) { this.status = status; this.headers = headers; },
     end(body) { this.body = body; },
   });
   const listing = response();
@@ -29,9 +29,9 @@ test("the workspace API lists and opens files from the delivery storage root", a
   assert.equal(data.root, path.join(appRoot, "custom-work/deliverables"));
   assert.equal(data.tree[0].children[0].path, artifact.workspacePath);
   const download = response();
-  await handlers["/api/shared-workspace-file"]({ method: "GET" }, download, new URL(artifact.uri, "http://office.test"));
-  assert.equal(download.status, 200);
-  assert.equal(download.body.toString(), "Delivered report");
+  await handlers["/api/shared-workspace-file"]({ method: "GET" }, download, new URL(`/api/shared-workspace-file?path=${encodeURIComponent(artifact.workspacePath)}`, "http://office.test"));
+  assert.equal(download.status, 302);
+  assert.equal(download.headers.location, artifact.uri);
 });
 
 function zip(entries) {
@@ -87,7 +87,7 @@ test("delivered ZIP files are unpacked into a task folder and removed", async (c
   }]);
 
   assert.deepEqual(delivered.map((file) => file.name), ["index.html", "assets/app.js"]);
-  assert.match(delivered[0].uri, /^\/api\/shared-workspace-file\?path=/);
+  assert.match(delivered[0].uri, /^\/files\//);
   const [folder] = fs.readdirSync(root);
   assert.equal(folder, "Build-launch-page--task-123");
   assert.equal(fs.readFileSync(path.join(root, folder, "index.html"), "utf8"), "<h1>Done</h1>");

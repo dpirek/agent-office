@@ -1,3 +1,4 @@
+import { normalizeFileUrl } from "./file-url.mjs";
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -5,7 +6,7 @@ function escapeHtml(value) {
 }
 
 function safeChatUrl(value, { image = false } = {}) {
-  const url = String(value || "").trim();
+  const url = normalizeFileUrl(String(value || "").trim());
   if (!url || /[\u0000-\u001f\u007f]/.test(url)) return null;
   if (/^(?:\/|\.\/|\.\.\/)/.test(url)) return url;
   if (!image && url.startsWith("#")) return url;
@@ -26,7 +27,11 @@ function renderInlineMarkdown(value) {
     return placeholder;
   };
   let source = String(value || "");
-  source = source.replace(/`([^`\n]+)`/g, (_match, code) => hold(`<code>${escapeHtml(code)}</code>`));
+  source = source.replace(/`([^`\n]+)`/g, (_match, code) => {
+    const content = `<code>${escapeHtml(code)}</code>`;
+    const href = /^(?:\/files\/|\/api\/shared-workspace-file\?)/.test(code) ? safeChatUrl(code) : null;
+    return hold(href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${content}</a>` : content);
+  });
   source = source.replace(/!\[([^\]]*)\]\((\S+?)(?:\s+["']([^"']*)["'])?\)/g, (_match, alt, target, title) => {
     const src = safeChatUrl(target, { image: true });
     if (!src) return escapeHtml(alt || "image");

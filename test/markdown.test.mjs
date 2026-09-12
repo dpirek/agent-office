@@ -93,7 +93,7 @@ test("chat automatically links web URLs and app paths with trailing punctuation 
   assert.ok(html.includes('href="https://example.com/wiki/Result_(final)"'));
   assert.ok(html.includes('href="https://www.example.com"'));
   assert.ok(html.includes('href="/tasks"'));
-  assert.ok(html.includes('href="/api/shared-workspace-file?path=notes.md"'));
+  assert.ok(html.includes('href="/files/notes.md"'));
   assert.ok(html.includes('</a>.'));
 });
 
@@ -110,4 +110,11 @@ test("automatic links keep unsafe schemes and HTML inert", () => {
   const html = renderMarkdown('javascript:alert(1) data:text/html,bad <img src=x onerror=alert(1)> https://example.com/?q="onclick="bad');
   assert.doesNotMatch(html, /href="(?:javascript|data):|<img|<script/);
   assert.ok(html.includes('href="https://example.com/?q="'));
+});
+
+test("file links in chat use static paths, including older links and inline code", () => {
+  const html = renderMarkdown('[Site](/api/shared-workspace-file?path=project%2Fsite%2Findex.html) `/files/project/site/index.html` /files/project/site/index.html');
+  assert.equal((html.match(/href="\/files\/project\/site\/index.html"/g) || []).length, 3);
+  const artifacts = renderChatArtifacts([{ name: "Site", uri: "/api/shared-workspace-file?path=project%2Fsite%2Findex.html" }]);
+  assert.ok(artifacts.includes('href="/files/project/site/index.html"'));
 });

@@ -26,7 +26,7 @@ export function createApiRouter(options) {
   }));
 
   return async function handleApiRequest(req, res, url) {
-    const handler = routes.get(url.pathname);
+    const handler = routes.get(url.pathname) || (url.pathname.startsWith("/files/") ? routes.get("/files/") : null);
     if (!handler) return false;
     await handler(req, res, url);
     return true;

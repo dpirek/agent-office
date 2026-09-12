@@ -1,3 +1,4 @@
+import { workspaceFileUrl, normalizeFileUrl } from "./lib/file-url.mjs";
 import Router from "./lib/router.mjs";
 import { renderChatArtifacts, renderMarkdown } from "./lib/markdown.mjs";
 import { appendUniqueMention } from "./lib/mentions.mjs";
@@ -494,7 +495,7 @@ function renderTasks() {
     <td class="status-${task.status}">${escapeHtml(task.status)}</td><td class="priority-${task.priority}">${escapeHtml(task.priority)}</td>
     <td title="${escapeHtml(dependencyTitle)}">${dependencyState}</td>
     <td><span class="progress-cell"><span class="progress"><i style="width:${task.progress}%"></i></span>${task.progress}%</span></td><td>${shortTime(task.createdAt)}</td>
-    <td class="delivered-work">${task.deliveredWork?.length ? task.deliveredWork.map((work) => `<a href="${escapeHtml(work.uri)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(work.mimeType)}">↗ ${escapeHtml(work.name)}</a>`).join("") : "—"}</td>
+    <td class="delivered-work">${task.deliveredWork?.length ? task.deliveredWork.map((work) => `<a href="${escapeHtml(normalizeFileUrl(work.uri))}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(work.mimeType)}">↗ ${escapeHtml(work.name)}</a>`).join("") : "—"}</td>
     <td><span class="task-actions">
       ${task.status === "running" && task.canStop ? `<button class="task-action-button stop-task" data-task-id="${escapeHtml(task.id)}" type="button" title="Stop task" aria-label="Stop ${escapeHtml(task.title)}">${taskActionIcon("stop")}</button>` : ""}
       ${task.canDelete ? `<button class="task-action-button delete-task" data-task-id="${escapeHtml(task.id)}" type="button" title="${task.status === "running" ? "Stop task before deleting" : "Delete task"}" aria-label="Delete ${escapeHtml(task.title)}" ${task.status === "running" ? "disabled" : ""}>${taskActionIcon("delete")}</button>` : ""}
@@ -525,7 +526,7 @@ function renderSharedWorkspace() {
     const entries = workspaceFiles(folder.children || []);
     return `<section class="workspace-folder">
       <header><div><span>▤</span><strong>${escapeHtml(folder.name)}</strong></div><small>${entries.length} FILE${entries.length === 1 ? "" : "S"}</small></header>
-      <div class="workspace-folder-files">${entries.length ? entries.map((file) => `<a class="workspace-file" href="/api/shared-workspace-file?path=${encodeURIComponent(file.path)}" target="_blank" rel="noopener noreferrer"><span>▱</span><strong>${escapeHtml(file.nestedPath)}</strong><small>${formatBytes(file.size)}</small><time>${scheduleTime(file.modifiedAt)}</time><b>OPEN ↗</b></a>`).join("") : `<div class="workspace-empty-folder">EMPTY PROJECT FOLDER</div>`}</div>
+      <div class="workspace-folder-files">${entries.length ? entries.map((file) => `<a class="workspace-file" href="${escapeHtml(workspaceFileUrl(file.path))}" target="_blank" rel="noopener noreferrer"><span>▱</span><strong>${escapeHtml(file.nestedPath)}</strong><small>${formatBytes(file.size)}</small><time>${scheduleTime(file.modifiedAt)}</time><b>OPEN ↗</b></a>`).join("") : `<div class="workspace-empty-folder">EMPTY PROJECT FOLDER</div>`}</div>
     </section>`;
   }).join("") : `<div class="workspace-empty"><strong>NO PROJECT FILES</strong><span>Project files and worker deliveries will appear here.</span></div>`;
 }

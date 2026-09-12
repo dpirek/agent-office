@@ -144,7 +144,7 @@ The office sends each assignment over the registered socket. Every task includes
 - `priority` is `low`, `medium`, or `high`.
 - Task instructions are found in text parts of `message.parts`.
 - `artifactUpload.token` is unique to this task. Do not log, reuse, or send it in a task update.
-- For a dependent task, the office prepends a `Prerequisite work` section containing completed upstream results and delivered-file references. Treat that section as input to the current task and continue from it instead of repeating the prerequisite work. Relative `/api/shared-workspace-file` URIs resolve against the office server's HTTP origin (the same host and port used for this WebSocket connection, with `ws`/`wss` changed to `http`/`https`).
+- For a dependent task, the office prepends a `Prerequisite work` section containing completed upstream results and delivered-file references. Treat that section as input to the current task and continue from it instead of repeating the prerequisite work. Relative `/files/…` URIs resolve against the office server's HTTP origin (the same host and port used for this WebSocket connection, with `ws`/`wss` changed to `http`/`https`).
 
 A worker may receive more than one task on the same connection. It must either process them concurrently or maintain its own queue without blocking the socket receive loop.
 
