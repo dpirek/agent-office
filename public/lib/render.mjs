@@ -1,3 +1,4 @@
+import { renderMarkdown } from "./markdown.mjs";
 import { escapeHtml, formatTime } from "./format.mjs";
 
 function createRenderer(elements) {
@@ -14,14 +15,8 @@ function createRenderer(elements) {
 
     const body = document.createElement("div");
     body.className = "body";
-    if (role === "agent") {
-      body.innerHTML = escapeHtml(text).replace(
-        /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
-      );
-    } else {
-      body.textContent = text;
-    }
+    body.classList.add("markdown-body");
+    body.innerHTML = renderMarkdown(text);
 
     item.append(label, body);
     elements.consoleNode.append(item);

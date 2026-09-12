@@ -186,6 +186,7 @@ function allTasks() {
   const officeTasks = state.officeTasks.map((task) => ({
     id: task.id,
     title: task.title,
+    description: task.description || "",
     projectId: task.projectId,
     agent: task.agent || "UNASSIGNED",
     status: normalizeTaskStatus(task.status),
@@ -471,6 +472,8 @@ function taskActionIcon(action) {
   return `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6 4.5V3h4v1.5M5 6.5v6M8 6.5v6M11 6.5v6M4.5 4.5l.5 9h6l.5-9"></path></svg>`;
 }
 
+const expandedTaskIds = new Set();
+
 function renderTasks() {
   const tasks = allTasks();
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
@@ -487,7 +490,7 @@ function renderTasks() {
     const dependencyState = dependencies.length === 0 ? "READY" : waiting.length ? `WAITING ${waiting.length}` : "MET";
     const dependencyTitle = dependencies.map((id) => tasksById.get(id)?.title || id).join(", ");
     return `<tr>
-    <td>${index + 1}</td><td title="${escapeHtml(task.title)}">${escapeHtml(task.title)}<small class="task-project-label">${escapeHtml(state.projects.find((project) => project.id === task.projectId)?.name || "Central Office")}</small></td><td>${escapeHtml(task.agent)}</td>
+    <td>${index + 1}</td><td title="${escapeHtml(task.title)}"><button class="task-expand-button" type="button" data-task-id="${escapeHtml(task.id)}" aria-expanded="${expandedTaskIds.has(task.id)}" aria-controls="task-details-${escapeHtml(task.id)}"><span aria-hidden="true">${expandedTaskIds.has(task.id) ? "▾" : "▸"}</span> ${escapeHtml(task.title)}</button><small class="task-project-label">${escapeHtml(state.projects.find((project) => project.id === task.projectId)?.name || "Central Office")}</small></td><td>${escapeHtml(task.agent)}</td>
     <td class="status-${task.status}">${escapeHtml(task.status)}</td><td class="priority-${task.priority}">${escapeHtml(task.priority)}</td>
     <td title="${escapeHtml(dependencyTitle)}">${dependencyState}</td>
     <td><span class="progress-cell"><span class="progress"><i style="width:${task.progress}%"></i></span>${task.progress}%</span></td><td>${shortTime(task.createdAt)}</td>
@@ -496,7 +499,7 @@ function renderTasks() {
       ${task.status === "running" && task.canStop ? `<button class="task-action-button stop-task" data-task-id="${escapeHtml(task.id)}" type="button" title="Stop task" aria-label="Stop ${escapeHtml(task.title)}">${taskActionIcon("stop")}</button>` : ""}
       ${task.canDelete ? `<button class="task-action-button delete-task" data-task-id="${escapeHtml(task.id)}" type="button" title="${task.status === "running" ? "Stop task before deleting" : "Delete task"}" aria-label="Delete ${escapeHtml(task.title)}" ${task.status === "running" ? "disabled" : ""}>${taskActionIcon("delete")}</button>` : ""}
     </span></td>
-  </tr>`;
+  </tr><tr class="task-details-row" id="task-details-${escapeHtml(task.id)}" ${expandedTaskIds.has(task.id) ? "" : "hidden"}><td colspan="10"><strong>Task description</strong><p>${escapeHtml(task.description || task.title)}</p></td></tr>`;
   }).join("") : `<tr class="empty-row"><td colspan="10">NO TASKS IN THIS VIEW</td></tr>`;
   renderSelectedAgent();
 }
@@ -1278,6 +1281,15 @@ $("#task-form").addEventListener("submit", async (event) => {
 });
 
 $("#task-body").addEventListener("click", async (event) => {
+  const expand = event.target.closest(".task-expand-button");
+  if (expand) {
+    const id = expand.dataset.taskId;
+    if (expandedTaskIds.has(id)) expandedTaskIds.delete(id);
+    else expandedTaskIds.add(id);
+    renderTasks();
+    $("#task-body").querySelectorAll(".task-expand-button").forEach((button) => { if (button.dataset.taskId === id) button.focus(); });
+    return;
+  }
   const button = event.target.closest(".task-action-button[data-task-id]");
   if (!button) return;
   const task = allTasks().find((entry) => entry.id === button.dataset.taskId);

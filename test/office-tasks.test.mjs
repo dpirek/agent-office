@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { assignOfficeTask, cancelOfficeTask, createOfficeTask, deleteOfficeTask } from "../lib/office-tasks.js";
+import { assignOfficeTask, buildDependentTaskPrompt, cancelOfficeTask, createOfficeTask, deleteOfficeTask } from "../lib/office-tasks.js";
 import { SubAgentManager } from "../lib/sub-agents.js";
 import { createUiStateStore } from "../lib/ui-state.js";
 import { createOfficeTasksTool } from "../lib/tools/office-tasks.js";
@@ -229,4 +229,37 @@ test("tasks can be deleted after dependents and running work is protected", (con
   const running = createOfficeTask(store, { title: "Deploy" });
   store.assignOfficeTask(running.id, { agent: "Builder", messageId: "running-message" });
   assert.throws(() => deleteOfficeTask(store, { id: running.id }), /Stop the running task/);
+});
+
+test("manager descriptions persist and are included in worker instructions", async (context) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "agent-office-description-"));
+  const databasePath = path.join(directory, "state.sqlite");
+  let store = createUiStateStore(databasePath);
+  context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const description = "Objective: Prepare release notes.\nDeliverable: notes.md\nAcceptance: Include every user-facing change.";
+  const tool = createOfficeTasksTool({ uiStateStore: store });
+  const created = await tool.execute({ action: "create", title: "Release notes", description });
+  assert.equal(created.ok, true);
+  assert.equal(created.task.description, description);
+  store.close();
+  store = createUiStateStore(databasePath);
+  const saved = store.getOfficeTasks({ id: created.task.id })[0];
+  assert.equal(saved.description, description);
+  let dispatched;
+  assignOfficeTask(store, {
+    listWorkers: () => [{ name: "Writer" }],
+    queue: (request) => {
+      dispatched = request;
+      return { task: { messageId: "description-message" }, completion: new Promise(() => {}) };
+    },
+  }, { id: saved.id, agent: "Writer" });
+  assert.equal(dispatched.title, "Release notes");
+  assert.equal(dispatched.task, `Release notes\n\n${description}`);
+  const dependentPrompt = buildDependentTaskPrompt(
+    { ...saved, dependsOn: ["prerequisite"] },
+    [{ id: "prerequisite", title: "Review changes", result: "Verified change list" }],
+  );
+  assert.ok(dependentPrompt.includes(description));
+  assert.ok(dependentPrompt.includes("Verified change list"));
+  assert.equal(buildDependentTaskPrompt({ title: "Legacy instructions" }, []), "Legacy instructions");
 });

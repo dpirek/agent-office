@@ -86,3 +86,28 @@ test("image artifacts render as previews while other files remain links", () => 
   assert.match(html, /<img[^>]+preview\.png/);
   assert.match(html, /class="chat-file-attachment"[^>]+source\.zip/);
 });
+
+test("chat automatically links web URLs and app paths with trailing punctuation excluded", () => {
+  const html = renderMarkdown("Visit https://example.com/report?q=one&view=full. See (https://example.com/wiki/Result_(final)), www.example.com, /tasks and /api/shared-workspace-file?path=notes.md.");
+  assert.ok(html.includes('href="https://example.com/report?q=one&amp;view=full"'));
+  assert.ok(html.includes('href="https://example.com/wiki/Result_(final)"'));
+  assert.ok(html.includes('href="https://www.example.com"'));
+  assert.ok(html.includes('href="/tasks"'));
+  assert.ok(html.includes('href="/api/shared-workspace-file?path=notes.md"'));
+  assert.ok(html.includes('</a>.'));
+});
+
+test("chat links angle URLs and mailto links without nesting existing links or code", () => {
+  const html = renderMarkdown('<https://example.com> mailto:hello@example.com [Website](https://example.com)\n\n`https://code.example.com`\n\n```\nhttps://code.example.com\n```');
+  assert.equal((html.match(/<a /g) || []).length, 3);
+  assert.ok(html.includes('href="mailto:hello@example.com"'));
+  assert.ok(html.includes('<code>https://code.example.com</code>'));
+  assert.ok(html.includes('<pre><code>https://code.example.com</code></pre>'));
+  assert.doesNotMatch(html, /<a[^>]*>[^<]*<a/);
+});
+
+test("automatic links keep unsafe schemes and HTML inert", () => {
+  const html = renderMarkdown('javascript:alert(1) data:text/html,bad <img src=x onerror=alert(1)> https://example.com/?q="onclick="bad');
+  assert.doesNotMatch(html, /href="(?:javascript|data):|<img|<script/);
+  assert.ok(html.includes('href="https://example.com/?q="'));
+});

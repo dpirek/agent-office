@@ -39,6 +39,21 @@ function renderInlineMarkdown(value) {
     const titleAttribute = title ? ` title="${escapeHtml(title)}"` : "";
     return hold(`<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer"${titleAttribute}>${escapeHtml(label)}</a>`);
   });
+  source = source.replace(/(^|[\s(<\[{])((?:https?:\/\/|www\.|mailto:)[^\s<>"'\uE000\uE001]+|\/(?!\/)[A-Za-z0-9][^\s<>"'\uE000\uE001]*)/gi, (_match, prefix, candidate) => {
+    let target = candidate;
+    let suffix = "";
+    while (target) {
+      const last = target.at(-1);
+      const opening = { ")": "(", "]": "[", "}": "{" }[last];
+      const unmatched = opening && target.split(last).length > target.split(opening).length;
+      if (!/[.,!?:;*~]/.test(last) && !unmatched) break;
+      suffix = last + suffix;
+      target = target.slice(0, -1);
+    }
+    const href = safeChatUrl(/^www\./i.test(target) ? `https://${target}` : target);
+    if (!href) return prefix + candidate;
+    return prefix + hold(`<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(target)}</a>`) + suffix;
+  });
   let html = escapeHtml(source)
     .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
     .replace(/__([^_\n]+)__/g, "<strong>$1</strong>")

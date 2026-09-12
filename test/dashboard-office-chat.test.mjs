@@ -7,10 +7,12 @@ test("dashboard office chat renders messages without user-list or composer contr
     author: "Office Manager",
     username: "office-manager",
     kind: "manager",
-    text: "**Build complete.**",
+    text: "**Build complete.** See https://example.com/build and /tasks.",
     createdAt: "2026-09-10T12:00:00.000Z",
   }]);
 
+  assert.ok(markup.includes('href="https://example.com/build"'));
+  assert.ok(markup.includes('href="/tasks"'));
   assert.match(markup, /Office Manager/);
   assert.match(markup, /<strong>Build complete\.<\/strong>/);
   assert.match(markup, /assets\/avatars\/manager\.png/);
