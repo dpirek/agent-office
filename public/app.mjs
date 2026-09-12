@@ -1629,8 +1629,6 @@ function renderProjects() {
   if (!project) return;
   $("#project-select").innerHTML = state.projects.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.name)}</option>`).join("");
   $("#project-select").value = project.id;
-  $("#project-status").value = project.status;
-  $("#project-description").textContent = project.description;
   $("#project-chat-title").textContent = project.name.toUpperCase();
   $("#project-chat-rooms").innerHTML = state.projects.map((entry) => `<button class="office-chat-channel project-room${entry.id === project.id ? " active" : ""}" type="button" data-project-id="${escapeHtml(entry.id)}" ${entry.id === project.id ? 'aria-current="true"' : ""}><span>#</span><strong>${escapeHtml(entry.name)}</strong></button>`).join("");
   $("#project-room-heading").textContent = `# ${project.name}`;
@@ -1659,19 +1657,15 @@ async function switchProject(id) {
   await Promise.all([loadOfficeChat(), refreshDashboard({ quiet: true }), loadSharedWorkspace({ quiet: true })]);
 }
 $("#project-select").addEventListener("change", (event) => void switchProject(event.target.value));
-let editingProjectId = null;
-function openProjectDialog(edit) {
-  const project = edit ? state.projects.find((entry) => entry.id === state.projectId) : null;
-  editingProjectId = project?.id || null;
-  $("#project-dialog-title").textContent = edit ? "Edit project" : "New project";
-  $("#project-name").value = project?.name || "";
-  $("#project-summary").value = project?.description || "";
+function openProjectDialog() {
+  $("#project-dialog-title").textContent = "New project";
+  $("#project-name").value = "";
+  $("#project-summary").value = "";
   $("#project-dialog").showModal();
 }
-$("#new-project-button").addEventListener("click", () => openProjectDialog(false));
-$("#edit-project-button").addEventListener("click", () => openProjectDialog(true));
+$("#new-project-button").addEventListener("click", openProjectDialog);
 $("#cancel-project-button").addEventListener("click", () => $("#project-dialog").close());
-async function saveProject(payload, method = "PUT") {
+async function saveProject(payload, method = "POST") {
   const response = await fetch("/api/projects", { method, headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error);
@@ -1683,15 +1677,11 @@ $("#project-form").addEventListener("submit", async (event) => {
   const button = event.submitter;
   if (button) button.disabled = true;
   try {
-    const project = await saveProject({ id: editingProjectId, name: $("#project-name").value, description: $("#project-summary").value }, editingProjectId ? "PUT" : "POST");
+    const project = await saveProject({ name: $("#project-name").value, description: $("#project-summary").value });
     $("#project-dialog").close();
     await switchProject(project.id);
   } catch (error) { showToast(error.message, true); }
   finally { if (button) button.disabled = false; }
-});
-$("#project-status").addEventListener("change", async (event) => {
-  try { await saveProject({ id: state.projectId, status: event.target.value }); }
-  catch (error) { renderProjects(); showToast(error.message, true); }
 });
 void loadProjects().then(() => switchProject(state.projectId)).catch((error) => showToast(error.message, true));
 
