@@ -18,6 +18,13 @@
             <div class="sidebar-health"><span class="status-dot" id="health-dot"></span><span id="health-text">CONNECTING</span></div>
           </div>
           <p class="sidebar-mantra">ORCHESTRATE<br>MONITOR<br>COLLABORATE</p>
+          <div class="project-context-header">
+            <p class="workspace-context" id="header-context">v… · Workspace …</p>
+            <div class="project-toolbar" aria-label="Project context">
+              <select id="project-select" aria-label="Current project"><option value="central-office">Central Office</option></select>
+              <button id="new-project-button" type="button" aria-label="New project" title="New project"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+            </div>
+          </div>
         </header>
         <div class="nav-items">
           <a class="nav-item active" href="/dashboard" data-section="dashboard" aria-label="Dashboard"><span class="nav-icon" aria-hidden="true">▣</span>DASHBOARD</a>
@@ -32,13 +39,6 @@
       </nav>
 
       <div class="project-content">
-        <header class="project-context-header">
-          <p class="workspace-context" id="header-context">v… · Workspace …</p>
-          <div class="project-toolbar" aria-label="Project context">
-            <select id="project-select" aria-label="Current project"><option value="central-office">Central Office</option></select>
-            <button id="new-project-button" type="button" aria-label="New project" title="New project"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-          </div>
-        </header>
       <main class="main-content">
         <section class="operations-grid">
           <section class="panel office-panel" data-view="dashboard">
