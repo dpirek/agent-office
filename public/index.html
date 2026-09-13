@@ -264,6 +264,10 @@
     </form>
   </dialog>
   <div class="toast" id="toast" role="status"></div>
+  <dialog class="file-preview-dialog" id="file-preview-dialog" aria-labelledby="file-preview-title">
+    <header class="panel-header"><div><span class="header-icon">▱</span><h2 id="file-preview-title">FILE PREVIEW</h2></div><div class="file-preview-actions"><a id="file-preview-download" download>DOWNLOAD ↓</a><button id="file-preview-close" class="dialog-close" type="button" aria-label="Close preview">×</button></div></header>
+    <div class="file-preview-content" id="file-preview-content"></div>
+  </dialog>
   <script type="module" src="/app.mjs"></script>
   <script type="module" src="/lib/dashboard-office-chat.mjs"></script>
 <dialog id="project-dialog">

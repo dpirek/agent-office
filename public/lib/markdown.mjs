@@ -29,7 +29,7 @@ function renderInlineMarkdown(value) {
   let source = String(value || "");
   source = source.replace(/`([^`\n]+)`/g, (_match, code) => {
     const content = `<code>${escapeHtml(code)}</code>`;
-    const href = /^(?:\/files\/|\/api\/shared-workspace-file\?)/.test(code) ? safeChatUrl(code) : null;
+    const href = /^(?:(?:https?:\/\/)?(?:localhost|127\.0\.0\.1)(?::\d+)?\/|\/files\/|\/api\/shared-workspace-file\?)/i.test(code) ? safeChatUrl(code) : null;
     return hold(href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${content}</a>` : content);
   });
   source = source.replace(/!\[([^\]]*)\]\((\S+?)(?:\s+["']([^"']*)["'])?\)/g, (_match, alt, target, title) => {

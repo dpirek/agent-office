@@ -118,3 +118,11 @@ test("file links in chat use static paths, including older links and inline code
   const artifacts = renderChatArtifacts([{ name: "Site", uri: "/api/shared-workspace-file?path=project%2Fsite%2Findex.html" }]);
   assert.ok(artifacts.includes('href="/files/project/site/index.html"'));
 });
+
+test("localhost workspace links use the current server", () => {
+  const html = renderMarkdown('[Site](http://localhost:8100/files/project/site/index.html) http://127.0.0.1:8100/api/shared-workspace-file?path=project%2Fnotes.md `http://localhost:8100/files/project/site/index.html`');
+  assert.equal((html.match(/href="\/files\/project\/site\/index.html"/g) || []).length, 2);
+  assert.ok(html.includes('href="/files/project/notes.md"'));
+  const artifacts = renderChatArtifacts([{ name: "Preview", mimeType: "image/png", uri: "http://localhost:8100/files/project/preview.png" }]);
+  assert.ok(artifacts.includes('src="/files/project/preview.png"'));
+});

@@ -407,6 +407,18 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .workspace-file > span, .workspace-file > b { color: var(--green); }
 .workspace-file > strong { overflow: hidden; font-size: 9px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-file > small, .workspace-file > time, .workspace-file > b { color: var(--muted); font-size: 8px; font-weight: 400; }
+.file-preview-dialog { width: min(96vw, 1600px); max-width: none; height: min(94vh, 1100px); max-height: none; padding: 0; border: 1px solid var(--line); background: var(--bg, #0b1010); color: var(--text); }
+.file-preview-dialog::backdrop { background: rgb(0 0 0 / 78%); }
+.file-preview-dialog[open] { display: flex; flex-direction: column; }
+.file-preview-dialog .panel-header { flex: none; }
+.file-preview-dialog .panel-header h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-preview-actions { display: flex; align-items: center; gap: 14px; }
+.file-preview-actions a { color: var(--green); font-size: 10px; text-decoration: none; white-space: nowrap; }
+.file-preview-content { flex: 1; min-height: 0; overflow: auto; padding: 20px; }
+.file-preview-content iframe { display: block; width: 100%; height: 100%; min-height: 70vh; border: 0; background: white; }
+.file-preview-image { display: block; max-width: 100%; max-height: 100%; margin: auto; object-fit: contain; }
+.file-preview-markdown { max-width: 1000px; margin: 0 auto; font-size: 14px; }
+.file-preview-text { margin: 0; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .workspace-empty, .workspace-empty-folder { display: grid; place-content: center; gap: 8px; min-height: 180px; color: var(--muted); text-align: center; }
 .workspace-empty strong { color: var(--text); font-size: 13px; }
 .workspace-empty-folder { min-height: 60px; font-size: 8px; }

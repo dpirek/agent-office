@@ -1,5 +1,5 @@
 import { PROJECT_PAGES, projectPagePath, projectIdFromPath, registerProjectRoutes } from "./lib/project-routes.mjs";
-import { workspaceFileUrl } from "./lib/file-url.mjs";
+import { normalizeFileUrl, workspaceFileUrl } from "./lib/file-url.mjs";
 import Router from "./lib/router.mjs";
 import { renderChatArtifacts, renderMarkdown } from "./lib/markdown.mjs";
 import { appendUniqueMention } from "./lib/mentions.mjs";
@@ -112,6 +112,81 @@ function showToast(message, error = false) {
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => { toast.className = "toast"; }, 3200);
 }
+
+const filePreviewDialog = $("#file-preview-dialog");
+let previewRequest = 0;
+function closeFilePreview() {
+  previewRequest += 1;
+  filePreviewDialog.close();
+  $("#file-preview-content").replaceChildren();
+}
+$("#file-preview-close").addEventListener("click", closeFilePreview);
+filePreviewDialog.addEventListener("click", (event) => { if (event.target === filePreviewDialog) closeFilePreview(); });
+filePreviewDialog.addEventListener("close", () => { previewRequest += 1; $("#file-preview-content").replaceChildren(); });
+
+async function openFilePreview(href) {
+  const url = normalizeFileUrl(href);
+  const pathname = new URL(url, location.href).pathname;
+  const name = decodeURIComponent(pathname.split("/").pop() || "File");
+  const extension = name.split(".").pop()?.toLowerCase();
+  if (extension === "zip") {
+    const download = document.createElement("a");
+    download.href = url;
+    download.download = name;
+    download.click();
+    return;
+  }
+  const request = ++previewRequest;
+  const content = $("#file-preview-content");
+  content.replaceChildren();
+  content.textContent = "Loading preview…";
+  $("#file-preview-title").textContent = name;
+  const download = $("#file-preview-download");
+  download.href = url;
+  download.download = name;
+  if (!filePreviewDialog.open) filePreviewDialog.showModal();
+  try {
+    let node;
+    if (["png", "jpg", "jpeg", "gif", "webp", "avif", "svg"].includes(extension)) {
+      node = document.createElement("img");
+      node.src = url;
+      node.alt = name;
+      node.className = "file-preview-image";
+    } else if (["html", "htm", "pdf"].includes(extension)) {
+      node = document.createElement("iframe");
+      node.src = url;
+      node.title = name;
+      if (extension !== "pdf") node.setAttribute("sandbox", "allow-scripts");
+    } else {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Could not load file (HTTP ${response.status}).`);
+      const contentType = response.headers.get("content-type") || "";
+      if (!/^(?:text\/|application\/(?:json|javascript|xml))/.test(contentType)) throw new Error("Preview is unavailable for this file type. Use Download instead.");
+      const body = await response.text();
+      node = document.createElement(extension === "md" ? "div" : "pre");
+      if (extension === "md") {
+        node.className = "markdown-body file-preview-markdown";
+        node.innerHTML = renderMarkdown(body);
+      } else {
+        node.className = "file-preview-text";
+        node.textContent = body;
+      }
+    }
+    if (request === previewRequest && filePreviewDialog.open) content.replaceChildren(node);
+  } catch (error) {
+    if (request === previewRequest && filePreviewDialog.open) content.textContent = error.message;
+  }
+}
+
+document.addEventListener("click", (event) => {
+  const link = event.target.closest?.("a[href]");
+  if (!link || !link.closest("#shared-workspace-browser, #office-board-messages, #chat-messages")) return;
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  const url = normalizeFileUrl(link.getAttribute("href"));
+  if (!url.startsWith("/files/")) return;
+  event.preventDefault();
+  void openFilePreview(url);
+});
 
 function renderPage(section) {
   const page = PAGES[section] || PAGES.dashboard;
@@ -527,7 +602,7 @@ function renderSharedWorkspace() {
     const entries = workspaceFiles(folder.children || []);
     return `<section class="workspace-folder">
       <header><div><span>▤</span><strong>${escapeHtml(folder.name)}</strong></div><small>${entries.length} FILE${entries.length === 1 ? "" : "S"}</small></header>
-      <div class="workspace-folder-files">${entries.length ? entries.map((file) => `<a class="workspace-file" href="${escapeHtml(workspaceFileUrl(file.path))}" target="_blank" rel="noopener noreferrer"><span>▱</span><strong>${escapeHtml(file.nestedPath)}</strong><small>${formatBytes(file.size)}</small><time>${scheduleTime(file.modifiedAt)}</time><b>OPEN ↗</b></a>`).join("") : `<div class="workspace-empty-folder">EMPTY PROJECT FOLDER</div>`}</div>
+      <div class="workspace-folder-files">${entries.length ? entries.map((file) => `<a class="workspace-file" href="${escapeHtml(workspaceFileUrl(file.path))}"><span>▱</span><strong>${escapeHtml(file.nestedPath)}</strong><small>${formatBytes(file.size)}</small><time>${scheduleTime(file.modifiedAt)}</time><b>PREVIEW ↗</b></a>`).join("") : `<div class="workspace-empty-folder">EMPTY PROJECT FOLDER</div>`}</div>
     </section>`;
   }).join("") : `<div class="workspace-empty"><strong>NO PROJECT FILES</strong><span>Project files and worker deliveries will appear here.</span></div>`;
 }
