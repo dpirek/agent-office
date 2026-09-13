@@ -1,4 +1,5 @@
-import { workspaceFileUrl, normalizeFileUrl } from "./lib/file-url.mjs";
+import { PROJECT_PAGES, projectPagePath, projectIdFromPath, registerProjectRoutes } from "./lib/project-routes.mjs";
+import { workspaceFileUrl } from "./lib/file-url.mjs";
 import Router from "./lib/router.mjs";
 import { renderChatArtifacts, renderMarkdown } from "./lib/markdown.mjs";
 import { appendUniqueMention } from "./lib/mentions.mjs";
@@ -48,7 +49,7 @@ const TOOL_DETAILS = {
 };
 
 const state = {
-  projectId: localStorage.getItem("office-project") || "central-office",
+  projectId: projectIdFromPath(window.location.pathname) || localStorage.getItem("office-project") || "central-office",
   projects: [],
   agents: [],
   selectedAgent: "Office Manager",
@@ -495,7 +496,7 @@ function renderTasks() {
     <td class="status-${task.status}">${escapeHtml(task.status)}</td><td class="priority-${task.priority}">${escapeHtml(task.priority)}</td>
     <td title="${escapeHtml(dependencyTitle)}">${dependencyState}</td>
     <td><span class="progress-cell"><span class="progress"><i style="width:${task.progress}%"></i></span>${task.progress}%</span></td><td>${shortTime(task.createdAt)}</td>
-    <td class="delivered-work">${task.deliveredWork?.length ? task.deliveredWork.map((work) => `<a href="${escapeHtml(normalizeFileUrl(work.uri))}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(work.mimeType)}">↗ ${escapeHtml(work.name)}</a>`).join("") : "—"}</td>
+    <td class="delivered-work">${task.deliveredWork?.length ? `<a href="/downloads/tasks/${encodeURIComponent(task.projectId || state.projectId)}/${encodeURIComponent(task.id)}.zip" download title="Download all ${task.deliveredWork.length} delivered files">↓ DOWNLOAD ZIP</a>` : "—"}</td>
     <td><span class="task-actions">
       ${task.status === "running" && task.canStop ? `<button class="task-action-button stop-task" data-task-id="${escapeHtml(task.id)}" type="button" title="Stop task" aria-label="Stop ${escapeHtml(task.title)}">${taskActionIcon("stop")}</button>` : ""}
       ${task.canDelete ? `<button class="task-action-button delete-task" data-task-id="${escapeHtml(task.id)}" type="button" title="${task.status === "running" ? "Stop task before deleting" : "Delete task"}" aria-label="Delete ${escapeHtml(task.title)}" ${task.status === "running" ? "disabled" : ""}>${taskActionIcon("delete")}</button>` : ""}
@@ -1532,7 +1533,7 @@ $("#factory-reset-button").addEventListener("click", async () => {
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith("agent-office.") || key.startsWith("agent-worker.")) localStorage.removeItem(key);
     }
-    window.location.assign("/dashboard");
+    window.location.assign("/central-office/dashboard");
   } catch (error) {
     showToast(error.message, true);
     button.disabled = false;
@@ -1602,9 +1603,16 @@ $$('#task-filters button').forEach((button) => button.addEventListener("click", 
 }));
 
 const router = new Router({ fallback: PAGES.dashboard.path });
-router.addRoute("/", () => renderPage("dashboard"));
-Object.entries(PAGES).forEach(([section, page]) => {
-  router.addRoute(page.path, () => renderPage(section));
+registerProjectRoutes(router, {
+  pages: PAGES,
+  getProjectId: () => state.projectId,
+  selectProject: (id) => {
+    const selected = state.projects.some((project) => project.id === id) ? id : "central-office";
+    if (selected !== id) showToast("Project not found. Showing Central Office.", true);
+    if (state.projectId !== selected) void switchProject(selected, { navigate: false });
+    return selected;
+  },
+  renderPage,
 });
 $$('.nav-item').forEach((link) => link.addEventListener("click", (event) => {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -1627,17 +1635,22 @@ window.addEventListener("resize", syncOfficeBoardComposerHeight);
 window.visualViewport?.addEventListener("resize", syncOfficeBoardComposerHeight);
 initPanelMinimizing({ onChange: syncCollapsedPanelLayout });
 initPanelResizing();
-router.start();
-void refreshDashboard().finally(connectSocket);
+
 void loadSystemPrompts();
 void loadConfigurationSettings();
 void loadSkills();
 void loadMemory();
-void loadOfficeChat();
-void loadSharedWorkspace();
+
 void loadSystemLogs();
 
+function updateProjectLinks() {
+  $$(".nav-item[data-section]").forEach((link) => {
+    link.href = projectPagePath(link.dataset.section, state.projectId);
+  });
+}
+
 function renderProjects() {
+  updateProjectLinks();
   const project = state.projects.find((entry) => entry.id === state.projectId);
   if (!project) return;
   $("#project-select").innerHTML = state.projects.map((entry) => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.name)}</option>`).join("");
@@ -1655,7 +1668,11 @@ async function loadProjects() {
   if (!state.projects.some((entry) => entry.id === state.projectId)) state.projectId = "central-office";
   renderProjects();
 }
-async function switchProject(id) {
+async function switchProject(id, { navigate = true } = {}) {
+  if (navigate && PROJECT_PAGES.has(document.body.dataset.page)) {
+    router.navigate(projectPagePath(document.body.dataset.page, id));
+    return;
+  }
   state.projectId = id;
   localStorage.setItem("office-project", id);
   state.officeChatMessages = [];
@@ -1696,7 +1713,11 @@ $("#project-form").addEventListener("submit", async (event) => {
   } catch (error) { showToast(error.message, true); }
   finally { if (button) button.disabled = false; }
 });
-void loadProjects().then(() => switchProject(state.projectId)).catch((error) => showToast(error.message, true));
+void loadProjects().then(async () => {
+  router.start();
+  await switchProject(state.projectId, { navigate: false });
+  connectSocket();
+}).catch((error) => showToast(error.message, true));
 
 $("#project-chat-rooms").addEventListener("click", (event) => {
   const room = event.target.closest("[data-project-id]");

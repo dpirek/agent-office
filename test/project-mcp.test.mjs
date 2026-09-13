@@ -42,6 +42,9 @@ test("project MCP authenticates tasks and scopes file, worker and conversation t
   assert.equal((await request("initialize", { protocolVersion: "2025-11-25" })).body.result.protocolVersion, "2025-11-25");
   assert.equal((await request("tools/list")).body.result.tools.length, 5);
   const call = async (name, args = {}) => (await request("tools/call", { name, arguments: args })).body.result;
+  const context = (await call("project_get_context")).structuredContent;
+  assert.deepEqual(Object.keys(context.workspaceLayout), ["app", "docs", "designs", "research", "scripts"]);
+  assert.match(context.deliveryInstructions, /Never add task-ID/);
   const listing = (await call("project_list_files")).structuredContent;
   assert.deepEqual(listing.files.map((file) => file.path), ["assets/input.txt"]);
   assert.equal(listing.files[0].completedBy[0].agent, "Researcher");
@@ -78,6 +81,8 @@ test("worker assignments include project description, current files and prerequi
   };
   const text = await prepareWorkerTask({ sharedWorkspaceRoot: root, uiStateStore: store }, { projectId: "alpha", messageId: "message-one", task: "Build the site." });
   assert.match(text, /Description: Accessible website/);
+  assert.match(text, /ZIP whose entries start directly with app\//);
+  assert.match(text, /app\/index.html/);
   assert.match(text, /\[PREREQUISITE\] assets\/research.txt/);
   assert.match(text, /\/files\/alpha\/assets\/research.txt/);
   assert.match(text, /Research findings by Researcher/);

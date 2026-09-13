@@ -118,6 +118,9 @@ test("manager context includes only the selected project's status, files, and ta
   const context = await prepareProjectContext(store, root, a.id, "Continue the website");
   assert.equal(context.root, await fs.realpath(path.join(root, a.id)));
   assert.match(context.request, /Project status: paused/);
+  assert.match(context.request, /app\/: Application source/);
+  assert.match(context.request, /Never add task-ID/);
+  assert.match(context.request, /exact project-relative input and output paths/);
   assert.match(context.request, /alpha.txt/);
   assert.match(context.request, /Alpha task/);
   assert.doesNotMatch(context.request, /Beta|beta.txt/);

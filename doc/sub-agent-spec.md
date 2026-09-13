@@ -299,7 +299,7 @@ Legacy artifact requirements:
 - `mimeType` should describe the downloadable file accurately.
 - `metadata` is optional and may contain JSON-compatible values such as byte size or file count.
 
-The office downloads each deliverable before completing the task. ZIP archives are safely extracted directly into the project workspace, preserving their internal paths; the downloaded ZIP is deleted after extraction. Non-archive files are copied into the project root. No task-specific folder is added. Later deliveries replace matching file paths and preserve unrelated files. Tasks without a project use central-office. The local files appear on `/workspace`, and their local links are attached to the task, posted in `#central-office`, and recorded in memory.
+The office downloads each deliverable before completing the task. ZIP archives are safely extracted directly into the project workspace, preserving their internal paths; the downloaded ZIP is deleted after extraction. Non-archive files are copied into the project root. No task-specific folder is added. Later deliveries replace matching file paths and preserve unrelated files. Tasks without a project use central-office. The local files appear on `/<project-id>/workspace`, and their local links are attached to the task, posted in `#central-office`, and recorded in memory.
 
 Downloads are limited to 100 MB per artifact and ZIP expansion is limited to 500 MB and 5,000 entries. Encrypted archives, symbolic links, path traversal, and unsupported compression methods are rejected. A task is marked failed if its delivered work cannot be stored safely.
 
@@ -444,3 +444,10 @@ Available read-only tools:
 - `project_conversation_summary`: an extractive summary of the latest 100 project messages, recent user requests, manager updates, and task outcomes. Excerpts are bounded and explicitly marked as such.
 
 The endpoint supports MCP initialization, ping, and tool discovery/calls using JSON responses. It supports protocol versions `2025-11-25`, `2025-06-18`, and `2025-03-26`; no SSE subscription is provided. Every request requires valid task credentials, and project paths cannot escape the assigned workspace. The transport follows the [MCP Streamable HTTP specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports).
+
+
+### Shared functional workspace layout
+
+All tasks contribute to one project root, organized into `app/`, `docs/`, `designs/`, `research/`, and `scripts/`. Use `app/` for runnable code and runtime assets, `docs/` for specifications and handoffs, `designs/` for visual design sources, `research/` for findings and datasets, and `scripts/` for standalone utilities.
+
+Do not wrap deliveries in task, worker, date, or repeated project folders. Include exact prerequisite and output paths in assignments. Deliver a ZIP with entries such as `app/index.html`, `app/assets/logo.svg`, and `research/findings.md`, preserving website-relative references. Use a ZIP even for one nested file because raw uploads only accept plain filenames. Existing paths are updated in place; unrelated files remain. The project MCP context and worker assignment carry the same layout policy.

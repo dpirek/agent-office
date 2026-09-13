@@ -1,3 +1,4 @@
+import { createTaskDeliveryHandlers } from "./task-delivery.js";
 import { createProjectMcpHandlers } from "./project-mcp.js";
 import { createProjectApiHandlers } from "./projects.js";
 import { createSettingsApiHandlers } from "./settings.js";
@@ -18,6 +19,7 @@ export function createApiRouter(options) {
     ...createSettingsApiHandlers(options),
     ...createSubAgentApiHandlers(options),
     ...createTaskApiHandlers(options),
+    ...createTaskDeliveryHandlers(options),
     ...createOperationsApiHandlers(options),
     ...createMemoryApiHandlers(options),
     ...createWorkspaceApiHandlers(options),
@@ -28,7 +30,7 @@ export function createApiRouter(options) {
   }));
 
   return async function handleApiRequest(req, res, url) {
-    const handler = routes.get(url.pathname) || (url.pathname.startsWith("/files/") ? routes.get("/files/") : null) || (url.pathname.startsWith("/mcp/projects/") ? routes.get("/mcp/projects/") : null);
+    const handler = routes.get(url.pathname) || (url.pathname.startsWith("/files/") ? routes.get("/files/") : null) || (url.pathname.startsWith("/mcp/projects/") ? routes.get("/mcp/projects/") : null) || (url.pathname.startsWith("/downloads/tasks/") ? routes.get("/downloads/tasks/") : null);
     if (!handler) return false;
     await handler(req, res, url);
     return true;

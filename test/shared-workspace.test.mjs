@@ -145,3 +145,18 @@ test("invalid and conflicting deliveries leave the existing project intact", asy
   await deliver();
   assert.equal(fs.readFileSync(path.join(root, "alpha/index.html"), "utf8"), "recovered");
 });
+
+
+test("functional deliveries from different tasks merge under the same project folders", async (context) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "office-functional-layout-"));
+  context.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  let archive = zip([["app/index.html", '<script src="assets/app.js"></script>'], ["research/findings.md", "Findings"]]);
+  const workspace = createSharedWorkspace({ root, fetchImpl: async () => new Response(archive) });
+  const deliver = (taskId) => workspace.storeTaskArtifacts({ projectId: "alpha", taskId }, [{ name: "delivery.zip", uri: "archive" }]);
+  await deliver("research-task");
+  archive = zip([["app/assets/app.js", "ready()"], ["docs/requirements.md", "Requirements"], ["designs/homepage.svg", "<svg/>"], ["scripts/check.sh", "echo ok"]]);
+  const files = await deliver("implementation-task");
+  assert.deepEqual(fs.readdirSync(path.join(root, "alpha")).sort(), ["app", "designs", "docs", "research", "scripts"]);
+  assert.equal(fs.readFileSync(path.join(root, "alpha/app/index.html"), "utf8"), '<script src="assets/app.js"></script>');
+  assert.equal(files[0].uri, "/files/alpha/app/assets/app.js");
+});

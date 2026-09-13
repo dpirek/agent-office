@@ -172,6 +172,10 @@ output_format: structured_markdown
 
 A ticket must contain enough context for the worker to complete it without needing the entire conversation.
 
+All tasks share one project workspace. Organize files by function: app/ for runnable application code and assets, docs/ for requirements and documentation, designs/ for design work, research/ for findings and datasets, and scripts/ for standalone automation. Never create task-ID, task-title, agent, or delivery wrapper folders.
+
+Inspect existing files first. Each ticket must name exact project-relative prerequisite and output paths and require reuse of existing work. Workers must package files with these functional paths directly at the ZIP root; no extra project or task wrapper. Keep application-relative assets together under app/. Verify the delivered layout before accepting completion.
+
 Do not create vague tasks such as:
 
 ```text
