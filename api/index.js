@@ -1,3 +1,4 @@
+import { createProjectMcpHandlers } from "./project-mcp.js";
 import { createProjectApiHandlers } from "./projects.js";
 import { createSettingsApiHandlers } from "./settings.js";
 import { createSubAgentApiHandlers } from "./sub-agents.js";
@@ -13,6 +14,7 @@ import { createWorkerArtifactApiHandlers } from "./worker-artifacts.js";
 export function createApiRouter(options) {
   const routes = new Map(Object.entries({
     ...createProjectApiHandlers(options),
+    ...createProjectMcpHandlers(options),
     ...createSettingsApiHandlers(options),
     ...createSubAgentApiHandlers(options),
     ...createTaskApiHandlers(options),
@@ -26,7 +28,7 @@ export function createApiRouter(options) {
   }));
 
   return async function handleApiRequest(req, res, url) {
-    const handler = routes.get(url.pathname) || (url.pathname.startsWith("/files/") ? routes.get("/files/") : null);
+    const handler = routes.get(url.pathname) || (url.pathname.startsWith("/files/") ? routes.get("/files/") : null) || (url.pathname.startsWith("/mcp/projects/") ? routes.get("/mcp/projects/") : null);
     if (!handler) return false;
     await handler(req, res, url);
     return true;

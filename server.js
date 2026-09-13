@@ -1,3 +1,4 @@
+import { prepareWorkerTask } from "./lib/worker-task-context.js";
 import { DEFAULT_PROJECT_ID, projectStore, projectWorkspace, prepareProjectContext } from "./lib/projects.js";
 import fs from "node:fs/promises";
 import http from "node:http";
@@ -75,6 +76,14 @@ const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
 const workerArtifactStore = createWorkerArtifactStore({ root: sharedWorkspaceRoot });
 await workerArtifactStore.clearStaleUploads();
 const subAgentManager = new SubAgentManager({
+  createMcpConnection: (task, upload) => ({
+    office_project: {
+      type: "http",
+      url: `/mcp/projects/${task.projectId || DEFAULT_PROJECT_ID}/tasks/${task.taskId}`,
+      headers: { Authorization: `Bearer ${upload.token}` },
+    },
+  }),
+  prepareTask: (assignment) => prepareWorkerTask({ uiStateStore, sharedWorkspaceRoot }, assignment),
   createArtifactUpload: (task) => workerArtifactStore.issueTaskUpload(task),
   discardArtifactUploads: (taskId) => workerArtifactStore.discardTask(taskId),
   materializeArtifacts: (task, artifacts, uploadedArtifactIds) => sharedWorkspace.storeTaskArtifacts(

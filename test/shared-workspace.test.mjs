@@ -73,7 +73,7 @@ function zip(entries) {
   return Buffer.concat([...localParts, centralDirectory, end]);
 }
 
-test("delivered ZIP files are unpacked into a task folder and removed", async (context) => {
+test("delivered ZIP files are unpacked directly into the project workspace and removed", async (context) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "agent-office-shared-"));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const archive = zip([["index.html", "<h1>Done</h1>"], ["assets/app.js", "console.log('ok')"]]);
@@ -89,7 +89,8 @@ test("delivered ZIP files are unpacked into a task folder and removed", async (c
   assert.deepEqual(delivered.map((file) => file.name), ["index.html", "assets/app.js"]);
   assert.match(delivered[0].uri, /^\/files\//);
   const [folder] = fs.readdirSync(root);
-  assert.equal(folder, "Build-launch-page--task-123");
+  assert.equal(folder, "central-office");
+  assert.equal(delivered[0].uri, "/files/central-office/index.html");
   assert.equal(fs.readFileSync(path.join(root, folder, "index.html"), "utf8"), "<h1>Done</h1>");
   assert.equal(fs.readFileSync(path.join(root, folder, "assets/app.js"), "utf8"), "console.log('ok')");
   assert.equal(fs.readdirSync(path.join(root, folder), { recursive: true }).some((name) => String(name).endsWith(".zip")), false);
@@ -100,4 +101,47 @@ test("ZIP traversal paths are rejected", async (context) => {
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   await assert.rejects(extractZip(zip([["../escape.txt", "nope"]]), root), /Unsafe ZIP entry path/);
   assert.equal(fs.existsSync(path.join(root, "..", "escape.txt")), false);
+});
+
+test("successive deliveries share the project root and preserve other projects and unrelated files", async (context) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "office-project-delivery-"));
+  context.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const workspace = createSharedWorkspace({ root, fetchImpl: async (uri) => new Response(uri) });
+  await workspace.storeTaskArtifacts({ projectId: "alpha", taskId: "first" }, [
+    { name: "index.html", uri: "first version" }, { name: "notes.txt", uri: "keep me" },
+  ]);
+  await workspace.storeTaskArtifacts({ projectId: "beta", taskId: "other" }, [{ name: "index.html", uri: "other project" }]);
+  const upload = path.join(root, "upload.zip");
+  fs.writeFileSync(upload, zip([["index.html", "second version"], ["assets/app.js", "loaded"]]));
+  const delivered = await workspace.storeTaskArtifacts({ projectId: "alpha", taskId: "second" }, [], [
+    { name: "site.zip", mimeType: "application/zip", file: upload },
+  ]);
+  assert.deepEqual(delivered.map((file) => file.workspacePath), ["alpha/index.html", "alpha/assets/app.js"]);
+  assert.equal(fs.readFileSync(path.join(root, "alpha/index.html"), "utf8"), "second version");
+  assert.equal(fs.readFileSync(path.join(root, "alpha/notes.txt"), "utf8"), "keep me");
+  assert.equal(fs.readFileSync(path.join(root, "beta/index.html"), "utf8"), "other project");
+  assert.deepEqual(fs.readdirSync(path.join(root, "alpha")).sort(), ["assets", "index.html", "notes.txt"]);
+  assert.equal(fs.readdirSync(root).some((name) => name.startsWith(".delivery-")), false);
+});
+
+test("invalid and conflicting deliveries leave the existing project intact", async (context) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "office-delivery-conflict-"));
+  context.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, "alpha/assets"), { recursive: true });
+  fs.writeFileSync(path.join(root, "alpha/index.html"), "original");
+  let archive = zip([["index.html", "new"], ["assets", "folder conflict"]]);
+  const workspace = createSharedWorkspace({ root, fetchImpl: async () => new Response(archive) });
+  const deliver = () => workspace.storeTaskArtifacts({ projectId: "alpha" }, [{ name: "site.zip", uri: "archive" }]);
+  await assert.rejects(deliver(), /conflicts with a folder/);
+  archive = zip([["index.html", "new"], ["../escape.txt", "invalid"]]);
+  await assert.rejects(deliver(), /Unsafe ZIP entry path/);
+  fs.symlinkSync(path.join(root, "alpha/assets"), path.join(root, "alpha/linked"));
+  archive = zip([["index.html", "new"], ["linked/app.js", "invalid"]]);
+  await assert.rejects(deliver(), /symbolic link/);
+  assert.equal(fs.readFileSync(path.join(root, "alpha/index.html"), "utf8"), "original");
+  assert.deepEqual(fs.readdirSync(path.join(root, "alpha/assets")), []);
+  assert.equal(fs.readdirSync(root).some((name) => name.startsWith(".delivery-")), false);
+  archive = zip([["index.html", "recovered"]]);
+  await deliver();
+  assert.equal(fs.readFileSync(path.join(root, "alpha/index.html"), "utf8"), "recovered");
 });

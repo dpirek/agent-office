@@ -299,7 +299,7 @@ Legacy artifact requirements:
 - `mimeType` should describe the downloadable file accurately.
 - `metadata` is optional and may contain JSON-compatible values such as byte size or file count.
 
-The office downloads each deliverable before completing the task. ZIP archives are safely extracted into a dedicated folder named from the task title and task ID; the downloaded ZIP is deleted after extraction. Non-archive files are copied into the same task folder. The local files appear on `/workspace`, and their local links are attached to the task, posted in `#central-office`, and recorded in memory.
+The office downloads each deliverable before completing the task. ZIP archives are safely extracted directly into the project workspace, preserving their internal paths; the downloaded ZIP is deleted after extraction. Non-archive files are copied into the project root. No task-specific folder is added. Later deliveries replace matching file paths and preserve unrelated files. Tasks without a project use central-office. The local files appear on `/workspace`, and their local links are attached to the task, posted in `#central-office`, and recorded in memory.
 
 Downloads are limited to 100 MB per artifact and ZIP expansion is limited to 500 MB and 5,000 entries. Encrypted archives, symbolic links, path traversal, and unsupported compression methods are rejected. A task is marked failed if its delivered work cannot be stored safely.
 
@@ -414,3 +414,33 @@ connect /ws/workers
 - Never fall back to the removed HTTP POST/callback protocol.
 
 For a shorter message-only reference, see [Worker WebSocket API](./worker-websocket-api.md).
+
+### Project context and MCP access
+
+Every assignment prepends the project description, current project files, and known prerequisite-file provenance. Files are listed with `/files/<project-id>/…` URLs. Inspect and reuse completed work before implementing the assignment.
+
+Assignments also include a task-scoped MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "office_project": {
+      "type": "http",
+      "url": "/mcp/projects/<project-id>/tasks/<task-id>",
+      "headers": { "Authorization": "Bearer <task-specific-token>" }
+    }
+  }
+}
+```
+
+Workers must resolve the URL against their Office connection's HTTP origin (`ws` → `http`, `wss` → `https`) and connect using an MCP Streamable HTTP client. Attach these tools to the agent handling that task. Keep configurations separate for concurrent tasks; do not log credentials or reuse them for another project. Access expires when the task terminates.
+
+Available read-only tools:
+
+- `project_get_context`: project description, status, and task queue.
+- `project_list_files`: current files, static download URLs, and completed-task provenance; optional project-relative folder `path`. Up to 500 files per call; query individual subfolders if truncated.
+- `project_read_file`: UTF-8 file contents; required project-relative `path`, optional character `offset`. Responses contain up to 64,000 characters and a `nextOffset`; text previews are limited to 2 MB.
+- `project_list_agents`: connected specialists and availability; optional `skill` filter. Worker capabilities are office-wide, but other projects' tasks and conversations are not exposed.
+- `project_conversation_summary`: an extractive summary of the latest 100 project messages, recent user requests, manager updates, and task outcomes. Excerpts are bounded and explicitly marked as such.
+
+The endpoint supports MCP initialization, ping, and tool discovery/calls using JSON responses. It supports protocol versions `2025-11-25`, `2025-06-18`, and `2025-03-26`; no SSE subscription is provided. Every request requires valid task credentials, and project paths cannot escape the assigned workspace. The transport follows the [MCP Streamable HTTP specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports).

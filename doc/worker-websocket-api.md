@@ -127,7 +127,7 @@ The response contains an `artifactId`. Reference that ID in the final socket upd
 }
 ```
 
-Worker-reported final states are `completed` or `failed`; the office may additionally finalize an assignment as `cancelled` or `timed_out`. The office stores final deliverables before acknowledging completion. ZIP files are extracted into a task-specific shared-workspace folder and then deleted; non-archive files are copied there directly. Local file links are attached to the corresponding task and chat message and are available on `/workspace`. The older worker-hosted `artifacts` URL array remains supported for compatibility.
+Worker-reported final states are `completed` or `failed`; the office may additionally finalize an assignment as `cancelled` or `timed_out`. The office stores final deliverables before acknowledging completion. ZIP files are extracted directly into the project workspace with their internal paths preserved and then deleted; non-archive files are copied to the project root. Later deliveries replace matching file paths and preserve unrelated files. No task-specific folder is added. Local file links are attached to the corresponding task and chat message and are available on `/workspace`. The older worker-hosted `artifacts` URL array remains supported for compatibility.
 # Registration connectivity upload
 
 After receiving `registered`, the worker sends raw Markdown to
@@ -160,3 +160,7 @@ uploads derive their HTTP(S) origin from `AI_HARNESS_OFFICE_URL`. Remove or
 correct a stale HTTPS override when connecting directly to the HTTP listener.
 Restart the worker after changing its environment. For a remote worker,
 replace `127.0.0.1` with the Office host reachable from that worker.
+
+### Project MCP tools
+
+Task messages include `mcpServers.office_project` with a relative HTTP endpoint and task-scoped authorization header. Resolve it against the Office HTTP origin and connect the assigned agent's MCP client. The tools expose only that project's context, files and conversation summary, plus connected specialists' public capabilities and availability. Credentials expire when the task ends. See [Project context and MCP access](sub-agent-spec.md#project-context-and-mcp-access) for the configuration and tool arguments.
