@@ -113,16 +113,25 @@ function showToast(message, error = false) {
   showToast.timer = setTimeout(() => { toast.className = "toast"; }, 3200);
 }
 
-const filePreviewDialog = $("#file-preview-dialog");
 let previewRequest = 0;
-function closeFilePreview() {
+let previewController = null;
+let selectedWorkspaceFile = null;
+const collapsedWorkspaceFolders = new Set();
+let workspaceTreeMarkup = "";
+function resetFilePreview() {
   previewRequest += 1;
-  filePreviewDialog.close();
-  $("#file-preview-content").replaceChildren();
+  previewController?.abort();
+  selectedWorkspaceFile = null;
+  $("#file-preview-title").textContent = "FILE PREVIEW";
+  $("#file-preview-actions").hidden = true;
+  $("#file-preview-content").innerHTML = '<div class="workspace-preview-empty"><span aria-hidden="true">▱</span><strong>Select a file to preview</strong><p>Browse your project files on the left.</p></div>';
 }
-$("#file-preview-close").addEventListener("click", closeFilePreview);
-filePreviewDialog.addEventListener("click", (event) => { if (event.target === filePreviewDialog) closeFilePreview(); });
-filePreviewDialog.addEventListener("close", () => { previewRequest += 1; $("#file-preview-content").replaceChildren(); });
+$("#shared-workspace-browser").addEventListener("toggle", (event) => {
+  const folder = event.target;
+  if (!folder.matches("details[data-folder-path]")) return;
+  if (folder.open) collapsedWorkspaceFolders.delete(folder.dataset.folderPath);
+  else collapsedWorkspaceFolders.add(folder.dataset.folderPath);
+}, true);
 
 async function openFilePreview(href) {
   const url = normalizeFileUrl(href);
@@ -137,14 +146,23 @@ async function openFilePreview(href) {
     return;
   }
   const request = ++previewRequest;
+  previewController?.abort();
+  previewController = new AbortController();
+  selectedWorkspaceFile = decodeURIComponent(pathname.slice("/files/".length));
+  for (const folder of [...collapsedWorkspaceFolders]) {
+    if (selectedWorkspaceFile.startsWith(folder + "/")) collapsedWorkspaceFolders.delete(folder);
+  }
+  renderSharedWorkspace();
   const content = $("#file-preview-content");
   content.replaceChildren();
   content.textContent = "Loading preview…";
-  $("#file-preview-title").textContent = name;
+  $("#file-preview-title").textContent = selectedWorkspaceFile.replace(state.projectId + "/", "");
+  $("#file-preview-title").title = selectedWorkspaceFile;
+  $("#file-preview-actions").hidden = false;
+  $("#file-preview-open").href = url;
   const download = $("#file-preview-download");
   download.href = url;
   download.download = name;
-  if (!filePreviewDialog.open) filePreviewDialog.showModal();
   try {
     let node;
     if (["png", "jpg", "jpeg", "gif", "webp", "avif", "svg"].includes(extension)) {
@@ -158,7 +176,7 @@ async function openFilePreview(href) {
       node.title = name;
       if (extension !== "pdf") node.setAttribute("sandbox", "allow-scripts");
     } else {
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: previewController.signal });
       if (!response.ok) throw new Error(`Could not load file (HTTP ${response.status}).`);
       const contentType = response.headers.get("content-type") || "";
       if (!/^(?:text\/|application\/(?:json|javascript|xml))/.test(contentType)) throw new Error("Preview is unavailable for this file type. Use Download instead.");
@@ -172,9 +190,9 @@ async function openFilePreview(href) {
         node.textContent = body;
       }
     }
-    if (request === previewRequest && filePreviewDialog.open) content.replaceChildren(node);
+    if (request === previewRequest) content.replaceChildren(node);
   } catch (error) {
-    if (request === previewRequest && filePreviewDialog.open) content.textContent = error.message;
+    if (request === previewRequest) content.textContent = error.message;
   }
 }
 
@@ -185,6 +203,8 @@ document.addEventListener("click", (event) => {
   const url = normalizeFileUrl(link.getAttribute("href"));
   if (!url.startsWith("/files/")) return;
   event.preventDefault();
+  const projectId = decodeURIComponent(new URL(url, location.href).pathname.split("/")[2] || "");
+  router.navigate(projectPagePath("workspace", state.projects.some((project) => project.id === projectId) ? projectId : state.projectId));
   void openFilePreview(url);
 });
 
@@ -595,16 +615,15 @@ function renderSharedWorkspace() {
   root.textContent = state.sharedWorkspaceRoot || "—";
   root.title = state.sharedWorkspaceRoot || "";
   $("#workspace-file-count").textContent = `${files.length} FILE${files.length === 1 ? "" : "S"}`;
-  const folders = state.sharedWorkspaceTree.filter((entry) => entry.type === "directory");
-  const rootFiles = state.sharedWorkspaceTree.filter((entry) => entry.type === "file");
-  const groups = [...(rootFiles.length ? [{ name: "PROJECT FILES", children: rootFiles }] : []), ...folders];
-  browser.innerHTML = groups.length ? groups.map((folder) => {
-    const entries = workspaceFiles(folder.children || []);
-    return `<section class="workspace-folder">
-      <header><div><span>▤</span><strong>${escapeHtml(folder.name)}</strong></div><small>${entries.length} FILE${entries.length === 1 ? "" : "S"}</small></header>
-      <div class="workspace-folder-files">${entries.length ? entries.map((file) => `<a class="workspace-file" href="${escapeHtml(workspaceFileUrl(file.path))}"><span>▱</span><strong>${escapeHtml(file.nestedPath)}</strong><small>${formatBytes(file.size)}</small><time>${scheduleTime(file.modifiedAt)}</time><b>PREVIEW ↗</b></a>`).join("") : `<div class="workspace-empty-folder">EMPTY PROJECT FOLDER</div>`}</div>
-    </section>`;
-  }).join("") : `<div class="workspace-empty"><strong>NO PROJECT FILES</strong><span>Project files and worker deliveries will appear here.</span></div>`;
+  const renderTree = (nodes) => `<ul class="workspace-tree">${nodes.map((node) => {
+    if (node.type === "directory") return `<li><details data-folder-path="${escapeHtml(node.path)}" ${collapsedWorkspaceFolders.has(node.path) ? "" : "open"}><summary><span class="workspace-folder-icon" aria-hidden="true">▰</span><span>${escapeHtml(node.name)}</span></summary>${node.children?.length ? renderTree(node.children) : '<div class="workspace-tree-empty">Empty folder</div>'}</details></li>`;
+    return `<li><a class="workspace-tree-file${selectedWorkspaceFile === node.path ? " selected" : ""}" href="${escapeHtml(workspaceFileUrl(node.path))}" ${selectedWorkspaceFile === node.path ? 'aria-current="true"' : ""} title="${escapeHtml(node.name)} · ${formatBytes(node.size)}"><span aria-hidden="true">▱</span><span>${escapeHtml(node.name)}</span></a></li>`;
+  }).join("")}</ul>`;
+  const markup = state.sharedWorkspaceTree.length ? renderTree(state.sharedWorkspaceTree) : '<div class="workspace-tree-empty">No project files yet.</div>';
+  if (markup !== workspaceTreeMarkup) {
+    browser.innerHTML = markup;
+    workspaceTreeMarkup = markup;
+  }
 }
 
 async function loadSharedWorkspace({ quiet = false } = {}) {
@@ -1756,6 +1775,8 @@ async function switchProject(id, { navigate = true } = {}) {
   state.officeTasks = [];
   state.localTasks = [];
   state.sharedWorkspaceTree = [];
+  collapsedWorkspaceFolders.clear();
+  resetFilePreview();
   $("#office-board-input").value = "";
   renderProjects(); renderChat(); renderOfficeChat(); renderTasks(); renderSharedWorkspace();
   window.dispatchEvent(new Event("projectchange"));
