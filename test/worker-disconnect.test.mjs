@@ -1,3 +1,5 @@
+import { Writable } from "node:stream";
+import { closeSocket, sendJson, writeSocket } from "../lib/ws.js";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import test from "node:test";
@@ -83,4 +85,70 @@ test("an unresponsive worker is removed after a missed heartbeat", async () => {
   await new Promise((resolve) => setTimeout(resolve, 35));
   assert.equal(manager.listWorkers().length, 0);
   assert.equal(socket.destroyed, true);
+});
+
+
+class HalfClosedSocket extends Writable {
+  constructor() {
+    super({ autoDestroy: false });
+    this.writes = [];
+  }
+  _write(chunk, _encoding, callback) { this.writes.push(Buffer.from(chunk)); callback(); }
+}
+
+const clientCloseFrame = Buffer.from([0x88, 0x80, 1, 2, 3, 4]);
+const clientPingFrame = Buffer.from([0x89, 0x80, 1, 2, 3, 4]);
+
+test("closeSocket is idempotent while writableEnded is true and destroyed is false", async () => {
+  const socket = new HalfClosedSocket();
+  const errors = [];
+  socket.on("error", (error) => errors.push(error));
+  closeSocket(socket);
+  assert.equal(socket.writableEnded, true);
+  assert.equal(socket.destroyed, false);
+  closeSocket(socket);
+  sendJson(socket, { type: "late" });
+  writeSocket(socket, Buffer.from([0x89, 0]));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(socket.writes.length, 1);
+  assert.equal(socket.writes[0][0], 0x88);
+  assert.deepEqual(errors, []);
+  socket.destroy();
+});
+
+test("repeated worker close frames and late pings never write after end", async () => {
+  const manager = new SubAgentManager();
+  const socket = new HalfClosedSocket();
+  const errors = [];
+  socket.on("error", (error) => errors.push(error));
+  register(socket, createWorkerWebSocketHandler({ subAgentManager: manager, getToken: () => "a".repeat(32) }));
+  socket.emit("data", clientCloseFrame);
+  const count = socket.writes.length;
+  socket.emit("data", clientCloseFrame);
+  socket.emit("data", clientPingFrame);
+  socket.emit("data", clientTextFrame({ type: "ping" }));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(socket.writes.length, count);
+  assert.deepEqual(errors, []);
+  assert.equal(manager.listWorkers().length, 0);
+  socket.destroy();
+});
+
+test("a task update finishing after worker closure does not send an acknowledgement", async () => {
+  const manager = new SubAgentManager();
+  let finish;
+  manager.receiveUpdate = () => new Promise((resolve) => { finish = resolve; });
+  const socket = new HalfClosedSocket();
+  const errors = [];
+  socket.on("error", (error) => errors.push(error));
+  register(socket, createWorkerWebSocketHandler({ subAgentManager: manager, getToken: () => "a".repeat(32) }));
+  socket.emit("data", clientTextFrame({ type: "task_update" }));
+  assert.equal(typeof finish, "function");
+  socket.emit("data", clientCloseFrame);
+  const count = socket.writes.length;
+  finish({ taskId: "task-1", state: "completed" });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(socket.writes.length, count);
+  assert.deepEqual(errors, []);
+  socket.destroy();
 });
