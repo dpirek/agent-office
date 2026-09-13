@@ -116,7 +116,8 @@
           <header class="panel-header"><div><span class="header-icon">▦</span><h2>SHARED WORKSPACE</h2></div><button class="header-action" id="refresh-workspace-button" type="button">REFRESH</button></header>
           <div class="shared-workspace-summary panel-body"><div><strong id="workspace-file-count">0 FILES</strong><span>Shared project files organized by function: app, docs, designs, research, scripts.</span></div><code id="shared-workspace-root">—</code></div>
           <div class="workspace-explorer panel-body">
-            <nav class="workspace-tree-pane" aria-label="Project files"><div class="workspace-tree-heading">FILES</div><div class="shared-workspace-browser" id="shared-workspace-browser"></div></nav>
+            <nav id="workspace-tree-pane" class="workspace-tree-pane" aria-label="Project files"><div class="workspace-tree-heading">FILES</div><div class="shared-workspace-browser" id="shared-workspace-browser"></div></nav>
+            <div id="workspace-tree-resizer" class="workspace-tree-resizer" role="separator" tabindex="0" aria-label="Resize file tree" aria-orientation="vertical" aria-controls="workspace-tree-pane" title="Drag to resize · Arrow keys to adjust · Double-click to reset"></div>
             <section class="workspace-preview" aria-labelledby="file-preview-title">
               <header class="workspace-preview-header"><h3 id="file-preview-title">FILE PREVIEW</h3><div class="file-preview-actions" id="file-preview-actions" hidden><a id="file-preview-open" target="_blank" rel="noopener noreferrer">OPEN ↗</a><a id="file-preview-download" download>DOWNLOAD ↓</a></div></header>
               <div class="file-preview-content" id="file-preview-content"><div class="workspace-preview-empty"><span aria-hidden="true">▱</span><strong>Select a file to preview</strong><p>Browse your project files on the left.</p></div></div>

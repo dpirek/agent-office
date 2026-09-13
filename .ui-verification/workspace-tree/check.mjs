@@ -51,6 +51,21 @@ try {
   await sleep(300);
   assert.equal(await evaluate('Boolean(document.querySelector("#file-preview-content iframe"))'), true);
   assert.equal(await evaluate('document.querySelector(".workspace-tree-pane").getBoundingClientRect().right <= document.querySelector(".workspace-preview").getBoundingClientRect().left'), true);
+  const divider = await evaluate('(() => { const r = document.querySelector("#workspace-tree-resizer").getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + 80 }; })()');
+  await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: divider.x, y: divider.y, button: 'left', clickCount: 1 });
+  await sleep(100);
+  await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: divider.x + 70, y: divider.y, button: 'left', buttons: 1 });
+  await sleep(100);
+  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: divider.x + 70, y: divider.y, button: 'left', clickCount: 1 });
+  const savedWidth = await evaluate('JSON.parse(localStorage.getItem("agent-office.workspace-tree-width.v1"))');
+  assert.ok(savedWidth >= 180);
+  assert.equal(await evaluate('Math.round(document.querySelector(".workspace-tree-pane").getBoundingClientRect().width)'), savedWidth);
+  await send('Page.reload');
+  for (let i = 0; i < 60; i++) { if (await evaluate('document.querySelectorAll(".workspace-tree-file").length === 3')) break; await sleep(100); }
+  await sleep(300);
+  assert.equal(await evaluate('Math.round(document.querySelector(".workspace-tree-pane").getBoundingClientRect().width)'), savedWidth);
+  await evaluate('document.querySelector("#workspace-tree-resizer").dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }))');
+  assert.equal(await evaluate('JSON.parse(localStorage.getItem("agent-office.workspace-tree-width.v1"))'), savedWidth - 16);
   const shot = await send('Page.captureScreenshot', { format: 'png' });
   await fs.writeFile(path.join(root, 'desktop.png'), Buffer.from(shot.data, 'base64'));
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
@@ -59,5 +74,5 @@ try {
   const mobile = await send('Page.captureScreenshot', { format: 'png' });
   await fs.writeFile(path.join(root, 'mobile.png'), Buffer.from(mobile.data, 'base64'));
   assert.deepEqual(errors, []);
-  console.log('PASS: nested tree, inline Markdown/HTML previews, selection and collapse persistence, desktop split, mobile width, no modal or browser exceptions.');
+  console.log('PASS: nested tree, inline Markdown/HTML previews, selection and collapse persistence, desktop split, mobile width, draggable divider, persisted width after reload, keyboard resizing, no modal or browser exceptions.');
 } finally { socket?.close(); chrome.kill(); server.kill(); }

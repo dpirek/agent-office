@@ -1,3 +1,4 @@
+import { initWorkspaceResizing } from "./lib/workspace-resize.mjs";
 import { PROJECT_PAGES, projectPagePath, projectIdFromPath, registerProjectRoutes } from "./lib/project-routes.mjs";
 import { normalizeFileUrl, workspaceFileUrl } from "./lib/file-url.mjs";
 import Router from "./lib/router.mjs";
@@ -1729,6 +1730,7 @@ window.addEventListener("resize", syncOfficeBoardComposerHeight);
 window.visualViewport?.addEventListener("resize", syncOfficeBoardComposerHeight);
 initPanelMinimizing({ onChange: syncCollapsedPanelLayout });
 initPanelResizing();
+initWorkspaceResizing();
 
 void loadSystemPrompts();
 void loadConfigurationSettings();
