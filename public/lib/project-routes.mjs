@@ -1,11 +1,11 @@
-export const PROJECT_PAGES = new Set(["dashboard", "chat", "tasks", "workspace"]);
+export const PROJECT_PAGES = new Set(["dashboard", "chat", "tasks", "workspace", "operations", "memory"]);
 
 export function projectPagePath(section, projectId = "central-office") {
   return PROJECT_PAGES.has(section) ? `/${encodeURIComponent(projectId)}/${section}` : `/${section}`;
 }
 
 export function projectIdFromPath(pathname) {
-  const match = /^\/([^/]+)\/(dashboard|chat|tasks|workspace)\/?$/.exec(pathname);
+  const match = /^\/([^/]+)\/(dashboard|chat|tasks|workspace|operations|memory)\/?$/.exec(pathname);
   if (!match) return null;
   try {
     const id = decodeURIComponent(match[1]);

@@ -146,6 +146,7 @@ const subAgentManager = new SubAgentManager({
     });
     const summary = String(task.text || task.error || "").slice(0, 20_000);
     uiStateStore.recordOfficeMemory({
+      projectId: task?.projectId || DEFAULT_PROJECT_ID,
       kind: "task",
       status: event,
       title: task.title || "Delegated task",
@@ -419,6 +420,7 @@ taskProgressMonitor = new TaskProgressMonitor({
       projectId: task.projectId,
     });
     uiStateStore.recordOfficeMemory({
+      projectId: task?.projectId || DEFAULT_PROJECT_ID,
       kind: "system",
       status: "requested",
       title: `Progress check: ${task.title}`,
@@ -431,6 +433,7 @@ taskProgressMonitor = new TaskProgressMonitor({
   },
   onStatus({ task, message, checkedAt }) {
     uiStateStore.recordOfficeMemory({
+      projectId: task?.projectId || DEFAULT_PROJECT_ID,
       kind: "system",
       status: "completed",
       title: `Progress update: ${task.title}`,
@@ -467,6 +470,7 @@ taskProgressMonitor = new TaskProgressMonitor({
       projectId: task?.projectId,
     });
     uiStateStore.recordOfficeMemory({
+      projectId: task?.projectId || DEFAULT_PROJECT_ID,
       kind: "system",
       status: "failed",
       title: `Progress check: ${title}`,

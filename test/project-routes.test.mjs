@@ -26,7 +26,7 @@ test("project routing handles deep links, legacy links, switching projects and b
   let page;
   const router = new Router();
   registerProjectRoutes(router, {
-    pages: Object.fromEntries(["dashboard", "workspace", "chat", "tasks", "settings"].map((section) => [section, { path: `/${section}` }])),
+    pages: Object.fromEntries(["dashboard", "workspace", "chat", "tasks", "operations", "memory", "settings"].map((section) => [section, { path: `/${section}` }])),
     getProjectId: () => project,
     selectProject: (id) => { project = ["alpha", "beta", "central-office"].includes(id) ? id : "central-office"; return project; },
     renderPage: (section) => { page = section; },
@@ -43,6 +43,12 @@ test("project routing handles deep links, legacy links, switching projects and b
   events.get("popstate")();
   assert.equal(project, "beta");
   assert.equal(page, "workspace");
+  router.navigate("/operations");
+  assert.equal(window.location.pathname, "/beta/operations");
+  router.navigate("/alpha/memory");
+  assert.equal(project, "alpha");
+  assert.equal(page, "memory");
+  router.navigate("/beta/memory");
   router.navigate("/settings");
   assert.equal(window.location.pathname, "/settings");
   assert.equal(project, "beta");
@@ -58,6 +64,8 @@ test("project routing handles deep links, legacy links, switching projects and b
 test("project path helpers distinguish project pages from office-wide pages", () => {
   assert.equal(projectIdFromPath("/beta/workspace"), "beta");
   assert.equal(projectIdFromPath("/beta/chat/"), "beta");
+  assert.equal(projectIdFromPath("/beta/operations"), "beta");
+  assert.equal(projectIdFromPath("/beta/memory"), "beta");
   assert.equal(projectIdFromPath("/workspace"), null);
   assert.equal(projectIdFromPath("/beta/settings"), null);
   assert.equal(projectIdFromPath("/%2F/workspace"), null);

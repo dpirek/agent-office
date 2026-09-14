@@ -37,9 +37,13 @@ function normalizeOperation(body, workers) {
 }
 
 export function createOperationsApiHandlers({ uiStateStore, subAgentManager }) {
-  async function handleOperationsApi(req, res) {
+  async function handleOperationsApi(req, res, url) {
     if (req.method === "GET") {
-      json(res, 200, { ok: true, operations: uiStateStore.getPeriodicOperations() });
+      try {
+        const projectId = url?.searchParams.get("projectId") || "central-office";
+        uiStateStore.requireProject(projectId);
+        json(res, 200, { ok: true, operations: uiStateStore.getPeriodicOperations({ projectId }) });
+      } catch (error) { json(res, 400, { ok: false, error: error.message }); }
       return;
     }
     if (!["POST", "PUT", "DELETE"].includes(req.method)) {
@@ -48,19 +52,22 @@ export function createOperationsApiHandlers({ uiStateStore, subAgentManager }) {
     }
     try {
       const body = JSON.parse(await readRequestBody(req, 120_000) || "{}");
+      const projectId = body.projectId || "central-office";
+      uiStateStore.requireProject(projectId);
+      if (req.method !== "POST" && !uiStateStore.getPeriodicOperations({ projectId }).some((operation) => operation.id === body.id)) throw new Error("Operation is outside the current project.");
       if (req.method === "DELETE") {
         uiStateStore.deletePeriodicOperation(body.id);
-        json(res, 200, { ok: true, operations: uiStateStore.getPeriodicOperations() });
+        json(res, 200, { ok: true, operations: uiStateStore.getPeriodicOperations({ projectId }) });
         return;
       }
-      const operation = normalizeOperation(body, subAgentManager?.listWorkers() || []);
+      const operation = { ...normalizeOperation(body, subAgentManager?.listWorkers() || []), projectId };
       const saved = req.method === "POST"
         ? uiStateStore.createPeriodicOperation(operation)
         : uiStateStore.updatePeriodicOperation(body.id, operation);
       json(res, req.method === "POST" ? 201 : 200, {
         ok: true,
         operation: saved,
-        operations: uiStateStore.getPeriodicOperations(),
+        operations: uiStateStore.getPeriodicOperations({ projectId }),
       });
     } catch (error) {
       json(res, 400, { ok: false, error: error.message });

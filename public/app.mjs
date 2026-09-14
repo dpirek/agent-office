@@ -881,7 +881,9 @@ async function loadSkills() {
 
 async function loadMemory({ quiet = false } = {}) {
   try {
-    const data = await fetchJson("/api/memory?limit=200");
+    const projectId = state.projectId;
+    const data = await fetchJson(`/api/memory?limit=200&projectId=${encodeURIComponent(projectId)}`);
+    if (projectId !== state.projectId) return;
     state.memoryRecords = data.records || [];
     renderMemory();
   } catch (error) {
@@ -1000,6 +1002,8 @@ async function deleteTask(id) {
 }
 
 async function mutateOperation(method, payload) {
+  const projectId = state.projectId;
+  payload = { ...payload, projectId };
   const response = await fetch("/api/operations", {
     method,
     headers: { "content-type": "application/json" },
@@ -1007,6 +1011,7 @@ async function mutateOperation(method, payload) {
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  if (projectId !== state.projectId) return data;
   state.operations = data.operations || [];
   renderOperations();
   return data;
@@ -1018,7 +1023,7 @@ async function refreshDashboard({ quiet = false } = {}) {
     const [health, subAgents, operations, officeTasks] = await Promise.all([
       fetchJson("/api/health"),
       fetchJson("/api/sub-agents"),
-      fetchJson("/api/operations"),
+      fetchJson(`/api/operations?projectId=${encodeURIComponent(projectId)}`),
       fetchJson(`/api/tasks?projectId=${encodeURIComponent(projectId)}`),
     ]);
     if (projectId !== state.projectId) return;
@@ -1777,12 +1782,16 @@ async function switchProject(id, { navigate = true } = {}) {
   state.officeTasks = [];
   state.localTasks = [];
   state.sharedWorkspaceTree = [];
+  state.operations = [];
+  state.memoryRecords = [];
+  $("#operation-dialog").close();
+  renderOperations(); renderMemory();
   collapsedWorkspaceFolders.clear();
   resetFilePreview();
   $("#office-board-input").value = "";
   renderProjects(); renderChat(); renderOfficeChat(); renderTasks(); renderSharedWorkspace();
   window.dispatchEvent(new Event("projectchange"));
-  await Promise.all([loadOfficeChat(), refreshDashboard({ quiet: true }), loadSharedWorkspace({ quiet: true })]);
+  await Promise.all([loadOfficeChat(), refreshDashboard({ quiet: true }), loadSharedWorkspace({ quiet: true }), loadMemory({ quiet: true })]);
 }
 $("#project-select").addEventListener("change", (event) => void switchProject(event.target.value));
 function openProjectDialog() {

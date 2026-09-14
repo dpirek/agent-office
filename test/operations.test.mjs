@@ -34,6 +34,7 @@ test("scheduler dispatches a due operation through automatic assignment", async 
   const queued = [];
   const operation = {
     id: "operation-1",
+    projectId: "alpha",
     name: "Monitor",
     task: "Check service health",
     agent: "auto",
@@ -58,6 +59,8 @@ test("scheduler dispatches a due operation through automatic assignment", async 
   await scheduler.tick();
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(queued[0].agent, "idle");
+  assert.equal(queued[0].projectId, "alpha");
+  assert.equal(memory[0].projectId, "alpha");
   assert.equal(runUpdates[0].nextRunAt, 301_000);
   assert.equal(resultUpdates[0].status, "completed");
   assert.equal(memory[0].kind, "operation");

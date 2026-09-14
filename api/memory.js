@@ -7,13 +7,15 @@ export function createMemoryApiHandlers({ uiStateStore }) {
       return;
     }
     try {
+      const projectId = url.searchParams.get("projectId") || "central-office";
+      uiStateStore.requireProject(projectId);
       const limit = Number(url.searchParams.get("limit") || 100);
       const kind = url.searchParams.get("kind") || undefined;
       const status = url.searchParams.get("status") || undefined;
       const query = url.searchParams.get("query") || undefined;
       json(res, 200, {
         ok: true,
-        records: uiStateStore.getOfficeMemory({ limit, kind, status, query }),
+        records: uiStateStore.getOfficeMemory({ limit, kind, status, query, projectId }),
       });
     } catch (error) {
       json(res, 400, { ok: false, error: error.message });
