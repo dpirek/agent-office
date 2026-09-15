@@ -1,3 +1,5 @@
+import { createUserStore } from "./lib/users.js";
+import { createAuthService, sessionToken } from "./api/auth.js";
 import { prepareWorkerTask } from "./lib/worker-task-context.js";
 import { DEFAULT_PROJECT_ID, projectStore, projectWorkspace, prepareProjectContext } from "./lib/projects.js";
 import fs from "node:fs/promises";
@@ -63,6 +65,18 @@ const defaultPort = Number(process.env.PORT || 8010);
 await fs.mkdir(databaseDir, { recursive: true });
 await fs.mkdir(defaultWorkspace, { recursive: true });
 await fs.mkdir(sharedWorkspaceRoot, { recursive: true });
+const userSockets = new Map();
+const userStore = createUserStore(path.join(databaseDir, "users.sqlite"), {
+  onRevoke(userId, token) {
+    for (const [socket, session] of userSockets) {
+      if (session.userId === userId || session.token === token) socket.destroy();
+    }
+  },
+});
+const authService = createAuthService({
+  userStore,
+  publicOrigin: process.env.AI_HARNESS_PUBLIC_ORIGIN,
+});
 const connections = new Set();
 let storeClosed = false;
 let server;
@@ -494,6 +508,7 @@ periodicOperationScheduler.start();
 
 server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  if (url.pathname === "/account.html") { res.writeHead(302, { location: "/account" }); res.end(); return; }
   const requestStartedAt = Date.now();
   res.once("finish", () => {
     try {
@@ -507,6 +522,7 @@ server = http.createServer(async (req, res) => {
       if (!storeClosed) console.error("Unable to record HTTP activity:", error);
     }
   });
+  if (await authService.handle(req, res, url)) return;
   const handleApiRequest = createApiRouter({
     webSocketUrl,
     uiStateStore,
@@ -551,7 +567,17 @@ const handleWorkerWebSocket = createWorkerWebSocketHandler({
   getToken: () => uiStateStore.getWorkerToken(),
   getTokenName: () => uiStateStore.getWorkerTokenName(),
 });
-attachWebSocketServer(server, handleWebSocket, "/ws", { "/ws/workers": handleWorkerWebSocket });
+attachWebSocketServer(server, (socket, req) => {
+  const user = authService.authorizeSocket(req);
+  if (!user) { socket.end("HTTP/1.1 401 Unauthorized\r\n\r\n"); return; }
+  userSockets.set(socket, { userId: user.id, token: sessionToken(req) });
+  const expiryCheck = setInterval(() => {
+    if (!authService.authorizeSocket(req)) socket.destroy();
+  }, 30_000);
+  expiryCheck.unref();
+  socket.once("close", () => { clearInterval(expiryCheck); userSockets.delete(socket); });
+  handleWebSocket(socket, req);
+}, "/ws", { "/ws/workers": handleWorkerWebSocket });
 
 server.on("connection", (socket) => {
   connections.add(socket);

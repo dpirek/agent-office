@@ -7,11 +7,12 @@
   <title>AI Agent Office</title>
   <link rel="icon" href="/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/account.css">
 </head>
 <body>
   <div class="app-frame">
     <div class="workspace">
-      <nav class="sidebar" aria-label="Primary navigation">
+      <nav id="primary-navigation" class="sidebar" aria-label="Primary navigation">
         <header class="sidebar-brand">
           <div class="sidebar-brand-row">
             <h1>Office</h1>
@@ -27,15 +28,17 @@
           </div>
         </header>
         <div class="nav-items">
-          <a class="nav-item active" href="/central-office/dashboard" data-section="dashboard" aria-label="Dashboard"><span class="nav-icon" aria-hidden="true">▣</span>DASHBOARD</a>
-          <a class="nav-item" href="/central-office/chat" data-section="chat" aria-label="Office chat"><span class="nav-icon" aria-hidden="true">◫</span>CHAT</a>
-          <a class="nav-item" href="/central-office/tasks" data-section="tasks" aria-label="Tasks"><span class="nav-icon" aria-hidden="true">▤</span>TASKS</a>
-          <a class="nav-item" href="/central-office/workspace" data-section="workspace" aria-label="Workspace"><span class="nav-icon" aria-hidden="true">▦</span>WORKSPACE</a>
-          <a class="nav-item" href="/central-office/operations" data-section="operations" aria-label="Operations"><span class="nav-icon" aria-hidden="true">◷</span>OPERATIONS</a>
-          <a class="nav-item" href="/central-office/memory" data-section="memory" aria-label="Memory"><span class="nav-icon" aria-hidden="true">◉</span>MEMORY</a>
-          <a class="nav-item" href="/knowledge" data-section="knowledge" aria-label="Knowledge"><span class="nav-icon" aria-hidden="true">▧</span>KNOWLEDGE</a>
-          <a class="nav-item" href="/settings" data-section="settings" aria-label="Settings"><span class="nav-icon" aria-hidden="true">⚙</span>SETTINGS</a>
+          <a class="nav-item active" href="/central-office/dashboard" data-section="dashboard" aria-label="Dashboard" title="Dashboard"><span class="nav-icon" aria-hidden="true">▣</span><span class="nav-label">DASHBOARD</span></a>
+          <a class="nav-item" href="/central-office/chat" data-section="chat" aria-label="Office chat" title="Office chat"><span class="nav-icon" aria-hidden="true">◫</span><span class="nav-label">CHAT</span></a>
+          <a class="nav-item" href="/central-office/tasks" data-section="tasks" aria-label="Tasks" title="Tasks"><span class="nav-icon" aria-hidden="true">▤</span><span class="nav-label">TASKS</span></a>
+          <a class="nav-item" href="/central-office/workspace" data-section="workspace" aria-label="Workspace" title="Workspace"><span class="nav-icon" aria-hidden="true">▦</span><span class="nav-label">WORKSPACE</span></a>
+          <a class="nav-item" href="/central-office/operations" data-section="operations" aria-label="Operations" title="Operations"><span class="nav-icon" aria-hidden="true">◷</span><span class="nav-label">OPERATIONS</span></a>
+          <a class="nav-item" href="/central-office/memory" data-section="memory" aria-label="Memory" title="Memory"><span class="nav-icon" aria-hidden="true">◉</span><span class="nav-label">MEMORY</span></a>
+          <a class="nav-item" href="/knowledge" data-section="knowledge" aria-label="Knowledge" title="Knowledge"><span class="nav-icon" aria-hidden="true">▧</span><span class="nav-label">KNOWLEDGE</span></a>
+          <a class="nav-item" href="/settings" data-section="settings" aria-label="Settings" title="Settings"><span class="nav-icon" aria-hidden="true">⚙</span><span class="nav-label">SETTINGS</span></a>
+          <a class="nav-item" href="/account" data-section="account" aria-label="Account and users"><span class="nav-icon" aria-hidden="true">♙</span><span class="nav-label">ACCOUNT</span></a>
         </div>
+        <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-controls="primary-navigation" aria-expanded="true" aria-label="Collapse navigation" title="Collapse navigation"><svg class="sidebar-toggle-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg><span class="nav-label">COLLAPSE</span></button>
       </nav>
 
       <div class="project-content">
@@ -146,6 +149,8 @@
             </section>
           </div>
         </section>
+
+        <section class="panel account-panel" data-view="account" id="account-view" hidden></section>
 
         <section class="panel settings-panel" data-view="settings" hidden>
           <header class="panel-header"><div><span class="header-icon">⚙</span><h2>SETTINGS</h2></div><span class="panel-meta" id="settings-status">SELECT A PROMPT</span></header>
@@ -272,7 +277,6 @@
   </dialog>
   <div class="toast" id="toast" role="status"></div>
   <script type="module" src="/app.mjs"></script>
-  <script type="module" src="/lib/dashboard-office-chat.mjs"></script>
 <dialog id="project-dialog">
       <form id="project-form" class="project-form">
         <h2 id="project-dialog-title">New project</h2>

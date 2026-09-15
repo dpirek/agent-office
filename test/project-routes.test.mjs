@@ -26,7 +26,7 @@ test("project routing handles deep links, legacy links, switching projects and b
   let page;
   const router = new Router();
   registerProjectRoutes(router, {
-    pages: Object.fromEntries(["dashboard", "workspace", "chat", "tasks", "operations", "memory", "settings"].map((section) => [section, { path: `/${section}` }])),
+    pages: Object.fromEntries(["dashboard", "workspace", "chat", "tasks", "operations", "memory", "settings", "account"].map((section) => [section, { path: `/${section}` }])),
     getProjectId: () => project,
     selectProject: (id) => { project = ["alpha", "beta", "central-office"].includes(id) ? id : "central-office"; return project; },
     renderPage: (section) => { page = section; },
@@ -52,6 +52,12 @@ test("project routing handles deep links, legacy links, switching projects and b
   router.navigate("/settings");
   assert.equal(window.location.pathname, "/settings");
   assert.equal(project, "beta");
+  router.navigate("/account");
+  assert.equal(window.location.pathname, "/account");
+  assert.equal(page, "account");
+  assert.equal(project, "beta");
+  events.get("popstate")();
+  assert.equal(page, "account");
   router.navigate("/missing/chat");
   assert.equal(window.location.pathname, "/central-office/chat");
   assert.equal(page, "chat");

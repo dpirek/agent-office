@@ -1,0 +1,125 @@
+export async function renderAccount(root, { onAuthenticated = () => {}, onSignedOut = () => location.replace("/account") } = {}) {
+  root.innerHTML = `<header class="panel-header"><div><span class="header-icon" aria-hidden="true">♙</span><h2>ACCOUNT</h2></div><span class="panel-meta">IDENTITY & ACCESS</span></header>
+    <div class="account-body"><div class="account-heading"><span class="account-eyebrow">YOUR OFFICE</span><h1 id="account-title">Account</h1><p id="account-description"></p></div><p id="account-message" role="status" aria-live="polite" hidden></p><div id="account-content"></div></div>`;
+  const content = root.querySelector("#account-content");
+  const message = root.querySelector("#account-message");
+  const title = root.querySelector("#account-title");
+  const description = root.querySelector("#account-description");
+  function notify(text) { message.textContent = text; message.hidden = !text; }
+  let session;
+  async function api(path, body, method = "POST") {
+    const response = await fetch(path, body === undefined ? { cache: "no-store" } : {
+      method, headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Request failed.");
+    return data;
+  }
+  function button(text, action) {
+    const element = document.createElement("button");
+    element.type = "button"; element.textContent = text;
+    element.addEventListener("click", async () => {
+      element.disabled = true; notify("");
+      try { await action(); } catch (error) { notify(error.message); }
+      finally { element.disabled = false; }
+    });
+    return element;
+  }
+  function form(mode) {
+    content.replaceChildren();
+    const registration = mode === "register";
+    title.textContent = registration ? (session.needsSetup ? "Create administrator account" : "Register") : "Sign in";
+    description.textContent = registration ? (session.needsSetup ? "The first account manages users and office access." : "An administrator must approve your account before you can enter the office.") : "Sign in to your shared office.";
+    const element = document.createElement("form");
+    function field(label, name, type, autocomplete) {
+      const wrapper = document.createElement("label"); wrapper.textContent = label;
+      const input = document.createElement("input"); input.name = name; input.type = type; input.autocomplete = autocomplete; input.required = true;
+      if (type === "password") input.maxLength = 256;
+      else input.maxLength = name === "name" ? 100 : 254;
+      wrapper.append(input); element.append(wrapper);
+    }
+    if (registration) field("Name", "name", "text", "name");
+    field("Email", "email", "email", "username");
+    field("Password", "password", "password", mode === "login" ? "current-password" : "new-password");
+    if (registration) field("Confirm password", "confirmation", "password", "new-password");
+    const submit = document.createElement("button"); submit.type = "submit"; submit.textContent = registration ? "Create account" : "Sign in";
+    element.append(submit);
+    element.addEventListener("submit", async (event) => {
+      event.preventDefault(); notify(""); submit.disabled = true;
+      try {
+        const body = Object.fromEntries(new FormData(element));
+        if (registration && body.password !== body.confirmation) throw new Error("Passwords do not match.");
+        if (registration) await api("/api/auth/register", body);
+        await api("/api/auth/login", body);
+        await load();
+        if (session.user && session.user.role !== "pending") onAuthenticated(session.user);
+      } catch (error) { notify(error.message); }
+      finally { submit.disabled = false; }
+    });
+    content.append(element);
+    const actions = document.createElement("div"); actions.className = "account-actions";
+    if (mode !== "login") actions.append(button("Sign in", () => form("login")));
+    if (mode === "login") actions.append(button("Register", () => form("register")));
+    content.append(actions);
+  }
+  async function account() {
+    const user = session.user;
+    title.textContent = "Your account";
+    description.textContent = "Manage your identity and access to the shared office.";
+    content.replaceChildren();
+    const profile = document.createElement("section"); profile.className = "account-profile";
+    const avatar = document.createElement("div"); avatar.className = "account-avatar"; avatar.setAttribute("aria-hidden", "true"); avatar.textContent = user.name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase();
+    const identity = document.createElement("div"); identity.className = "account-identity";
+    const name = document.createElement("h2"); name.textContent = user.name;
+    const email = document.createElement("p"); email.textContent = user.email;
+    const badge = document.createElement("span"); badge.className = `account-badge ${user.role}`; badge.textContent = user.role === "admin" ? "Administrator" : user.role;
+    identity.append(name, email, badge);
+    const logout = button("Sign out", async () => { await api("/api/auth/logout", {}); onSignedOut(); }); logout.className = "account-signout";
+    profile.append(avatar, identity, logout); content.append(profile);
+    if (user.role === "pending") {
+      const pending = document.createElement("section"); pending.className = "account-notice";
+      const heading = document.createElement("h2"); heading.textContent = "Awaiting approval";
+      const text = document.createElement("p"); text.textContent = "An administrator needs to approve your account before you can enter the office.";
+      pending.append(heading, text, button("Check access", async () => { await load(); if (session.user?.role !== "pending" && session.user) onAuthenticated(session.user); })); content.append(pending); return;
+    }
+    const summary = document.createElement("section"); summary.className = "account-access";
+    summary.innerHTML = `<span class="account-eyebrow">WORKSPACE ACCESS</span><h2>One office. Shared work.</h2><p>You can work with shared projects, files, agent tools, and office settings.</p>`;
+    content.append(summary);
+    if (user.role !== "admin") return;
+    const heading = document.createElement("div"); heading.className = "account-section-heading";
+    heading.innerHTML = `<div><span class="account-eyebrow">ADMINISTRATION</span><h2>Users</h2><p>Approve new members and manage who can access the office.</p></div>`;
+    content.append(heading);
+    const { users } = await api("/api/users");
+    const count = document.createElement("span"); count.className = "account-badge"; count.textContent = `${users.length} ${users.length === 1 ? "user" : "users"}`; heading.append(count);
+    const legend = document.createElement("div"); legend.className = "account-role-guide";
+    legend.innerHTML = `<div><strong>Administrator</strong><span>Office access, users & factory reset</span></div><div><strong>Member</strong><span>Shared projects, tools & settings</span></div><div><strong>Pending</strong><span>Awaiting approval · no office access</span></div>`; content.append(legend);
+    const list = document.createElement("div"); list.className = "account-user-list"; content.append(list);
+    const activeAdmins = users.filter(entry => entry.role === "admin" && !entry.disabled).length;
+    for (const entry of users) {
+      const row = document.createElement("section"); row.className = "user-card";
+      const label = document.createElement("div"); label.textContent = `${entry.name}${entry.id === user.id ? " (you)" : ""}`;
+      const email = document.createElement("small"); email.textContent = `${entry.email}${entry.disabled ? " · Disabled" : ""}`; label.append(email);
+      const select = document.createElement("select"); select.setAttribute("aria-label", `Role for ${entry.email}`);
+      for (const role of ["pending", "member", "admin"]) { const option = document.createElement("option"); option.value = role; option.textContent = role; select.append(option); }
+      select.value = entry.role;
+      const save = button("Save role", async () => { await api("/api/users", { id: entry.id, role: select.value }, "PATCH"); await load(); });
+      const disable = button(entry.disabled ? "Enable" : "Disable", async () => { await api("/api/users", { id: entry.id, disabled: !entry.disabled }, "PATCH"); await load(); });
+      save.disabled = true;
+      select.addEventListener("change", () => { save.disabled = select.value === entry.role; });
+      if (entry.role === "admin" && !entry.disabled && activeAdmins === 1) {
+        select.disabled = true; disable.disabled = true;
+        select.title = disable.title = "At least one active administrator must remain.";
+      }
+      const controls = document.createElement("div"); controls.className = "account-user-controls"; controls.append(select, save, disable);
+      const status = document.createElement("span"); status.className = `account-badge ${entry.disabled ? "disabled" : entry.role}`; status.textContent = entry.disabled ? "Disabled" : entry.role === "pending" ? "Awaiting approval" : "Active";
+      row.append(label, status, controls); list.append(row);
+    }
+  }
+  async function load() {
+    session = await api("/api/auth/session");
+    if (session.user) await account(); else form(session.needsSetup ? "register" : "login");
+  }
+  try { await load(); }
+  catch (error) { notify(error.message); }
+
+}

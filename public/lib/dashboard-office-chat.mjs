@@ -160,5 +160,3 @@ export function initializeDashboardOfficeChat({ documentRef = document, fetchImp
     input?.removeEventListener("keydown", handleKeydown);
   };
 }
-
-if (typeof document !== "undefined") initializeDashboardOfficeChat();

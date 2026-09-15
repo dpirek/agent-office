@@ -1,3 +1,10 @@
+import { renderAccount } from "./account.mjs";
+import { requireSession } from "./lib/auth.mjs";
+import { initSidebar } from "./sidebar.mjs";
+import { initializeDashboardOfficeChat } from "./lib/dashboard-office-chat.mjs";
+initSidebar();
+await requireSession();
+initializeDashboardOfficeChat();
 import { initWorkspaceResizing } from "./lib/workspace-resize.mjs";
 import { PROJECT_PAGES, projectPagePath, projectIdFromPath, registerProjectRoutes } from "./lib/project-routes.mjs";
 import { normalizeFileUrl, workspaceFileUrl } from "./lib/file-url.mjs";
@@ -33,6 +40,7 @@ const PAGES = {
   operations: { path: "/operations", title: "Operations" },
   memory: { path: "/memory", title: "Memory" },
   knowledge: { path: "/knowledge", title: "Knowledge", icon: "▧", heading: "Knowledge base", description: "Connected sources and selected skills provide shared context to the agent office." },
+  account: { path: "/account", title: "Account" },
   settings: { path: "/settings", title: "Settings" },
 };
 
@@ -241,6 +249,7 @@ function renderPage(section) {
     $("#route-page-heading").textContent = page.heading;
     $("#route-page-description").textContent = page.description;
   }
+  if (section === "account") void renderAccount($("#account-view"));
   if (section === "chat") void loadOfficeChat({ quiet: true });
   if (section === "workspace") void loadSharedWorkspace({ quiet: true });
   syncCollapsedPanelLayout();
@@ -1714,7 +1723,7 @@ registerProjectRoutes(router, {
   },
   renderPage,
 });
-$$('.nav-item').forEach((link) => link.addEventListener("click", (event) => {
+$$('.nav-item[data-section]').forEach((link) => link.addEventListener("click", (event) => {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   event.preventDefault();
   router.navigate(link.getAttribute("href"));

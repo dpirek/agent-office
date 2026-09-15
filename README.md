@@ -173,3 +173,43 @@ are available from the unfiltered shared-workspace API.
 Omitting `projectId` from chat/task creation uses `central-office`. Omitting it
 from task or workspace listing retains the existing office-wide API view.
 Projects can be archived without deleting their history or files.
+
+## User accounts and roles
+
+Open the office to register the first administrator, then sign in. Complete this
+setup before exposing the server to other users. Accounts, password hashes,
+and sessions persist in `db/users.sqlite` under
+`AI_HARNESS_DATA_DIR` (or the current directory). Existing office data is preserved.
+Office factory reset preserves user accounts.
+
+Use **Account** in the sidebar (`/account`) to sign out or manage users:
+
+- **Admin:** shared office access, user approval, role changes, disabling accounts,
+  and factory reset.
+- **Member:** shared office projects, files, agent tools, and configuration.
+  Only approve trusted collaborators: this is a shared workspace with powerful
+  agent tools, not an isolated workspace per user.
+- **Pending:** the default for subsequent registrations; account access only until
+  an administrator changes the role.
+
+At least one enabled administrator must remain. Disabling an account or changing
+its role revokes its sessions. Browser APIs and `/ws` require an approved account;
+worker WebSockets, artifact uploads, and project MCP retain their existing worker
+or task token authentication.
+
+Passwords require 12–256 characters and are stored using salted scrypt hashes.
+Sessions last seven days and use HttpOnly, SameSite cookies. When serving over
+HTTPS or behind a reverse proxy, set `AI_HARNESS_PUBLIC_ORIGIN` to the exact public
+origin (for example `https://office.example.com`) to enable Secure cookies and
+correct origin checks. The app does not trust forwarded headers for rate limiting;
+requests through a proxy share its per-address limit of 20 attempts per endpoint
+per 15 minutes. Limits reset when the server restarts.
+
+Authentication endpoints: `GET /api/auth/session`,
+`POST /api/auth/{register,login,logout}`.
+Admin endpoints: `GET /api/users` and `PATCH /api/users` with
+`{id,role?,disabled?}`. POST/PATCH bodies use JSON.
+Registration accepts `{name,email,password}` and always assigns the role on the
+server. Login accepts `{email,password}`.
+
+Password reset is deferred.
