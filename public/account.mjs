@@ -80,6 +80,25 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     root.classList.add("is-profile");
     document.title = "Your account · Agent Office";
     const user = session.user;
+    if (!root.closest('office-account-shell')) {
+      const layout = root.closest('.account-layout');
+      document.documentElement.dataset.accountShell = '';
+      document.body.dataset.page = 'account';
+      for (const name of ['styles', 'themes']) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet'; link.href = `/styles/${name}.css`;
+        if (name === 'styles') document.head.insertBefore(link, document.querySelector('link[href="/styles/account.css"]'));
+        else document.head.append(link);
+      }
+      await import('./lib/theme.js');
+      await import('./components/office-account-shell.mjs');
+      const shell = document.createElement('office-account-shell');
+      shell.data = { user };
+      const parent = layout.parentNode;
+      shell.append(layout);
+      parent.prepend(shell);
+    }
+
     title.textContent = "Your account";
     description.textContent = "Manage your identity and access to the shared office.";
     content.replaceChildren();

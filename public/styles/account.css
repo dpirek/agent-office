@@ -74,9 +74,9 @@
 @media (max-width: 420px) { .avatar-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Standalone account document: no dashboard styles or runtime required. */
-:root { color-scheme: light; --green: #5b52cf; --text: #20213f; --muted: #666c8c; --amber: #986900; --red: #c63548; --line-dim: #e9eaf2; --panel-hi: #efedf9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); background: #f5f6fa; }
+:root:not([data-account-shell]) { color-scheme: light; --green: #5b52cf; --text: #20213f; --muted: #666c8c; --amber: #986900; --red: #c63548; --line-dim: #e9eaf2; --panel-hi: #efedf9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); background: #f5f6fa; }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100dvh; padding-block: 16px; display: flex; flex-direction: column; justify-content: center; }
+body:not([data-page="account"]) { margin: 0; min-height: 100dvh; padding-block: 16px; display: flex; flex-direction: column; justify-content: center; }
 h1, h2, p { margin: 0; }
 button, input, select { font: inherit; color: inherit; }
 button, a, summary { -webkit-tap-highlight-color: transparent; }
@@ -148,3 +148,13 @@ a { color: inherit; }
 
 body > .account-layout { width: calc(100% - 64px); margin: 0 auto; flex-shrink: 0; }
 @media (max-width: 560px) { body > .account-layout { width: calc(100% - 32px); } }
+
+/* Signed-in accounts share the office navigation and theme. */
+office-account-shell { display: contents; }
+.account-content-area { overflow-y: auto; }
+.account-content-area .account-layout { width: 100%; max-width: none; margin: 0; border-radius: 10px; background: var(--panel); flex-shrink: 0; }
+.account-content-area .account-panel { justify-content: flex-start; }
+.account-content-area .account-profile, .account-content-area .user-card { background: var(--panel-hi); }
+.account-content-area .account-panel label { color: var(--text); }
+.account-content-area .account-panel input { background: var(--panel); border-color: var(--line-dim); }
+@media (max-width: 1100px) { .account-content-area { overflow: visible; } }
