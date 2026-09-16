@@ -3,6 +3,7 @@ import { bindOfficeHeader } from "./office-header.mjs";
 import "./office-navigation.mjs";
 import "./office-topbar.mjs";
 import "./office-search.mjs";
+import "./office-account.mjs";
 import "./office-floor.mjs";
 import "./office-selected-agent.mjs";
 import "./office-worker-registry.mjs";
@@ -61,6 +62,7 @@ class OfficeShell extends OfficeComponent {
         this.createElement("office-settings", { "class": "panel settings-panel", "data-view": "settings", "hidden": "" }),
         this.createElement("office-knowledge", { "class": "panel knowledge-panel", "data-view": "knowledge", "hidden": "" }),
         this.createElement("office-memory", { "class": "panel memory-panel", "data-view": "memory", "hidden": "" }),
+        this.createElement("office-account", { "class": "panel account-panel", "data-view": "account", "hidden": "" }),
         this.createElement("office-search", { "data-view": "search", "hidden": "" })
       ] })
     ] })

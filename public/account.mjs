@@ -1,6 +1,6 @@
 import { USER_AVATARS, renderUserAvatar } from './lib/user-avatars.mjs';
 
-export async function renderAccount(root, { onAuthenticated = () => {}, onSignedOut = () => location.replace("/account") } = {}) {
+export async function renderAccount(root, { onAuthenticated = () => {}, onSignedOut = () => location.replace("/login"), onUserChanged = () => {}, mode = "account" } = {}) {
   root.innerHTML = `<div class="account-body"><div class="account-heading"><span class="account-eyebrow">YOUR WORKSPACE, CONNECTED</span><h1 id="account-title">Welcome back</h1><p id="account-description">Checking your session…</p></div><p id="account-message" role="status" aria-live="polite" hidden></p><div id="account-content"></div></div>`;
   const content = root.querySelector("#account-content");
   const message = root.querySelector("#account-message");
@@ -65,41 +65,23 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
         if (registration) await api("/api/auth/register", body);
         await api("/api/auth/login", body);
         await load();
-        if (session.user && session.user.role !== "pending") onAuthenticated(session.user);
+
       } catch (error) { notify(error.message); }
       finally { submit.disabled = false; submit.textContent = registration ? "Create account" : "Sign in"; }
     });
     content.append(element);
     const actions = document.createElement("div"); actions.className = "account-actions";
     actions.append(document.createTextNode(registration ? "Already have an account?" : "New to Agent Office?"));
-    if (mode !== "login") actions.append(button("Sign in", () => { form("login"); content.querySelector("input").focus(); }));
-    if (mode === "login") actions.append(button("Create an account", () => { form("register"); content.querySelector("input").focus(); }));
+    const link = document.createElement("a");
+    link.href = registration ? "/login" : "/register";
+    link.textContent = registration ? "Sign in" : "Create an account";
+    actions.append(link);
     content.append(actions);
   }
   async function account() {
     root.classList.add("is-profile");
-    document.title = "Your account · Agent Office";
+    if (mode !== "account") document.title = "Your account · Agent Office";
     const user = session.user;
-    if (!root.closest('office-account-shell')) {
-      const layout = root.closest('.account-layout');
-      document.documentElement.dataset.accountShell = '';
-      document.body.dataset.page = 'account';
-      for (const name of ['styles', 'themes', 'search']) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet'; link.href = `/styles/${name}.css`;
-        if (name === 'styles') document.head.insertBefore(link, document.querySelector('link[href="/styles/account.css"]'));
-        else document.head.append(link);
-      }
-      await import('./lib/theme.js');
-      await import('./components/office-account-shell.mjs');
-      const shell = document.createElement('office-account-shell');
-      shell.data = { user };
-      const parent = layout.parentNode;
-      shell.append(layout);
-      parent.prepend(shell);
-    }
-
-    root.closest('office-account-shell').data = { user };
     title.textContent = "Your account";
     description.textContent = "Manage your identity and access to the shared office.";
     content.replaceChildren();
@@ -132,6 +114,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
       try {
         const result = await api('/api/auth/profile', { avatar: new FormData(avatarForm).get('avatar') }, 'PATCH');
         Object.assign(user, result.user);
+        onUserChanged(user);
         renderUserAvatar(avatar, user);
         avatarStatus.textContent = 'Avatar saved.';
       } catch (error) { avatarStatus.textContent = error.message; }
@@ -141,7 +124,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
       const pending = document.createElement("section"); pending.className = "account-notice";
       const heading = document.createElement("h2"); heading.textContent = "Awaiting approval";
       const text = document.createElement("p"); text.textContent = "An administrator needs to approve your account before you can enter the office.";
-      pending.append(heading, text, button("Check access", async () => { await load(); if (session.user?.role !== "pending" && session.user) onAuthenticated(session.user); })); content.append(pending); return;
+      pending.append(heading, text, button("Check access", async () => { await load(); })); content.append(pending); return;
     }
     const summary = document.createElement("section"); summary.className = "account-access";
     summary.innerHTML = `<span class="account-eyebrow">WORKSPACE ACCESS</span><h2>One office. Shared work.</h2><p>You can work with shared projects, files, agent tools, and office settings.</p>`;
@@ -179,11 +162,14 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
   }
   async function load() {
     session = await api("/api/auth/session");
-    if (session.user) await account(); else form(session.needsSetup ? "register" : "login");
+    if (session.user) {
+      if (mode !== "account" && session.user.role !== "pending") { onAuthenticated(session.user); return; }
+      onUserChanged(session.user);
+      await account();
+    } else if (mode === "account") location.replace("/login");
+    else form(mode);
   }
   try { await load(); }
   catch (error) { notify(error.message); }
 
 }
-
-void renderAccount(document.querySelector("#account-view"), { onAuthenticated: () => location.assign("/") });

@@ -14,6 +14,7 @@ const component = name => shell.querySelector(`office-${name}`);
 const navigation = component('navigation');
 const topbar = component('topbar');
 topbar.data = { user: signedInUser };
+shell.addEventListener('account-user-change', ({ detail }) => { topbar.data = { user: detail.user }; });
 const searchPage = component('search');
 const workspace = component('workspace');
 const chat = component('chat');
@@ -86,7 +87,7 @@ shell.addEventListener('file-open', ({ detail: { href } }) => {
 });
 
 function renderPage(section) {
-  if (section === 'account') { location.assign('/account'); return; }
+  if (section === 'account') void component('account').load();
   if (section === 'search') {
     const projectId = new URLSearchParams(location.search).get('project');
     if (projectId && projectId !== state.projectId && state.projects.some(project => project.id === projectId)) void switchProject(projectId, { navigate: false });
@@ -599,6 +600,7 @@ void loadSystemLogs();
 
 function renderProjects() {
   navigation.data = { projects: state.projects, projectId: state.projectId };
+  topbar.data = { projects: state.projects, projectId: state.projectId };
   workspace.data = { projectId: state.projectId };
   memory.data = { projectId: state.projectId };
   operationsPanel.data = { projectId: state.projectId };

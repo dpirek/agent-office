@@ -3,6 +3,7 @@ export function bindOfficeHeader(shell, defaultVisible = () => false) {
   const header = shell.querySelector('office-topbar');
   const navigation = shell.querySelector('office-navigation');
   shell.addEventListener('navigation-toggle', () => navigation.toggle());
+  shell.addEventListener('project-create-open', () => navigation.openProjectDialog());
   shell.addEventListener('sidebar-toggle', ({ detail }) => {
     header.data = { collapsed: detail.collapsed };
   });

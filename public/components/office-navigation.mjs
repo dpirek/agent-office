@@ -145,15 +145,16 @@ class OfficeNavigation extends OfficeComponent {
     toggle.addEventListener('click', () => this.toggle());
     this.addEventListener('click', event => {
       const link = event.target.closest('.nav-item[data-section], .sidebar-logo');
-      if (!link || link.dataset.section === 'account' || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
       this.emit('office-navigate', { href: link.getAttribute('href') });
     });
     $('#project-select').addEventListener('change', event => this.emit('project-select', { id: event.target.value }));
     const dialog = $('#project-dialog');
-    $('#new-project-button').addEventListener('click', () => {
+    this.openProjectDialog = () => {
       $('#project-form').reset(); dialog.showModal(); $('#project-name').focus();
-    });
+    };
+    $('#new-project-button').addEventListener('click', () => this.openProjectDialog());
     $('#cancel-project-button').addEventListener('click', () => dialog.close());
     $('#project-form').addEventListener('submit', async event => {
       event.preventDefault();

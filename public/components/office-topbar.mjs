@@ -3,7 +3,7 @@ import { renderUserAvatar } from '../lib/user-avatars.mjs';
 
 class OfficeTopbar extends OfficeComponent {
   static hostAttributes = { class: 'office-topbar', role: 'banner' };
-  model = { user: null, query: '', collapsed: false };
+  model = { user: null, query: '', collapsed: false, projects: [], projectId: 'central-office' };
 
   icon(name) {
     return this.createElement('svg', { width: '18', height: '18', viewBox: '0 0 16 16', fill: 'currentColor', 'aria-hidden': 'true', children: [
@@ -29,6 +29,10 @@ class OfficeTopbar extends OfficeComponent {
         ] }),
       ] }),
       this.createElement('div', { class: 'topbar-actions', children: [
+        this.createElement('div', { class: 'topbar-projects', children: [
+          this.createElement('select', { 'aria-label': 'Current project', addEventListener: { name: 'change', handler: event => this.emit('project-select', { id: event.target.value }) } }),
+          this.createElement('button', { type: 'button', class: 'topbar-new-project', children: [this.icon('plus-lg'), this.createElement('span', { textContent: 'New project' })], addEventListener: { name: 'click', handler: () => this.emit('project-create-open') } }),
+        ] }),
         this.createElement('button', { type: 'button', class: 'topbar-new', children: [this.icon('plus-lg'), this.createElement('span', { textContent: 'New task' })], addEventListener: { name: 'click', handler: () => this.emit('new-task') } }),
         this.createElement('a', { href: '/account', class: 'topbar-user', children: [
           this.createElement('span', { class: 'topbar-avatar-wrap', children: [
@@ -46,12 +50,20 @@ class OfficeTopbar extends OfficeComponent {
 
   initialize() {
     const input = this.querySelector('input');
+    this.querySelector('.topbar-user').addEventListener('click', event => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      this.emit('office-navigate', { href: '/account' });
+    });
     this.querySelector('form').addEventListener('submit', event => {
       event.preventDefault();
       this.emit('office-search', { query: input.value.trim() });
     });
     this.update = () => {
       input.value = this.model.query;
+      const projects = this.querySelector('.topbar-projects select');
+      projects.replaceChildren(...this.model.projects.map(project => this.createElement('option', { value: project.id, textContent: project.name })));
+      projects.value = this.model.projectId;
       const brand = this.querySelector('.topbar-brand');
       const label = this.model.collapsed ? 'Expand navigation' : 'Collapse navigation';
       brand.setAttribute('aria-expanded', String(!this.model.collapsed));

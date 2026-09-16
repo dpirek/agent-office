@@ -87,13 +87,26 @@ test("the server serves the app shell for a direct project workspace URL", async
   assert.match(response.body.toString(), /src="\/app.mjs"/);
 });
 
-test("account URLs serve a standalone document without the dashboard runtime", async () => {
+test("account URLs serve the signed-in app shell", async () => {
   for (const url of ["/account", "/account/", "/account?from=office"]) {
     const response = { writeHead(status, headers) { this.status = status; this.headers = headers; }, end(body) { this.body = body; } };
     await serveStatic({ method: "GET", url, headers: { host: "office.test" } }, response, fileURLToPath(new URL("../public", import.meta.url)));
     assert.equal(response.status, 200);
     assert.match(response.headers["content-type"], /text\/html/);
-    assert.match(response.body.toString(), /src="\/account.mjs"/);
-    assert.doesNotMatch(response.body.toString(), /(?:app|sidebar|settings)\.mjs|class="sidebar"/);
+    assert.match(response.body.toString(), /src="\/app.mjs"/);
+    assert.match(response.body.toString(), /<office-shell>/);
+  }
+});
+
+
+test("login and registration have standalone documents", async () => {
+  for (const page of ["login", "register"]) {
+    for (const suffix of ["", "/", "?from=office"]) {
+      const response = { writeHead(status, headers) { this.status = status; this.headers = headers; }, end(body) { this.body = body; } };
+      await serveStatic({ method: "GET", url: `/${page}${suffix}`, headers: { host: "office.test" } }, response, fileURLToPath(new URL("../public", import.meta.url)));
+      assert.equal(response.status, 200);
+      assert.match(response.body.toString(), /src="\/auth-page.mjs"/);
+      assert.doesNotMatch(response.body.toString(), /src="\/app.mjs"|<office-shell>/);
+    }
   }
 });
