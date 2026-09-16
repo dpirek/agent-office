@@ -142,3 +142,38 @@ test("chat members distinguish manager typing from busy workers", (context) => {
   assert.equal(members.find((member) => member.username === "dave-the-developer").status, "busy");
   assert.equal(members.find((member) => member.username === "idle-worker").status, "is typing");
 });
+
+test('thread replies persist, include older parents, and are reviewed without automatic agent dispatch', async context => {
+  const { directory, store } = setup();
+  context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const reviewed = [];
+  const chat = createOfficeChatService({ uiStateStore: store, subAgentManager: { listWorkers: () => [{ name: 'Dave' }], queue() { throw new Error('Must not auto-dispatch a thread reply'); } }, onManagerMention: request => reviewed.push(request) });
+  const parent = chat.postMessage({ author: 'Alice', text: 'Please investigate the build.' });
+  const unrelated = chat.postMessage({ text: 'Unrelated conversation' });
+  const result = chat.postUserMessage({ text: '@dave Thanks, that helps.', replyToId: parent.id, user: { id: 'bob', name: 'Bob' } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(result.message.replyToId, parent.id);
+  assert.equal(result.message.author, 'Bob');
+  assert.equal(result.managerMentioned, true);
+  assert.deepEqual(result.dispatches, []);
+  assert.equal(reviewed[0].message.id, result.message.id);
+  assert.deepEqual(chat.list({ limit: 1 }).messages.map(message => message.id), [parent.id, result.message.id]);
+  assert.deepEqual(store.getOfficeChatThread(result.message.id, 'central-office').map(message => message.id), [parent.id, result.message.id]);
+  const followup = chat.postMessage({ kind: 'manager', author: 'Office Manager', text: 'Which build?', replyToId: result.message.id });
+  assert.deepEqual(store.getOfficeChatThread(followup.id, 'central-office').map(message => message.id), [parent.id, result.message.id, followup.id]);
+  assert.ok(!store.getOfficeChatThread(followup.id, 'central-office').some(message => message.id === unrelated.id));
+  const reopened = createUiStateStore(path.join(directory, 'state.sqlite'));
+  assert.equal(reopened.getOfficeChatMessage(result.message.id, 'central-office').replyToId, parent.id);
+  reopened.close();
+});
+
+test('reply targets must exist in the same project before any message or manager call is created', async context => {
+  const { directory, store } = setup();
+  context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const chat = createOfficeChatService({ uiStateStore: store, onManagerMention: () => assert.fail('Invalid reply must not trigger the manager') });
+  const project = store.createProject({ name: 'Other project' });
+  const parent = chat.postMessage({ text: 'Private context', projectId: project.id });
+  assert.throws(() => chat.postUserMessage({ text: 'Reply', replyToId: parent.id }), /Reply target not found/);
+  assert.throws(() => chat.postUserMessage({ text: 'Reply', replyToId: 'missing' }), /Reply target not found/);
+  assert.equal(chat.list().messages.length, 0);
+});

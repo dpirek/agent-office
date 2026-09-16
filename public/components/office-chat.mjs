@@ -42,6 +42,10 @@ class OfficeChat extends OfficeComponent {
           ] }),
           this.createElement("div", { "class": "office-board-messages", "id": "office-board-messages", "aria-live": "polite" }),
           this.createElement("form", { "class": "office-board-composer", "id": "office-board-form", children: [
+            this.createElement('div', { class: 'chat-reply-context', hidden: '', children: [
+              this.createElement('span', { id: 'chat-reply-preview', role: 'status' }),
+              this.createElement('button', { type: 'button', id: 'chat-reply-cancel', 'aria-label': 'Cancel thread reply', textContent: '×' })
+            ] }),
             this.createElement("textarea", { "id": "office-board-input", "rows": "1", "maxlength": "100000", "required": "", "placeholder": "Message #central-office · use @office-manager or @agent-name", "aria-label": "Message central office" }),
             this.createElement("div", { "class": "composer-toolbar", children: [
               this.createElement("div", { "class": "composer-tools", "aria-label": "Message tools", children: [
@@ -103,6 +107,20 @@ class OfficeChat extends OfficeComponent {
     const $ = (selector, root = this) => root.querySelector(selector);
     const $$ = (selector, root = this) => [...root.querySelectorAll(selector)];
     const showToast = (message, error = false) => this.emit("office-notify", { message, error });
+    let replyToId = null;
+    const setReply = message => {
+      replyToId = message?.id || null;
+      $('.chat-reply-context').hidden = !message;
+      $('#chat-reply-preview').textContent = message ? `Replying to ${message.author}: ${message.text.slice(0, 180)}` : '';
+      resizeOfficeBoardInput();
+    };
+    $('#chat-reply-cancel').addEventListener('click', () => { setReply(null); $('#office-board-input').focus(); });
+    $('#office-board-messages').addEventListener('click', event => {
+      const action = event.target.closest('[data-reply-to]');
+      if (!action) return;
+      const message = state.officeChatMessages.find(item => item.id === action.dataset.replyTo);
+      if (message) { setReply(message); $('#office-board-input').focus(); }
+    });
     function chatAvatar(message) {
       if (message.kind === "user") {
         return `<svg class="human-avatar-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3.25"></circle><path d="M5.5 20v-2.2c0-3.7 2.9-6.3 6.5-6.3s6.5 2.6 6.5 6.3V20z"></path></svg>`;
@@ -147,13 +165,24 @@ class OfficeChat extends OfficeComponent {
 
       const board = $("#office-board-messages");
       const wasAtBottom = board.scrollHeight - board.scrollTop - board.clientHeight < 70;
-      const messages = state.officeChatMessages;
+      const byId = new Map(state.officeChatMessages.map(message => [message.id, message]));
+      const children = new Map();
+      for (const message of state.officeChatMessages) {
+        const parent = byId.has(message.replyToId) ? message.replyToId : null;
+        if (!children.has(parent)) children.set(parent, []);
+        children.get(parent).push(message);
+      }
+      const messages = [];
+      const visit = parent => { for (const message of children.get(parent) || []) { messages.push(message); visit(message.id); } };
+      visit(null);
       const nextOfficeBoardMarkup = messages.length ? messages.map((message) => `
-        <article class="office-board-message ${escapeHtml(message.kind)}${message.streaming ? " streaming" : ""}">
+        <article data-message-id="${escapeHtml(message.id)}" class="office-board-message ${message.replyToId ? "thread-reply " : ""}${escapeHtml(message.kind)}${message.streaming ? " streaming" : ""}">
           <div class="office-board-avatar"${message.kind === "user" ? ` title="You · Human"` : ""}>${chatAvatar(message)}</div>
           <div class="office-board-message-body">
             <div class="office-board-message-meta"><strong>${escapeHtml(message.author)}</strong><span>@${escapeHtml(message.username)} · ${shortTime(message.createdAt)}</span></div>
+            ${message.replyToId ? `<div class="chat-thread-parent">Reply to ${escapeHtml(byId.get(message.replyToId)?.author || 'earlier message')}: ${escapeHtml((byId.get(message.replyToId)?.text || '').slice(0, 140))}</div>` : ''}
             <div class="office-board-message-text markdown-body">${renderMarkdown(message.text)}</div>
+            ${!message.streaming ? `<button type="button" class="chat-thread-action" data-reply-to="${escapeHtml(message.id)}"><svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><use href="/assets/bootstrap-icons/bootstrap-icons.svg#reply"></use></svg> Reply to thread</button>` : ''}
             ${message.artifacts?.length ? `<div class="office-board-artifacts">${renderChatArtifacts(message.artifacts)}</div>` : ""}
           </div>
         </article>`).join("") : `<div class="office-board-empty"><strong># ${escapeHtml(state.projects.find((project) => project.id === state.projectId)?.name.toUpperCase() || "CENTRAL OFFICE")} IS READY</strong><span>Mention @office-manager or a registered agent to begin.</span></div>`;
@@ -208,8 +237,8 @@ class OfficeChat extends OfficeComponent {
       posting = true;
       sendButton.disabled = true;
       try {
-        const result = await postOfficeChat({ text: prompt });
-        if (state.projectId === result.message.projectId) input.value = "";
+        const result = await postOfficeChat({ text: prompt, replyToId });
+        if (state.projectId === result.message.projectId) { input.value = ""; setReply(null); }
         resizeOfficeBoardInput();
         await loadOfficeChat({ quiet: true });
         const failed = result.dispatches?.filter((dispatch) => !dispatch.ok) || [];
@@ -253,7 +282,7 @@ class OfficeChat extends OfficeComponent {
       }
       renderOfficeChat({ preserveScroll: true });
     };
-    this.clearDraft = () => { $('#office-board-input').value = ''; resizeOfficeBoardInput(); };
+    this.clearDraft = () => { setReply(null); $('#office-board-input').value = ''; resizeOfficeBoardInput(); };
     this.syncComposer = syncOfficeBoardComposerHeight;
     this.onConnect = () => {
       initChatComposer({ root: this, signal: this.connectionSignal });

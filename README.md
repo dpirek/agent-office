@@ -135,6 +135,8 @@ ISC
 
 Use the project selector to create or switch projects. Each project has its own
 persistent chat room, task queue, description, status, and workspace folder.
+Use **Reply to thread** on a Chat message to respond with its context. The Office Manager reviews thread replies and can remain silent when no input is needed. Replies persist with their parent message; model context includes the thread root, parent, speaker identities, and recent thread history.
+
 The Chat sidebar lists the project rooms. Dashboard chat and the manager chat
 both use the selected project's history. Tasks show their project name.
 
@@ -165,7 +167,7 @@ are available from the unfiltered shared-workspace API.
 | `POST /api/projects` | Create with `{ "name": "Website", "description": "Public site" }` |
 | `PUT /api/projects` | Update `{ "id": "…", "name": "…", "description": "…", "status": "paused" }`; omitted fields stay unchanged |
 | `GET /api/chat?projectId=…` | Read that room's latest messages; supports `after` and `limit` |
-| `POST /api/chat` | Send `{ "projectId": "…", "text": "…" }` |
+| `POST /api/chat` | Send `{ "projectId": "…", "text": "…", "replyToId": "optional parent message ID" }`; reply targets must belong to the same project |
 | `GET /api/tasks?projectId=…` | Read the project's tasks |
 | `POST /api/tasks` | Create with `projectId`, `title`, and optional `priority` / `dependsOn` |
 | `PUT /api/tasks`, `DELETE /api/tasks` | Accept `projectId` alongside existing task arguments to enforce project ownership |

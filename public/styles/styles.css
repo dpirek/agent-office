@@ -690,3 +690,12 @@ office-shell { display: contents; }
 .add-member-dialog [hidden] { display: none !important; }
 .add-member-status { margin: 0; padding: 0 20px 16px; color: var(--muted); line-height: 1.5; }
 .add-member-status:empty { display: none; }
+
+.office-board-message.thread-reply { margin-left: 30px; border-left: 2px solid var(--line); padding-left: 12px; }
+.chat-thread-parent { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 4px 0; }
+.chat-thread-action { display: inline-flex; align-items: center; gap: 5px; border: 0; padding: 4px 0; background: transparent; color: var(--muted); font-size: 11px; }
+.chat-thread-action:hover { color: var(--text); }
+.chat-reply-context { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-left: 2px solid var(--green); color: var(--muted); }
+.chat-reply-context[hidden] { display: none; }
+#chat-reply-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#chat-reply-cancel { flex-shrink: 0; background: transparent; border: 0; color: var(--text); }

@@ -1,3 +1,4 @@
+import { formatThreadRequest, threadReplyText } from './lib/chat-thread.js';
 import { createUserStore } from "./lib/users.js";
 import { createAuthService, sessionToken } from "./api/auth.js";
 import { prepareWorkerTask } from "./lib/worker-task-context.js";
@@ -337,7 +338,7 @@ uiStateStore.recordSystemActivity({
 });
 for (const project of uiStateStore.getProjects()) await projectWorkspace(sharedWorkspaceRoot, project.id);
 let officeManagerProjectId = null;
-async function runOfficeManager(request, { refine = true, projectId = DEFAULT_PROJECT_ID } = {}) {
+async function runOfficeManager(request, { refine = true, projectId = DEFAULT_PROJECT_ID, replyToId = null } = {}) {
     officeManagerProjectId = projectId;
     const context = await prepareProjectContext(uiStateStore, sharedWorkspaceRoot, projectId, request);
     const { root } = context;
@@ -359,11 +360,13 @@ async function runOfficeManager(request, { refine = true, projectId = DEFAULT_PR
       ? request
       : await agent.refinePrompt(request, { disabledSteps });
     const output = await agent.run({ text: prompt }, { disabledSteps });
-    officeChatService.postMessage({
+    const reply = replyToId ? threadReplyText(output) : output || "Done.";
+    if (reply) officeChatService.postMessage({
+      replyToId,
       author: "Office Manager",
       username: "office-manager",
       kind: "manager",
-      text: output || "Done.",
+      text: reply,
       projectId,
     });
     return output;
@@ -381,6 +384,12 @@ function enqueueOfficeManager(run) {
 
 function handleOfficeManagerMention({ message, text }) {
   return enqueueOfficeManager(async () => {
+    if (message.replyToId) {
+      const parent = uiStateStore.getOfficeChatMessage(message.replyToId, message.projectId);
+      const thread = uiStateStore.getOfficeChatThread(message.id, message.projectId);
+      const request = `${formatThreadRequest({ message, parent, thread })}\n\n${SEQUENTIAL_ORCHESTRATION_POLICY}`;
+      return runOfficeManager(request, { projectId: message.projectId, replyToId: message.id, refine: false });
+    }
     const recent = officeChatService.list({ limit: 40, projectId: message.projectId }).messages
       .filter((entry) => entry.id !== message.id)
       .map((entry) => ({ label: entry.author, text: entry.text, isUser: entry.kind === "user" }));
