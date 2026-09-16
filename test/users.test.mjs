@@ -143,3 +143,29 @@ test("HTTPS configuration sets secure cookies and uses the configured origin", a
     assert.match(result.headers["set-cookie"], /; Secure/);
   } finally { store.close(); }
 });
+
+test('avatar choices persist and profile updates only affect the signed-in user', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'office-avatars-'));
+  const filename = path.join(dir, 'users.sqlite');
+  let store = createUserStore(filename);
+  try {
+    const admin = await store.register(account('avatar-admin@example.com'));
+    const member = await store.register(account('avatar-member@example.com'));
+    const login = await store.login(account(member.email));
+    const cookie = `office_session=${login.token}`;
+    const request = client(createAuthService({ userStore: store }));
+    assert.equal(admin.avatar, 'initials');
+    assert.equal((await request('/api/auth/profile', { method: 'PATCH', body: { avatar: 'designer' } })).status, 401);
+    assert.equal((await request('/api/auth/profile', { method: 'PATCH', cookie, origin: 'http://evil.example', body: { avatar: 'designer' } })).status, 403);
+    assert.equal((await request('/api/auth/profile', { method: 'PATCH', cookie, body: { avatar: '../../secret' } })).status, 400);
+    const result = await request('/api/auth/profile', { method: 'PATCH', cookie, body: { id: admin.id, avatar: 'designer', role: 'admin' } });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.user.id, member.id);
+    assert.equal(result.body.user.role, 'pending');
+    assert.equal(store.list().find(user => user.id === admin.id).avatar, 'initials');
+    store.close(); store = createUserStore(filename);
+    assert.equal(store.session(login.token).avatar, 'designer');
+    store.updateAvatar(member.id, 'initials');
+    assert.equal(store.session(login.token).avatar, 'initials');
+  } finally { store.close(); await rm(dir, { recursive: true, force: true }); }
+});

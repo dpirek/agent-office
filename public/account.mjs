@@ -1,3 +1,5 @@
+import { USER_AVATARS, renderUserAvatar } from './lib/user-avatars.mjs';
+
 export async function renderAccount(root, { onAuthenticated = () => {}, onSignedOut = () => location.replace("/account") } = {}) {
   root.innerHTML = `<header class="panel-header"><div><span class="header-icon" aria-hidden="true">♙</span><h2>ACCOUNT</h2></div><span class="panel-meta">IDENTITY & ACCESS</span></header>
     <div class="account-body"><div class="account-heading"><span class="account-eyebrow">YOUR OFFICE</span><h1 id="account-title">Account</h1><p id="account-description"></p></div><p id="account-message" role="status" aria-live="polite" hidden></p><div id="account-content"></div></div>`;
@@ -68,7 +70,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     description.textContent = "Manage your identity and access to the shared office.";
     content.replaceChildren();
     const profile = document.createElement("section"); profile.className = "account-profile";
-    const avatar = document.createElement("div"); avatar.className = "account-avatar"; avatar.setAttribute("aria-hidden", "true"); avatar.textContent = user.name.split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase();
+    const avatar = document.createElement("div"); avatar.className = "account-avatar"; avatar.setAttribute("aria-hidden", "true"); renderUserAvatar(avatar, user);
     const identity = document.createElement("div"); identity.className = "account-identity";
     const name = document.createElement("h2"); name.textContent = user.name;
     const email = document.createElement("p"); email.textContent = user.email;
@@ -76,6 +78,31 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     identity.append(name, email, badge);
     const logout = button("Sign out", async () => { await api("/api/auth/logout", {}); onSignedOut(); }); logout.className = "account-signout";
     profile.append(avatar, identity, logout); content.append(profile);
+    const picker = document.createElement('details'); picker.className = 'account-avatar-picker';
+    const summaryLabel = document.createElement('summary'); summaryLabel.textContent = 'Change avatar'; picker.append(summaryLabel);
+    const avatarForm = document.createElement('form'); avatarForm.className = 'avatar-choice-form';
+    const choices = document.createElement('fieldset'); choices.className = 'avatar-choices';
+    const legend = document.createElement('legend'); legend.textContent = 'Choose your avatar'; choices.append(legend);
+    for (const choice of USER_AVATARS) {
+      const label = document.createElement('label'); label.className = 'avatar-choice';
+      const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'avatar'; radio.value = choice.id; radio.checked = choice.id === (user.avatar || 'initials');
+      const preview = document.createElement('span'); preview.className = 'avatar-choice-preview'; preview.setAttribute('aria-hidden', 'true'); renderUserAvatar(preview, { ...user, avatar: choice.id });
+      const caption = document.createElement('span'); caption.textContent = choice.label;
+      label.append(radio, preview, caption); choices.append(label);
+    }
+    const saveAvatar = document.createElement('button'); saveAvatar.type = 'submit'; saveAvatar.textContent = 'Save avatar';
+    const avatarStatus = document.createElement('span'); avatarStatus.className = 'avatar-save-status'; avatarStatus.setAttribute('role', 'status');
+    avatarForm.append(choices, saveAvatar, avatarStatus); picker.append(avatarForm); content.append(picker);
+    avatarForm.addEventListener('submit', async event => {
+      event.preventDefault(); saveAvatar.disabled = true; avatarStatus.textContent = 'Saving…';
+      try {
+        const result = await api('/api/auth/profile', { avatar: new FormData(avatarForm).get('avatar') }, 'PATCH');
+        Object.assign(user, result.user);
+        renderUserAvatar(avatar, user);
+        avatarStatus.textContent = 'Avatar saved.';
+      } catch (error) { avatarStatus.textContent = error.message; }
+      finally { saveAvatar.disabled = false; }
+    });
     if (user.role === "pending") {
       const pending = document.createElement("section"); pending.className = "account-notice";
       const heading = document.createElement("h2"); heading.textContent = "Awaiting approval";
@@ -91,8 +118,8 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     content.append(heading);
     const { users } = await api("/api/users");
     const count = document.createElement("span"); count.className = "account-badge"; count.textContent = `${users.length} ${users.length === 1 ? "user" : "users"}`; heading.append(count);
-    const legend = document.createElement("div"); legend.className = "account-role-guide";
-    legend.innerHTML = `<div><strong>Administrator</strong><span>Office access, users & factory reset</span></div><div><strong>Member</strong><span>Shared projects, tools & settings</span></div><div><strong>Pending</strong><span>Awaiting approval · no office access</span></div>`; content.append(legend);
+    const roleGuide = document.createElement("div"); roleGuide.className = "account-role-guide";
+    roleGuide.innerHTML = `<div><strong>Administrator</strong><span>Office access, users & factory reset</span></div><div><strong>Member</strong><span>Shared projects, tools & settings</span></div><div><strong>Pending</strong><span>Awaiting approval · no office access</span></div>`; content.append(roleGuide);
     const list = document.createElement("div"); list.className = "account-user-list"; content.append(list);
     const activeAdmins = users.filter(entry => entry.role === "admin" && !entry.disabled).length;
     for (const entry of users) {

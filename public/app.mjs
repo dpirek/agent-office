@@ -1,8 +1,10 @@
+import { initChatComposer } from "./lib/chat-composer.mjs";
 import { renderAccount } from "./account.mjs";
 import { requireSession } from "./lib/auth.mjs";
 import { initSidebar } from "./sidebar.mjs";
 import { initializeDashboardOfficeChat } from "./lib/dashboard-office-chat.mjs";
 initSidebar();
+initChatComposer();
 await requireSession();
 initializeDashboardOfficeChat();
 import { initWorkspaceResizing } from "./lib/workspace-resize.mjs";
@@ -583,6 +585,14 @@ const expandedTaskIds = new Set();
 
 function renderTasks() {
   const tasks = allTasks();
+  const projectTasks = tasks.filter(task => (task.projectId || 'central-office') === state.projectId);
+  const activeTasks = projectTasks.filter(task => ['running', 'pending'].includes(task.status));
+  const taskUrl = projectPagePath('tasks', state.projectId);
+  $('.dashboard-tasks-link').href = taskUrl;
+  const previewTasks = [...activeTasks, ...projectTasks.filter(task => !['running', 'pending'].includes(task.status))].slice(0, 5);
+  $('#dashboard-tasks-body').innerHTML = previewTasks.length
+    ? `<div class="dashboard-tasks-summary">${activeTasks.length} active · ${projectTasks.length} total</div>${previewTasks.map(task => `<a class="dashboard-task" href="${escapeHtml(taskUrl)}"><span><strong>${escapeHtml(task.title)}</strong><small>${escapeHtml(task.agent || 'Unassigned')}</small></span><span class="dashboard-task-status status-${escapeHtml(task.status)}">${escapeHtml(task.status)}</span></a>`).join('')}`
+    : `<div class="chat-empty"><strong>No tasks yet</strong><span>Create a task to get started.</span><a href="${escapeHtml(taskUrl)}">Open task queue</a></div>`;
   const tasksById = new Map(tasks.map((task) => [task.id, task]));
   const counts = taskCounts(tasks);
   $$("#task-filters button").forEach((button) => {
@@ -684,7 +694,9 @@ function currentSystemPrompt() {
 function renderSettingsStatus() {
   const status = $("#settings-status");
   if (!status) return;
-  if (state.settingsTab === "tools") {
+  if (state.settingsTab === "appearance") {
+    status.textContent = "OFFICE THEME";
+  } else if (state.settingsTab === "tools") {
     const enabled = Object.values(state.toolPermissions).filter(Boolean).length;
     status.textContent = `${enabled} TOOLS ENABLED`;
   } else if (state.settingsTab === "mcp") {
@@ -699,7 +711,7 @@ function renderSettingsStatus() {
 }
 
 function selectSettingsTab(tab) {
-  if (!['prompts', 'tools', 'mcp', 'provider', 'admin'].includes(tab)) return;
+  if (!['appearance', 'prompts', 'tools', 'mcp', 'provider', 'admin'].includes(tab)) return;
   state.settingsTab = tab;
   $$('[data-settings-tab]').forEach((button) => {
     const active = button.dataset.settingsTab === tab;

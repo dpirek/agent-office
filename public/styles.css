@@ -618,3 +618,36 @@ select {
 .task-table .task-details-row td { padding: 16px 24px; white-space: normal; background: var(--panel); }
 .task-details-row strong { color: var(--green); }
 .task-details-row p { margin: 10px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+
+/* Local Bootstrap SVG symbols inherit each theme's icon color. */
+svg.bi { display: inline-block; flex-shrink: 0; fill: currentColor; vertical-align: -.125em; }
+svg.nav-icon { height: 22px; }
+svg.header-icon { height: 18px; }
+
+.composer-tools, .composer-emoji-picker, #office-board-send > svg { display: none; }
+.composer-toolbar { display: flex; justify-content: flex-end; }
+
+.sidebar-topbar { display: contents; }
+.sidebar-logo, .sidebar-toggle-logo { display: none; }
+.sidebar-toggle { order: 3; }
+
+.dashboard-tasks-panel { grid-column: 1; grid-row: 3; }
+.dashboard-tasks-body { overflow: auto; }
+.dashboard-tasks-link, .dashboard-tasks-body a { color: var(--green); text-decoration: none; }
+.dashboard-tasks-link:hover, .dashboard-tasks-body a:hover { text-decoration: underline; }
+.dashboard-tasks-summary { padding: 9px 14px; border-bottom: 1px solid var(--line-dim); color: var(--muted); font-size: 10px; }
+.dashboard-task { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 14px; border-bottom: 1px solid var(--line-dim); }
+.dashboard-task > span:first-child { min-width: 0; }
+.dashboard-task strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-size: 11px; font-weight: 500; }
+.dashboard-task small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+.dashboard-task-status { color: var(--muted); font-size: 10px; }
+.dashboard-task-status.status-running, .dashboard-task-status.status-completed { color: var(--green); }
+.dashboard-task-status.status-failed, .dashboard-task-status.status-cancelled { color: var(--red); }
+@media (min-width: 1101px) {
+  body[data-page="dashboard"] .main-content { grid-template-rows: minmax(180px, 1fr) minmax(130px, .55fr) minmax(140px, .6fr); }
+  body[data-page="dashboard"] .right-column { grid-row: 1 / 4; }
+}
+@media (max-width: 1100px) {
+  .dashboard-tasks-panel:not(.is-minimized) { min-height: 200px; }
+  .dashboard-tasks-panel { order: 1; }
+}

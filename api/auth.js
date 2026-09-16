@@ -51,13 +51,16 @@ export function createAuthService({ userStore, publicOrigin = "" }) {
         if (!req.user || req.user.role !== "admin") { json(res, req.user ? 403 : 401, { ok: false, error: "Administrator access required." }); return true; }
         if (route === "/api/users" && req.method === "GET") { json(res, 200, { ok: true, users: userStore.list() }); return true; }
       }
-      const method = route === "/api/users" ? "PATCH" : "POST";
+      if (route === "/api/auth/profile" && !req.user) { json(res, 401, { ok: false, error: "Sign in to continue." }); return true; }
+      const method = ["/api/users", "/api/auth/profile"].includes(route) ? "PATCH" : "POST";
       if (req.method !== method) { methodNotAllowed(res, method); return true; }
       if (!String(req.headers["content-type"] || "").toLowerCase().startsWith("application/json")) { json(res, 415, { ok: false, error: "Use application/json." }); return true; }
       rateLimit(req, route);
       const body = JSON.parse(await readRequestBody(req, 8192) || "{}");
       if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Expected a JSON object.");
-      if (route === "/api/auth/register") {
+      if (route === "/api/auth/profile") {
+        json(res, 200, { ok: true, user: userStore.updateAvatar(req.user.id, body.avatar) });
+      } else if (route === "/api/auth/register") {
         const user = await userStore.register(body);
         json(res, 201, { ok: true, user });
       } else if (route === "/api/auth/login") {
