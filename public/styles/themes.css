@@ -47,6 +47,7 @@ html[data-theme-family="modern"] :is(.panel, .metric) { background: var(--panel)
 html[data-theme-family="modern"] .sidebar { background: linear-gradient(165deg, #3e426f, #2e3155); border: 0; border-radius: 0; box-shadow: none; color: #fff; }
 html[data-theme-family="modern"] .sidebar-brand { border-color: #ffffff20; }
 html[data-theme-family="modern"] .sidebar-brand h1 { font-size: 23px; text-transform: none; letter-spacing: -.03em; text-shadow: none; }
+html[data-theme="teams"] .sidebar-brand-row { display: none; }
 html[data-theme-family="modern"] :is(.sidebar-mantra, .sidebar-health, .sidebar .workspace-context) { color: #d1d3eb; }
 html[data-theme-family="modern"] .sidebar-mantra { display: none; }
 html[data-theme-family="modern"] .sidebar .workspace-context { display: none; }
