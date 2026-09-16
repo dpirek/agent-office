@@ -92,6 +92,7 @@ class OfficeTaskQueue extends OfficeComponent {
 
     const component = this;
     const expandedTaskIds = new Set();
+    let revealedTaskId = null;
     const allTasks = () => state.tasks;
     const createTask = payload => this.request('task-create', payload);
     const stopTask = id => this.request('task-stop', { id });
@@ -107,7 +108,7 @@ class OfficeTaskQueue extends OfficeComponent {
         button.classList.toggle("active", filter === state.taskFilter);
       });
       const filtered = state.taskFilter === "all" ? tasks : tasks.filter((task) => task.status === state.taskFilter);
-      $("#task-body").innerHTML = filtered.length ? filtered.slice(0, 20).map((task, index) => {
+      $("#task-body").innerHTML = filtered.length ? [...filtered].sort((a, b) => Number(b.id === revealedTaskId) - Number(a.id === revealedTaskId)).slice(0, 20).map((task, index) => {
         const dependencies = task.dependsOn || [];
         const waiting = dependencies.filter((id) => tasksById.get(id)?.status !== "completed");
         const dependencyState = dependencies.length === 0 ? "READY" : waiting.length ? `WAITING ${waiting.length}` : "MET";
@@ -199,6 +200,15 @@ class OfficeTaskQueue extends OfficeComponent {
     });
     this.update = renderTasks;
     this.open = openTaskDialog;
+    this.revealTask = id => {
+      revealedTaskId = id;
+      this.filter = 'all';
+      expandedTaskIds.add(id);
+      renderTasks();
+      const button = [...$('#task-body').querySelectorAll('.task-expand-button')].find(button => button.dataset.taskId === id);
+      button?.scrollIntoView({ block: 'center' });
+      button?.focus();
+    };
   }
 
   static observedAttributes = [...super.observedAttributes, "filter"];

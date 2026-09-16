@@ -134,14 +134,15 @@ class OfficeNavigation extends OfficeComponent {
       toggle.setAttribute('aria-expanded', String(!collapsed));
       toggle.setAttribute('aria-label', label);
       toggle.title = label;
+      this.emit('sidebar-toggle', { collapsed });
     };
     this.applyCollapsed = applyCollapsed;
     try { this.collapsed = localStorage.getItem('office-sidebar-collapsed') === 'true'; } catch { applyCollapsed(); }
-    toggle.addEventListener('click', () => {
+    this.toggle = () => {
       this.collapsed = !this.collapsed;
       try { localStorage.setItem('office-sidebar-collapsed', String(this.collapsed)); } catch { /* Keep local state. */ }
-      this.emit('sidebar-toggle', { collapsed: this.collapsed });
-    });
+    };
+    toggle.addEventListener('click', () => this.toggle());
     this.addEventListener('click', event => {
       const link = event.target.closest('.nav-item[data-section], .sidebar-logo');
       if (!link || link.dataset.section === 'account' || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

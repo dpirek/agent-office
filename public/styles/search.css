@@ -1,0 +1,64 @@
+/* Teams uses the shared header throughout the office. */
+html[data-theme="teams"] .has-topbar .sidebar-topbar { display: none; }
+.has-topbar > .app-frame { display: grid; grid-template-rows: 54px minmax(0, 1fr); }
+.office-topbar { min-width: 0; display: grid; grid-template-columns: 176px minmax(200px, 1fr) auto; align-items: center; gap: 24px; padding: 0 22px; background: linear-gradient(110deg, #444a8c, #565caa 60%, #4c5298); color: #fff; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 0; }
+.topbar-brand { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.topbar-search-area { display: flex; align-items: center; gap: 18px; width: 100%; max-width: 800px; justify-self: center; min-width: 0; }
+.topbar-history { display: flex; gap: 4px; }
+.office-topbar button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 6px; border: 0; border-radius: 5px; color: inherit; background: transparent; }
+.office-topbar button:hover { background: #ffffff20; }
+.office-topbar .topbar-brand { justify-content: flex-start; padding: 0; text-transform: none; }
+html[data-theme="teams"] .topbar-brand span { display: none; }
+.topbar-brand > svg { display: none; }
+html[data-theme="teams"] .office-topbar .topbar-brand { position: relative; background: transparent; box-shadow: none; }
+html[data-theme="teams"] .topbar-brand:is(:hover, :focus-visible) > img { visibility: hidden; }
+html[data-theme="teams"] .topbar-brand:is(:hover, :focus-visible) > svg { display: block; position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); }
+@media (min-width: 1101px) {
+  html[data-theme="teams"] .office-topbar .topbar-brand { width: 56px; height: 40px; margin-left: -22px; justify-content: center; }
+  html[data-theme="teams"].sidebar-collapsed .office-topbar .topbar-brand { width: 60px; }
+}
+.office-topbar :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.topbar-search { position: relative; display: flex; flex: 1; min-width: 0; }
+.topbar-search input { width: 100%; min-width: 0; height: 34px; padding: 0 12px 0 38px; border: 1px solid #ffffff55; border-radius: 5px; background: #f0effaee; color: #27294f; font: inherit; font-size: 13px; }
+.topbar-search input::placeholder { color: #626789; }
+.topbar-search button { position: absolute; inset: 2px auto 2px 3px; width: 32px; color: #686aa5; }
+.topbar-actions { display: flex; align-items: center; gap: 24px; }
+.office-topbar .topbar-new { padding: 7px 12px; background: #ffffff16; font-size: 12px; white-space: nowrap; }
+.topbar-user { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; min-width: 0; }
+.topbar-avatar-wrap { position: relative; flex-shrink: 0; }
+.topbar-avatar { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: #e3dfff; color: #423b84; font-size: 12px; font-weight: 600; overflow: hidden; }
+.topbar-avatar img { width: 100%; height: 100%; object-fit: contain; }
+.topbar-user-status { position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border: 2px solid #50569e; border-radius: 50%; background: #66db79; }
+.topbar-user-copy { display: grid; gap: 2px; }
+.topbar-user-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.topbar-user-copy small { color: #d5d8ef; font-size: 10px; }
+.office-search-page { display: block; grid-column: 1 / -1; grid-row: 1 / -1; min-height: 0; overflow-y: auto; padding: clamp(20px, 3vw, 40px); color: var(--text); }
+.search-heading { margin-bottom: 24px; }
+.search-eyebrow { display: block; margin-bottom: 8px; color: var(--green); font-size: 10px; letter-spacing: .1em; }
+.search-heading h1 { font-size: clamp(22px, 2.5vw, 30px); font-weight: 600; overflow-wrap: anywhere; }
+.search-scope { margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.search-filters { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 16px; border-bottom: 1px solid var(--line-dim); }
+.search-filters button { padding: 8px 14px; border: 1px solid var(--line-dim); background: transparent; color: var(--muted); border-radius: 6px; font: inherit; }
+.search-filters button[aria-pressed="true"] { color: var(--green); background: var(--panel-hi); border-color: var(--green); }
+.search-status { color: var(--muted); padding: 16px 0; font-size: 12px; }
+.search-results { display: grid; gap: 10px; }
+.search-result { position: relative; display: grid; gap: 6px; padding: 18px 48px 18px 20px; border: 1px solid var(--line-dim); border-radius: 8px; background: var(--panel); color: var(--text); text-decoration: none; }
+.search-result:hover { background: var(--panel-hi); border-color: var(--green); }
+.search-result-type { color: var(--green); font-size: 10px; }
+.search-result strong { font-size: 15px; overflow-wrap: anywhere; }
+.search-result-description { color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.search-result-open { position: absolute; right: 20px; top: 50%; color: var(--green); }
+.search-empty { padding: 40px 20px; text-align: center; background: var(--panel); border: 1px dashed var(--line-dim); border-radius: 8px; }
+.search-empty p { margin-top: 12px; color: var(--muted); }
+@media (max-width: 1100px) {
+  html[data-theme="teams"] body[data-page="chat"] .has-topbar .workspace { height: calc(100dvh - 118px - env(safe-area-inset-bottom)); }
+  .has-topbar > .app-frame { display: block; }
+  .office-topbar { min-height: 54px; position: sticky; top: 0; z-index: 90; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; padding: 0 12px; }
+  .topbar-brand span, .topbar-history, .topbar-new, .topbar-user-copy, .topbar-user > svg { display: none !important; }
+  .topbar-actions { gap: 0; }
+  .office-search-page { overflow: visible; }
+}
+@media (max-width: 480px) {
+  .topbar-search input { font-size: 16px; }
+  .office-search-page { padding: 20px 12px; }
+}

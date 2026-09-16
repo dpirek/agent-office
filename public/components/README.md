@@ -41,12 +41,14 @@ document.querySelector('office-shell').addEventListener('task-create', event => 
 | Component | Inputs and public methods | Outgoing events |
 | --- | --- | --- |
 | `office-shell` | `showPage(page)`, `syncPanelLayout()` | Bubbles child events |
-| `office-navigation` | `data: { projects, projectId, page, online, context }`; `collapsed` property/attribute | `office-navigate { href }`, `project-select { id }`, `project-create { name, description, respondWith }`, `sidebar-toggle { collapsed }` |
+| `office-topbar` | `data: { user, query, collapsed }` | `office-search { query }`, `new-task`, `navigation-toggle` |
+| `office-search` | `search(query, projectId, projectName)`, `deactivate()` | `search-result-open { type, id, title, description, href }` |
+| `office-navigation` | `data: { projects, projectId, page, online, context }`; `collapsed` property/attribute; `toggle()` | `office-navigate { href }`, `project-select { id }`, `project-create { name, description, respondWith }`, `sidebar-toggle { collapsed }` |
 | `office-floor` | `data: { agents, selectedAgent }`; `meta` | `agent-select { name }` |
 | `office-selected-agent` | `data: { agent, agents, tasks, activity, health, orchestrator, chatRunning, uptime, sessionId }`; `activeTab` / `active-tab` | — |
 | `office-worker-registry` | `data: { workers, workerTokenConfigured, workerTokenName }` | `worker-token-change { configured, name }` (never emits the secret) |
 | `office-task-summary` | `data: { tasks, projectId }` | Native task navigation links |
-| `office-task-queue` | `data: { tasks, projects, projectId }`; `filter` attribute/property; `open()` | `task-create { title, priority, respondWith }`, `task-stop` / `task-delete { id, respondWith }`, `dashboard-refresh { respondWith }`, `task-filter-change { filter }` |
+| `office-task-queue` | `data: { tasks, projects, projectId }`; `filter` attribute/property; `open()`, `revealTask(id)` | `task-create { title, priority, respondWith }`, `task-stop` / `task-delete { id, respondWith }`, `dashboard-refresh { respondWith }`, `task-filter-change { filter }` |
 | `office-operations` | `data: { operations, workers, projectId }`; `open(operation?)`, `close()` | `operations-change { operations }` |
 | `office-chat` | `data: { projects, projectId, officeChatMessages, officeChatMembers, chatRunning }`; `clearDraft()`, `syncComposer()` | `chat-send { text, respondWith }`, `chat-refresh { respondWith }`, `project-select { id }`, `file-open { href }` |
 | `office-manager-chat` | `data: { chatMessages, projectId, health, socketReady, chatRunning }`; `clearDraft()`, `focusInput()` | `chat-send`, `chat-refresh`, `file-open` |

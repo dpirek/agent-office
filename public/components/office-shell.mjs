@@ -1,5 +1,8 @@
 import OfficeComponent from "./office-component.mjs";
+import { bindOfficeHeader } from "./office-header.mjs";
 import "./office-navigation.mjs";
+import "./office-topbar.mjs";
+import "./office-search.mjs";
 import "./office-floor.mjs";
 import "./office-selected-agent.mjs";
 import "./office-worker-registry.mjs";
@@ -22,6 +25,7 @@ class OfficeShell extends OfficeComponent {
   model = {};
   render() {
     this.append(this.createElement("div", { "class": "app-frame", children: [
+  this.createElement("office-topbar", { hidden: "" }),
   this.createElement("div", { "class": "workspace", children: [
     this.createElement("office-navigation", { "id": "primary-navigation", "class": "sidebar", "aria-label": "Primary navigation", "role": "navigation" }),
     this.createElement("div", { "class": "project-content", children: [
@@ -56,7 +60,8 @@ class OfficeShell extends OfficeComponent {
         this.createElement("office-chat", { "class": "panel office-chat-page", "data-view": "chat", "hidden": "" }),
         this.createElement("office-settings", { "class": "panel settings-panel", "data-view": "settings", "hidden": "" }),
         this.createElement("office-knowledge", { "class": "panel knowledge-panel", "data-view": "knowledge", "hidden": "" }),
-        this.createElement("office-memory", { "class": "panel memory-panel", "data-view": "memory", "hidden": "" })
+        this.createElement("office-memory", { "class": "panel memory-panel", "data-view": "memory", "hidden": "" }),
+        this.createElement("office-search", { "data-view": "search", "hidden": "" })
       ] })
     ] })
   ] }),
@@ -64,12 +69,17 @@ class OfficeShell extends OfficeComponent {
 ] }));
   }
   initialize() {
+    this.syncHeader = bindOfficeHeader(this, () => ["dashboard", "search"].includes(this.page));
     this.onConnect = () => {
+      this.syncHeader();
+      window.addEventListener('office-theme-change', this.syncHeader, { signal: this.connectionSignal });
       initPanelMinimizing({ root: this, signal: this.connectionSignal, onChange: () => this.syncPanelLayout() });
       initPanelResizing({ container: this.querySelector('.main-content'), resizer: this.querySelector('#main-panel-resizer'), signal: this.connectionSignal });
     };
   }
   showPage(page) {
+    this.page = page;
+    this.syncHeader();
     this.querySelectorAll('[data-view]').forEach(panel => {
       const visible = panel.dataset.view.split(/\s+/).includes(page);
       if (!visible) panel.deactivate();

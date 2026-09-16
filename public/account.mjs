@@ -84,7 +84,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
       const layout = root.closest('.account-layout');
       document.documentElement.dataset.accountShell = '';
       document.body.dataset.page = 'account';
-      for (const name of ['styles', 'themes']) {
+      for (const name of ['styles', 'themes', 'search']) {
         const link = document.createElement('link');
         link.rel = 'stylesheet'; link.href = `/styles/${name}.css`;
         if (name === 'styles') document.head.insertBefore(link, document.querySelector('link[href="/styles/account.css"]'));
@@ -99,6 +99,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
       parent.prepend(shell);
     }
 
+    root.closest('office-account-shell').data = { user };
     title.textContent = "Your account";
     description.textContent = "Manage your identity and access to the shared office.";
     content.replaceChildren();

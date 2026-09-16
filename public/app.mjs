@@ -1,6 +1,6 @@
 import "./components/office-shell.mjs";
 import { requireSession } from "./lib/auth.mjs";
-await requireSession();
+const signedInUser = await requireSession();
 import { PROJECT_PAGES, projectPagePath, projectIdFromPath, registerProjectRoutes } from "./lib/project-routes.mjs";
 import Router from "./lib/router.mjs";
 import { createClientId } from "./lib/client-id.mjs";
@@ -12,6 +12,9 @@ const sessionId = createClientId();
 const shell = document.querySelector('office-shell');
 const component = name => shell.querySelector(`office-${name}`);
 const navigation = component('navigation');
+const topbar = component('topbar');
+topbar.data = { user: signedInUser };
+const searchPage = component('search');
 const workspace = component('workspace');
 const chat = component('chat');
 const managerChat = component('manager-chat');
@@ -47,10 +50,11 @@ const PAGES = {
   knowledge: { path: "/knowledge", title: "Knowledge", icon: "▧", heading: "Knowledge base", description: "Connected sources and selected skills provide shared context to the agent office." },
   account: { path: "/account", title: "Account" },
   settings: { path: "/settings", title: "Settings" },
+  search: { path: "/search", title: "Search" },
 };
 
 const state = {
-  projectId: projectIdFromPath(window.location.pathname) || localStorage.getItem("office-project") || "central-office",
+  projectId: projectIdFromPath(window.location.pathname) || (window.location.pathname === "/search" ? new URLSearchParams(location.search).get("project") : null) || localStorage.getItem("office-project") || "central-office",
   projects: [],
   agents: [],
   selectedAgent: "Office Manager",
@@ -83,13 +87,29 @@ shell.addEventListener('file-open', ({ detail: { href } }) => {
 
 function renderPage(section) {
   if (section === 'account') { location.assign('/account'); return; }
+  if (section === 'search') {
+    const projectId = new URLSearchParams(location.search).get('project');
+    if (projectId && projectId !== state.projectId && state.projects.some(project => project.id === projectId)) void switchProject(projectId, { navigate: false });
+  }
   const page = PAGES[section] || PAGES.dashboard;
   document.body.dataset.page = section;
   document.title = `${page.title} · AI Agent Office`;
   navigation.data = { page: section };
   shell.showPage(section);
+  if (section === 'search') runSearch();
+  else topbar.data = { query: '' };
+  if (section === 'tasks' && new URLSearchParams(location.search).get('new') === '1') {
+    taskQueue.open();
+    history.replaceState(null, '', location.pathname);
+  }
   if (section === 'chat') { chat.syncComposer(); void loadOfficeChat({ quiet: true }); }
   if (section === 'workspace') void loadSharedWorkspace({ quiet: true });
+}
+
+function runSearch() {
+  const query = new URLSearchParams(location.search).get('q') || '';
+  topbar.data = { query };
+  void searchPage.search(query, state.projectId, state.projects.find(project => project.id === state.projectId)?.name || 'Central Office');
 }
 
 function addActivity(text, tone = "") {
@@ -513,6 +533,24 @@ registerProjectRoutes(router, {
   renderPage,
 });
 
+shell.addEventListener('office-search', ({ detail }) => {
+  router.navigate(`/search?${new URLSearchParams({ q: detail.query, project: state.projectId })}`);
+});
+shell.addEventListener('new-task', () => {
+  router.navigate(projectPagePath('tasks', state.projectId));
+  taskQueue.open();
+});
+shell.addEventListener('search-result-open', async ({ detail }) => {
+  if (detail.type === 'Files') {
+    router.navigate(projectPagePath('workspace', state.projectId));
+    void workspace.openFile(detail.href);
+    return;
+  }
+  router.navigate(detail.href);
+  if (detail.agent) { state.selectedAgent = detail.agent; renderOffice(); renderSelectedAgent(); }
+  if (detail.taskId) taskQueue.revealTask(detail.taskId);
+});
+
 shell.addEventListener('office-navigate', ({ detail }) => router.navigate(detail.href));
 shell.addEventListener('project-select', ({ detail }) => void switchProject(detail.id));
 shell.addEventListener('agent-select', ({ detail }) => {
@@ -566,6 +604,12 @@ function renderProjects() {
   operationsPanel.data = { projectId: state.projectId };
   renderOfficeChat();
   document.body.dataset.projectId = state.projectId;
+  if (document.body.dataset.page === 'search') {
+    const params = new URLSearchParams(location.search);
+    params.set('project', state.projectId);
+    history.replaceState(null, '', `/search?${params}`);
+    runSearch();
+  }
 }
 async function loadProjects() {
   const data = await fetchJson("/api/projects");

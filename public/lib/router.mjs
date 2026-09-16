@@ -57,8 +57,10 @@ class Router {
   navigate(path, { replace = false, state = null } = {}) {
     const destination = normalizePath(path);
     const target = this.match(destination) ? destination : this.fallback;
-    if (window.location.pathname !== target) {
-      window.history[replace ? "replaceState" : "pushState"](state, "", target);
+    const suffix = target === destination ? (String(path).match(/[?#].*$/)?.[0] || "") : "";
+    const url = target + suffix;
+    if (window.location.pathname + (window.location.search || "") + (window.location.hash || "") !== url) {
+      window.history[replace ? "replaceState" : "pushState"](state, "", url);
     }
     return this.dispatch(target, { source: replace ? "replace" : "navigate" });
   }

@@ -1,5 +1,8 @@
 import OfficeComponent from './office-component.mjs';
 import './office-navigation.mjs';
+import './office-topbar.mjs';
+import { bindOfficeHeader } from './office-header.mjs';
+import { projectPagePath } from '../lib/project-routes.mjs';
 import './office-toast.mjs';
 import { fetchJson } from './office-format.mjs';
 
@@ -9,6 +12,7 @@ class OfficeAccountShell extends OfficeComponent {
   render() {
     const account = this.querySelector('.account-layout');
     this.append(this.createElement('div', { class: 'app-frame', children: [
+      this.createElement('office-topbar', { hidden: '' }),
       this.createElement('div', { class: 'workspace', children: [
         this.createElement('office-navigation'),
         this.createElement('div', { class: 'project-content account-content-area', children: [account] }),
@@ -19,6 +23,14 @@ class OfficeAccountShell extends OfficeComponent {
 
   initialize() {
     const navigation = this.querySelector('office-navigation');
+    const syncHeader = bindOfficeHeader(this);
+    this.onConnect = () => {
+      syncHeader();
+      window.addEventListener('office-theme-change', syncHeader, { signal: this.connectionSignal });
+    };
+    this.update = () => { this.querySelector('office-topbar').data = { user: this.model.user }; };
+    this.addEventListener('office-search', ({ detail }) => location.assign(`/search?${new URLSearchParams({ q: detail.query, project: projectId })}`));
+    this.addEventListener('new-task', () => location.assign(`${projectPagePath('tasks', projectId)}?new=1`));
     let projects = [{ id: 'central-office', name: 'Central Office' }];
     let projectId = 'central-office';
     try { projectId = localStorage.getItem('office-project') || projectId; } catch { /* Use the default project. */ }
