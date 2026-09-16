@@ -19,7 +19,8 @@ test("registration persists hashed credentials and sessions with server-assigned
     assert.equal(store.needsSetup(), true);
     const results = await Promise.all([store.register(account("Admin@Example.com")), store.register(account("member@example.com", { role: "admin" }))]);
     assert.equal(results.filter((user) => user.role === "admin").length, 1);
-    assert.equal(results.filter((user) => user.role === "pending").length, 1);
+    assert.equal(results.filter((user) => user.role === "member").length, 1);
+    assert.deepEqual(results.find(user => user.role === "member").projectIds, []);
     assert.equal(results[0].email, "admin@example.com");
     assert.equal(results[0].password_hash, undefined);
     await assert.rejects(store.register(account("ADMIN@example.com")), /Unable to register/);
@@ -53,7 +54,7 @@ test("role changes and disabling revoke sessions, and preserve the last administ
     assert.throws(() => store.update(user.id, { role: "owner" }), /Invalid role/);
     assert.throws(() => store.update(user.id, { disabled: "false" }), /boolean/);
     const session = await store.login(account(user.email));
-    store.update(user.id, { role: "member" });
+    store.update(user.id, { role: "pending" });
     assert.equal(store.session(session.token), null);
     assert.ok(revoked.includes(user.id));
     store.update(user.id, { disabled: true });
@@ -89,7 +90,7 @@ function client(service) {
   };
 }
 
-test("HTTP auth enforces approval, admin access, cookies, and rate limits", async () => {
+test("HTTP auth allows immediate member access and enforces admin access, cookies, and rate limits", async () => {
   const store = createUserStore(":memory:");
   const service = createAuthService({ userStore: store });
   const request = client(service);
@@ -101,20 +102,20 @@ test("HTTP auth enforces approval, admin access, cookies, and rate limits", asyn
     assert.equal((await request("/mcp/projects/task", { method: "POST" })).handled, false);
     const post = (route, body, extra = {}) => request(route, { method: "POST", body, ...extra });
     assert.equal((await post("/api/auth/register", account("admin@example.com"))).status, 201);
-    assert.equal((await post("/api/auth/register", account("member@example.com", { role: "admin" }))).body.user.role, "pending");
+    assert.equal((await post("/api/auth/register", account("member@example.com", { role: "admin" }))).body.user.role, "member");
     const login = await post("/api/auth/login", account("admin@example.com"));
     const cookie = login.headers["set-cookie"].split(";")[0];
     assert.match(login.headers["set-cookie"], /HttpOnly; SameSite=Lax/);
     assert.equal((await request("/api/tasks", { cookie })).handled, false);
-    const pending = await post("/api/auth/login", account("member@example.com"));
-    const pendingCookie = pending.headers["set-cookie"].split(";")[0];
-    assert.equal((await request("/api/tasks", { cookie: pendingCookie })).status, 403);
-    assert.equal((await request("/api/users", { cookie: pendingCookie })).status, 403);
+    const initialMember = await post("/api/auth/login", account("member@example.com"));
+    const initialCookie = initialMember.headers["set-cookie"].split(";")[0];
+    assert.equal((await request("/api/tasks", { cookie: initialCookie })).handled, false);
+    assert.equal((await request("/api/users", { cookie: initialCookie })).status, 403);
     assert.equal((await request("/api/users")).status, 401);
     const users = await request("/api/users", { cookie });
     assert.equal(users.body.users.length, 2);
     assert.equal(JSON.stringify(users.body).includes("password_hash"), false);
-    assert.equal((await request("/api/users", { method: "PATCH", cookie, body: { id: pending.body.user.id, role: "member" } })).status, 200);
+    assert.equal((await request("/api/users", { method: "PATCH", cookie, body: { id: initialMember.body.user.id, role: "member" } })).status, 200);
     const memberLogin = await post("/api/auth/login", account("member@example.com"));
     const memberCookie = memberLogin.headers["set-cookie"].split(";")[0];
     assert.equal((await request("/api/tasks", { cookie: memberCookie })).handled, false);
@@ -161,7 +162,7 @@ test('avatar choices persist and profile updates only affect the signed-in user'
     const result = await request('/api/auth/profile', { method: 'PATCH', cookie, body: { id: admin.id, avatar: 'designer', role: 'admin' } });
     assert.equal(result.status, 200);
     assert.equal(result.body.user.id, member.id);
-    assert.equal(result.body.user.role, 'pending');
+    assert.equal(result.body.user.role, 'member');
     assert.equal(store.list().find(user => user.id === admin.id).avatar, 'initials');
     store.close(); store = createUserStore(filename);
     assert.equal(store.session(login.token).avatar, 'designer');

@@ -4,6 +4,17 @@ import { canAccessProject, requireProjectAccess } from '../lib/project-access.js
 
 export function createProjectApiHandlers({ uiStateStore, sharedWorkspaceRoot, userStore }) {
   return {
+    '/api/project-invitations': async (req, res) => {
+      if (req.method !== 'POST') return methodNotAllowed(res, 'POST');
+      try {
+        const body = JSON.parse(await readRequestBody(req, 20000) || '{}');
+        if (!body.projectId) throw new Error('Choose a project.');
+        const project = uiStateStore.requireProject(body.projectId);
+        requireProjectAccess(req.user, project.id, project);
+        const [invitation] = userStore.createInvitations(project.id, [body.email], req.user.id);
+        json(res, 201, { ok: true, invitation });
+      } catch (error) { json(res, error.statusCode || 400, { ok: false, error: error.message }); }
+    },
     '/api/project-members': (req, res) => {
       if (req.method !== 'GET') return methodNotAllowed(res, 'GET');
       json(res, 200, { ok: true, users: (userStore?.list() || []).filter(user => !user.disabled && user.role !== 'pending' && user.id !== req.user?.id).map(({ id, name, email, avatar }) => ({ id, name, email, avatar })) });

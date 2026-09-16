@@ -1,3 +1,4 @@
+import './office-add-member.mjs';
 import { renderUserAvatar } from '../lib/user-avatars.mjs';
 import OfficeComponent from "./office-component.mjs";
 import { escapeHtml, shortTime, officeSprite } from "./office-format.mjs";
@@ -25,7 +26,11 @@ class OfficeChat extends OfficeComponent {
           this.createElement("h3", { "id": "project-list-heading", "class": "project-list-heading", textContent: "Projects" }),
           this.createElement("nav", { "id": "project-chat-rooms", "aria-labelledby": "project-list-heading" }),
           this.createElement("h3", { textContent: "PEOPLE" }),
-          this.createElement("div", { "class": "office-chat-members", "id": "office-chat-members" })
+          this.createElement("div", { "class": "office-chat-members", "id": "office-chat-members" }),
+          this.createElement('button', { type: 'button', class: 'chat-add-member', textContent: 'Add member', addEventListener: { name: 'click', handler: () => this.querySelector('office-add-member').open() }, children: [
+            this.createElement('svg', { width: '18', height: '18', viewBox: '0 0 16 16', fill: 'currentColor', 'aria-hidden': 'true', children: [this.createElement('use', { href: '/assets/bootstrap-icons/bootstrap-icons.svg#person-plus' })] })
+          ] }),
+          this.createElement('office-add-member')
         ] }),
         this.createElement("section", { "class": "office-chat-main", children: [
           this.createElement("header", { "class": "office-chat-heading", children: [
@@ -238,6 +243,7 @@ class OfficeChat extends OfficeComponent {
       if (room) this.emit('project-select', { id: room.dataset.projectId });
     });
     this.update = () => {
+      $('office-add-member').data = { projectId: state.projectId, userRole: state.userRole, workerTokenName: state.workerTokenName };
       const project = state.projects.find(entry => entry.id === state.projectId);
       if (project) {
         $('#project-chat-title').textContent = project.name.toUpperCase();

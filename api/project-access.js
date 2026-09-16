@@ -13,7 +13,7 @@ export async function guardProjectRequest(req, res, url, { uiStateStore, sharedW
     if (['/api/health', '/api/sub-agents', '/api/system-logs'].includes(route) && req.method === 'GET') return false;
     if (route === '/api/system-logs' && req.method === 'POST') return false;
     if (route === '/api/skills' && req.method === 'GET') { json(res, 200, { ok: true, skills: [] }); return true; }
-    if (['/api/tasks', '/api/chat', '/api/operations', '/api/memory', '/api/shared-workspace'].includes(route)) {
+    if (['/api/tasks', '/api/chat', '/api/operations', '/api/memory', '/api/shared-workspace', '/api/project-invitations'].includes(route)) {
       let projectId = url.searchParams.get('projectId') || 'central-office';
       if (!['GET', 'HEAD'].includes(req.method)) {
         const body = JSON.parse(await readRequestBody(req, 120_000) || '{}');

@@ -170,13 +170,14 @@ class OfficeNavigation extends OfficeComponent {
     const syncVisibility = () => {
       $('#project-private-options').hidden = $('#project-public').checked;
       $('#project-visibility-description').textContent = $('#project-public').checked
-        ? 'Public: visible to all approved office members.'
+        ? 'Public: visible to all office members.'
         : 'Private: invited members and users granted access by an administrator.';
     };
     $('#project-public').addEventListener('change', syncVisibility);
     dialog.addEventListener('cancel', event => { if (creating) event.preventDefault(); });
-    this.openProjectDialog = () => {
+    this.openProjectDialog = ({ onboarding = false } = {}) => {
       if (creating) return;
+      $('#project-dialog-title').textContent = onboarding ? 'Create your first project' : 'New project';
       $('#project-form').hidden = false;
       $('#project-invitations').hidden = true;
       $('#project-invitations').replaceChildren();

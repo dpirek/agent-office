@@ -679,3 +679,14 @@ svg.header-icon { height: 18px; }
 
 /* The shell participates through its existing layout containers. */
 office-shell { display: contents; }
+
+.chat-add-member { display: flex; align-items: center; gap: 9px; margin: 12px 0 0; padding: 9px 10px; width: 100%; border: 0; background: transparent; color: var(--muted); text-align: left; }
+.chat-add-member svg { order: -1; flex-shrink: 0; }
+.chat-add-member:hover { color: var(--text); }
+.add-member-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.add-member-tabs { display: flex; gap: 8px; padding: 12px 20px 0; border-bottom: 1px solid var(--line); }
+.add-member-tabs button { padding: 10px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); }
+.add-member-tabs button[aria-selected="true"] { color: var(--green); border-bottom-color: currentColor; }
+.add-member-dialog [hidden] { display: none !important; }
+.add-member-status { margin: 0; padding: 0 20px 16px; color: var(--muted); line-height: 1.5; }
+.add-member-status:empty { display: none; }

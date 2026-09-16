@@ -160,6 +160,7 @@ are available from the unfiltered shared-workspace API.
 
 | API | Behavior |
 | --- | --- |
+| `POST /api/project-invitations` | Generate an email-bound, seven-day invitation for an accessible project with `{ "projectId": "…", "email": "person@example.com" }`; returns a shareable registration path |
 | `GET /api/projects` | List projects, descriptions, statuses, and timestamps |
 | `POST /api/projects` | Create with `{ "name": "Website", "description": "Public site" }` |
 | `PUT /api/projects` | Update `{ "id": "…", "name": "…", "description": "…", "status": "paused" }`; omitted fields stay unchanged |
@@ -186,11 +187,12 @@ Use **Account** in the sidebar (`/account`) to sign out or manage users:
 
 - **Admin:** shared office access, user approval, role changes, disabling accounts,
   and factory reset.
-- **Member:** shared office projects, files, agent tools, and configuration.
-  Only approve trusted collaborators: this is a shared workspace with powerful
-  agent tools, not an isolated workspace per user.
-- **Pending:** the default for subsequent registrations; account access only until
-  an administrator changes the role.
+- **Member:** new registrations are active immediately. On first login, members
+  without project membership are prompted to create a project and automatically
+  receive access to it. Private projects require an explicit grant or invitation;
+  public projects are visible to all members.
+- **Pending:** an administrator can explicitly restrict an account to account access
+  only. This is no longer the registration default.
 
 At least one enabled administrator must remain. Disabling an account or changing
 its role revokes its sessions. Browser APIs and `/ws` require an approved account;

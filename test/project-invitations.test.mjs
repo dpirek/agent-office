@@ -28,7 +28,7 @@ async function setup(t) {
  };
  const register=async(email,role='member')=>{
   const user=await users.register({email,name:email.split('@')[0],password:'pass'});
-  if(user.role!=='admin'&&role!=='pending')users.update(user.id,{role});
+  if(user.role!=='admin')users.update(user.id,{role});
   return {user:users.list().find(row=>row.id===user.id),token:(await users.login({email,password:'pass'})).token};
  };
  return {users,state,usersFile,stateFile,request,register,advance:()=>{clock+=8*86400_000;}};
@@ -83,4 +83,44 @@ test('existing and pending invitees can join, expired and invalid invitations fa
  assert.equal((await request(`/api/auth/invitation?code=${expired.code}`)).status,400);
  assert.equal((await request('/api/auth/register',{method:'POST',body:{email:'expired@example.com',name:'Expired',password:'pass',invitation:expired.code}})).status,400);
  assert.equal(users.list().some(user=>user.email==='expired@example.com'),false);
+});
+
+test('existing project invitations require access and grant the invited person that project', async t => {
+ const {request,register,state}=await setup(t);
+ await register('admin@example.com');
+ const owner=await register('owner@example.com'), outsider=await register('outsider@example.com');
+ const created=await request('/api/projects',{method:'POST',token:owner.token,body:{name:'Existing project'}});
+ const projectId=created.body.project.id;
+ const body={projectId,email:'chat-invite@example.com'};
+ const count=state.getProjects().length;
+ assert.equal((await request('/api/project-invitations',{method:'POST',body})).status,401);
+ assert.equal((await request('/api/project-invitations',{method:'POST',token:outsider.token,body})).status,403);
+ assert.equal((await request('/api/project-invitations',{method:'POST',token:owner.token,body:{...body,email:'invalid'}})).status,400);
+ const result=await request('/api/project-invitations',{method:'POST',token:owner.token,body});
+ assert.equal(result.status,201);
+ assert.equal(state.getProjects().length,count);
+ const joined=await request('/api/auth/register',{method:'POST',body:{email:body.email,name:'Chat member',password:'pass',invitation:result.body.invitation.code}});
+ assert.equal(joined.status,201);
+ assert.equal(joined.body.user.role,'member');
+ assert.deepEqual(joined.body.user.projectIds,[projectId]);
+ assert.equal((await request('/api/worker-token',{method:'POST',token:owner.token,body:{name:'Forbidden'}})).status,403);
+});
+
+
+test('new members immediately create a project and access only their permitted projects', async t => {
+ const {request,register}=await setup(t);
+ const admin=await register('admin@example.com');
+ const privateProject=await request('/api/projects',{method:'POST',token:admin.token,body:{name:'Private admin project'}});
+ const created=await request('/api/auth/register',{method:'POST',body:{email:'new-member@example.com',name:'New member',password:'pass',role:'admin',projectIds:null}});
+ assert.equal(created.status,201);
+ assert.equal(created.body.user.role,'member');
+ assert.deepEqual(created.body.user.projectIds,[]);
+ const member=await register('second-member@example.com');
+ assert.equal((await request('/api/projects',{token:member.token})).body.projects.length,0);
+ assert.equal((await request(`/api/tasks?projectId=${privateProject.body.project.id}`,{token:member.token})).status,403);
+ const own=await request('/api/projects',{method:'POST',token:member.token,body:{name:'My first project'}});
+ assert.equal(own.status,201);
+ assert.equal(own.body.project.ownerId,member.user.id);
+ assert.equal((await request(`/api/tasks?projectId=${own.body.project.id}`,{token:member.token})).status,200);
+ assert.deepEqual((await request('/api/auth/session',{token:member.token})).body.user.projectIds,[own.body.project.id]);
 });

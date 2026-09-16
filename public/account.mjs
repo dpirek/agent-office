@@ -34,9 +34,9 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     content.replaceChildren();
     const registration = mode === "register";
     title.textContent = registration ? (session.needsSetup ? "Create administrator account" : "Create your account") : "Welcome back";
-    description.textContent = registration ? (session.needsSetup ? "The first account manages users and office access." : "Admin approval is required to join.") : "Sign in to your office.";
+    description.textContent = registration ? (session.needsSetup ? "The first account manages users and office access." : "Create an account to start your own project.") : "Sign in to your office.";
     if (invitationInfo) description.textContent = registration
-      ? `Create your account to join ${invitationInfo.projectName}. Your membership will be approved automatically.`
+      ? `Create your account to join ${invitationInfo.projectName}. You will get access automatically.`
       : `Sign in to join ${invitationInfo.projectName}.`;
     document.title = `${registration ? "Create account" : "Sign in"} · Agent Office`;
     const element = document.createElement("form");

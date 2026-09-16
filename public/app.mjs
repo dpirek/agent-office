@@ -235,7 +235,7 @@ async function loadSystemLogs() {
 function renderChat() { managerChat.data = { chatMessages: state.chatMessages, socketReady: state.socketReady, chatRunning: state.chatRunning, health: state.health, projectId: state.projectId }; }
 
 function renderOfficeChat() {
-  chat.data = { officeChatMessages: state.officeChatMessages, officeChatMembers: chatMembers(), projects: state.projects, projectId: state.projectId, chatRunning: state.chatRunning };
+  chat.data = { userRole: signedInUser.role, workerTokenName: state.workerTokenName, officeChatMessages: state.officeChatMessages, officeChatMembers: chatMembers(), projects: state.projects, projectId: state.projectId, chatRunning: state.chatRunning };
   dashboardChat.data = { messages: state.officeChatMessages, projectId: state.projectId, projectName: state.projects.find(project => project.id === state.projectId)?.name || 'Central Office' };
 }
 
@@ -591,6 +591,8 @@ shell.addEventListener('configuration-change', refreshOrchestratorConnection);
 shell.addEventListener('operations-change', ({ detail }) => { state.operations = detail.operations; });
 shell.addEventListener('worker-token-change', ({ detail }) => {
   state.workerTokenConfigured = detail.configured; state.workerTokenName = detail.name;
+  renderWorkerTokenState();
+  renderOfficeChat();
 });
 handleRequest('task-create', async ({ title, priority }) => {
   const projectId = state.projectId;
@@ -696,6 +698,9 @@ async function saveProject(payload, method = "POST") {
 }
 void loadProjects().then(async () => {
   router.start();
+  if (signedInUser.role === 'member' && signedInUser.projectIds?.length === 0 && !state.projects.some(project => project.ownerId === signedInUser.id)) {
+    navigation.openProjectDialog({ onboarding: true });
+  }
   await switchProject(state.projectId, { navigate: false });
   connectSocket();
 }).catch((error) => showToast(error.message, true));
