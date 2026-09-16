@@ -21,7 +21,8 @@ class OfficeChat extends OfficeComponent {
       ] }),
       this.createElement("div", { "class": "office-chat-layout panel-body", children: [
         this.createElement("aside", { "class": "office-chat-sidebar", children: [
-          this.createElement("nav", { "id": "project-chat-rooms", "aria-label": "Project chat rooms" }),
+          this.createElement("h3", { "id": "project-list-heading", "class": "project-list-heading", textContent: "Projects" }),
+          this.createElement("nav", { "id": "project-chat-rooms", "aria-labelledby": "project-list-heading" }),
           this.createElement("h3", { textContent: "PEOPLE" }),
           this.createElement("div", { "class": "office-chat-members", "id": "office-chat-members" })
         ] }),
@@ -111,12 +112,30 @@ class OfficeChat extends OfficeComponent {
       return `<img class="agent-avatar-sprite" src="/assets/avatars/${sprite}.png" alt="" draggable="false">`;
     }
 
+    const renderMembers = () => {
+      $('#office-chat-members').replaceChildren(...state.officeChatMembers.map((member, index) => {
+        const sprite = officeSprite({ name: member.name, role: member.description || '', internal: member.username === 'office-manager' }, Math.max(1, index));
+        return this.createElement('button', {
+          class: 'office-chat-member', type: 'button',
+          'data-username': member.username, 'data-status': member.status,
+          title: `Mention @${member.username} · ${member.status}`,
+          'aria-label': `${member.name}, ${member.status}. Mention @${member.username}`,
+          children: [
+            this.createElement('span', { class: 'office-chat-member-avatar', 'aria-hidden': 'true', children: [
+              this.createElement('img', { src: `/assets/avatars/${sprite}.png`, alt: '', draggable: 'false', width: '28', height: '28' }),
+              this.createElement('i', { class: 'office-chat-member-status' }),
+            ] }),
+            this.createElement('span', { class: 'office-chat-member-name', children: [
+              this.createElement('strong', { textContent: member.name }),
+              member.status === 'is typing' ? this.createElement('em', { textContent: 'is typing' }) : null,
+            ] }),
+          ],
+        });
+      }));
+    };
+
     function renderOfficeChat({ preserveScroll = false } = {}) {
-      const members = $("#office-chat-members");
-      members.innerHTML = state.officeChatMembers.map((member) => `
-        <button class="office-chat-member" type="button" data-username="${escapeHtml(member.username)}" data-status="${escapeHtml(member.status)}" title="Mention @${escapeHtml(member.username)} · ${escapeHtml(member.status)}">
-          <i></i><span><span class="office-chat-member-name"><strong>${escapeHtml(member.name)}</strong>${member.status === "is typing" ? `<em>is typing</em>` : member.status === "busy" ? `<em class="busy">busy</em>` : ""}</span><small>@${escapeHtml(member.username)}</small></span>
-        </button>`).join("");
+      renderMembers();
       $("#office-chat-member-count").textContent = `${state.officeChatMembers.length} MEMBER${state.officeChatMembers.length === 1 ? "" : "S"}`;
 
       const board = $("#office-board-messages");

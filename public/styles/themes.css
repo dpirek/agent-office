@@ -97,14 +97,15 @@ html[data-theme-family="modern"] .danger-button:hover { background: #ffe7eb; }
   .theme-preview { height: 135px; }
   .appearance-heading h3 { font-size: 24px; }
 }
-html[data-theme-family="modern"] .office-chat-channel { background: #eeebff; border-color: #dcd5f6; color: var(--text); }
+html[data-theme-family="modern"] .office-chat-channel { background: transparent; border: 0; color: var(--text); }
+html[data-theme-family="modern"] .office-chat-channel.active { color: var(--green); }
+html[data-theme-family="modern"] .office-chat-channel:hover { background: #eeebff; }
 html[data-theme-family="modern"] :is(.worker-token-body input, .worker-token-body textarea, .chat-image-attachment) { background: #f6f6fb; color: var(--text); border-color: var(--line); }
 html[data-theme-family="modern"] .toast.error { color: var(--red); }
 html[data-theme-family="modern"] :is(.task-action-button.delete-task:hover, .skill-delete:hover) { background: #fff0f2; }
 html[data-theme-family="modern"] .task-action-button.stop-task:hover { background: #fff2e9; }
 html[data-theme-family="modern"] .progress { background: #eceaf7; border-color: #d5d1ed; border-radius: 0; overflow: hidden; }
 html[data-theme-family="modern"] .progress i { background: #6b5fd7; }
-html[data-theme-family="modern"] .office-chat-member i { background: #29a443; box-shadow: none; }
 @media (max-width: 1100px) {
   html[data-theme-family="modern"] .app-frame { padding: 0 0 calc(64px + env(safe-area-inset-bottom)); }
   html[data-theme-family="modern"] .sidebar { inset: auto 0 0; height: calc(64px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); }
