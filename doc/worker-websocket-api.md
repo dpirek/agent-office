@@ -171,3 +171,24 @@ Task messages include `mcpServers.office_project` with a relative HTTP endpoint 
 All tasks contribute to one project root, organized into `app/`, `docs/`, `designs/`, `research/`, and `scripts/`. Use `app/` for runnable code and runtime assets, `docs/` for specifications and handoffs, `designs/` for visual design sources, `research/` for findings and datasets, and `scripts/` for standalone utilities.
 
 Do not wrap deliveries in task, worker, date, or repeated project folders. Include exact prerequisite and output paths in assignments. Deliver a ZIP with entries such as `app/index.html`, `app/assets/logo.svg`, and `research/findings.md`, preserving website-relative references. Use a ZIP even for one nested file because raw uploads only accept plain filenames. Existing paths are updated in place; unrelated files remain. The project MCP context and worker assignment carry the same layout policy.
+
+### Worker context authentication and project identity
+
+Workers can use their current registration token as `Authorization: Bearer …` for
+read-only `GET /api/memory`, `GET /api/tasks`, and `GET /api/chat` requests, without
+a browser session. Include `projectId` in the query string to read the relevant
+project. This shared credential permits office context reads; it does not grant
+account administration or write access. Rotating the worker token revokes its
+HTTP access immediately.
+
+Project MCP endpoints accept either the registration token or the supplied
+short-lived task token. Task tokens remain restricted to their assigned project.
+Tool schemas advertise a required `projectId` argument matching the endpoint;
+a mismatched payload is rejected. Older clients omitting that argument remain
+compatible, using the endpoint's project scope.
+
+Task and direct-message envelopes include `context.project` (`id`, `name`) and
+`context.task` (`id`, `title`, `workerTaskId`), plus `officeTaskId`. The task is
+`null` for general project conversations. Project and task identity also appear
+in the message text. Workers should pass this context to their tools per request,
+not store it in shared process-wide state when running concurrent tasks.

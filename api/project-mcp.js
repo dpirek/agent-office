@@ -1,5 +1,6 @@
+import { safeTokenEqual, bearerToken } from '../lib/worker-auth.js';
 import { json, readRequestBody, methodNotAllowed } from "./http.js";
-import { PROJECT_MCP_TOOLS, callProjectTool } from "../lib/project-mcp.js";
+import { PROJECT_MCP_TOOLS, projectMcpTools, callProjectTool } from "../lib/project-mcp.js";
 
 const VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"];
 export function createProjectMcpHandlers(options) {
@@ -14,11 +15,13 @@ export function createProjectMcpHandlers(options) {
       } catch { return json(res, 403, { error: "Origin rejected." }); }
     }
     try {
-      const token = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || "")?.[1] || "";
-      const task = options.workerArtifactStore.authorize(taskId, token);
-      if ((task.projectId || "central-office") !== projectId) return json(res, 403, { error: "Task cannot access this project." });
+      const token = bearerToken(req.headers.authorization);
+      if (!safeTokenEqual(token, options.uiStateStore.getWorkerToken?.())) {
+        const task = options.workerArtifactStore.authorize(taskId, token);
+        if ((task.projectId || "central-office") !== projectId) return json(res, 403, { error: "Task cannot access this project." });
+      }
       options.uiStateStore.requireProject(projectId);
-    } catch { return json(res, 401, { error: "Task credentials rejected or expired." }); }
+    } catch { return json(res, 401, { error: "Worker or task credentials rejected or expired." }); }
     if (req.method !== "POST") return methodNotAllowed(res, "POST");
     if (req.headers["mcp-protocol-version"] && !VERSIONS.includes(req.headers["mcp-protocol-version"])) return json(res, 400, { error: "Unsupported MCP protocol version." });
     if (!String(req.headers["content-type"] || "").startsWith("application/json")) return json(res, 415, { error: "Expected application/json." });
@@ -30,9 +33,9 @@ export function createProjectMcpHandlers(options) {
     if (!Object.hasOwn(request, "id")) { res.writeHead(202); res.end(); return; }
     let result;
     if (request.method === "initialize") {
-      result = { protocolVersion: VERSIONS.includes(request.params?.protocolVersion) ? request.params.protocolVersion : VERSIONS[0], capabilities: { tools: {} }, serverInfo: { name: "office-project", version: "1.0.0" }, instructions: "Read-only access to the assigned project. File paths are relative to the project root. Use project_list_agents to discover specialists; ask the Office Manager to coordinate them." };
+      result = { protocolVersion: VERSIONS.includes(request.params?.protocolVersion) ? request.params.protocolVersion : VERSIONS[0], capabilities: { tools: {} }, serverInfo: { name: "office-project", version: "1.0.0" }, instructions: `Include projectId=${projectId} in every tool call. Read-only access to the assigned project. File paths are relative to the project root. Use project_list_agents to discover specialists; ask the Office Manager to coordinate them.` };
     } else if (request.method === "ping") result = {};
-    else if (request.method === "tools/list") result = { tools: PROJECT_MCP_TOOLS };
+    else if (request.method === "tools/list") result = { tools: projectMcpTools(projectId) };
     else if (request.method === "tools/call") {
       if (!PROJECT_MCP_TOOLS.some((tool) => tool.name === request.params?.name)) return error(-32602, "Unknown tool.");
       try {

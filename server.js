@@ -1,4 +1,4 @@
-import { canAccessProject } from './lib/project-access.js';
+import { workerMessageContext } from './lib/worker-message-context.js';
 import { formatThreadRequest, threadReplyText } from './lib/chat-thread.js';
 import { createUserStore } from "./lib/users.js";
 import { createAuthService, sessionToken } from "./api/auth.js";
@@ -77,6 +77,7 @@ const userStore = createUserStore(path.join(databaseDir, "users.sqlite"), {
   },
 });
 const authService = createAuthService({
+  getWorkerToken: () => uiStateStore.getWorkerToken(),
   userStore,
   getProjects: () => uiStateStore.getProjects(),
   publicOrigin: process.env.AI_HARNESS_PUBLIC_ORIGIN,
@@ -94,6 +95,7 @@ const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
 const workerArtifactStore = createWorkerArtifactStore({ root: sharedWorkspaceRoot });
 await workerArtifactStore.clearStaleUploads();
 const subAgentManager = new SubAgentManager({
+  getMessageContext: message => workerMessageContext(uiStateStore, message),
   createMcpConnection: (task, upload) => ({
     office_project: {
       type: "http",
@@ -404,7 +406,7 @@ officeChatService = createOfficeChatService({
   getOnlineUsers: () => connectedUsers(userSockets, userStore),
   getProjectUsers: projectId => {
     const project = uiStateStore.requireProject(projectId);
-    return userStore.list().filter(user => !user.disabled && canAccessProject(user, projectId, project));
+    return userStore.projectMembers(project);
   },
   uiStateStore,
   subAgentManager,

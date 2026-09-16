@@ -96,7 +96,7 @@ shell.addEventListener('file-open', ({ detail: { href } }) => {
 
 function renderPage(section) {
   if (!state.projectId && (PROJECT_PAGES.has(section) || section === 'search')) { router.navigate('/account', { replace: true }); return; }
-  if (['knowledge', 'operations'].includes(section) && signedInUser.role !== 'admin') {
+  if (section === 'knowledge' && signedInUser.role !== 'admin') {
     router.navigate(projectPagePath('dashboard', state.projectId), { replace: true });
     return;
   }
@@ -183,7 +183,7 @@ function officeManagerAgent() {
 function chatMembers() {
   const members = state.officeChatMembers;
   const current = { id: signedInUser.id, username: `user-${signedInUser.id}`, name: signedInUser.name, avatar: signedInUser.avatar, type: 'human', status: state.socketReady ? 'online' : 'offline' };
-  return [...members.filter(member => member.username !== current.username), current];
+  return members.map(member => member.username === current.username ? current : member);
 }
 
 function officeAgents() {

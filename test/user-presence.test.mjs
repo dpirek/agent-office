@@ -60,3 +60,34 @@ test('project members remain in chat as offline after their final tab disconnect
   online = [users[0]];
   assert.equal(people()[0].status, 'online');
 });
+
+test('chat membership excludes broad access and public visibility, preserving explicit members', async t => {
+  const { createUserStore } = await import('../lib/users.js');
+  const store = createUserStore(':memory:');
+  t.after(() => store.close());
+  const create = email => store.register({ email, name: email.split('@')[0], password: 'pass' });
+  const admin = await create('admin@example.com');
+  const owner = await create('owner@example.com');
+  const member = await create('member@example.com');
+  const allAccess = await create('all@example.com');
+  const outsider = await create('outsider@example.com');
+  store.update(allAccess.id, { projectIds: null });
+  const project = { id: 'alpha', ownerId: owner.id, isPublic: true };
+  const ids = () => store.projectMembers(project).map(user => user.id);
+  assert.deepEqual(ids(), [owner.id]);
+  store.grantProject(member.id, project.id);
+  assert.ok(ids().includes(member.id));
+  assert.ok(!ids().includes(admin.id));
+  assert.ok(!ids().includes(allAccess.id));
+  assert.ok(!ids().includes(outsider.id));
+  store.grantProject(admin.id, project.id);
+  assert.ok(ids().includes(admin.id));
+  const [invite] = store.createInvitations(project.id, [allAccess.email], owner.id);
+  store.acceptInvitation(invite.code, allAccess.id);
+  assert.ok(ids().includes(allAccess.id));
+  store.update(member.id, { projectIds: [] });
+  assert.ok(!ids().includes(member.id));
+  store.update(allAccess.id, { disabled: true });
+  assert.ok(!ids().includes(allAccess.id));
+  assert.deepEqual(store.projectMembers({ id: 'unrelated', isPublic: true }), []);
+});

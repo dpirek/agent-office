@@ -1,3 +1,4 @@
+import { safeTokenEqual, bearerToken } from '../lib/worker-auth.js';
 import { json, readRequestBody, methodNotAllowed } from "./http.js";
 import { canAccessProject } from '../lib/project-access.js';
 
@@ -5,7 +6,7 @@ const COOKIE = "office_session";
 export function sessionToken(req) {
   return String(req.headers.cookie || "").split(";").map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1) || "";
 }
-export function createAuthService({ userStore, publicOrigin = "", getProjects = () => [] }) {
+export function createAuthService({ userStore, publicOrigin = "", getProjects = () => [], getWorkerToken = () => "" }) {
   const origin = publicOrigin ? new URL(publicOrigin).origin : "";
   const attempts = new Map();
   function cookie(res, value) {
@@ -31,6 +32,11 @@ export function createAuthService({ userStore, publicOrigin = "", getProjects = 
     if (route === "/api/worker-artifacts" || route.startsWith("/mcp/projects/")) return false;
     if (!authRoute && !protectedRoute) return false;
     res.setHeader("cache-control", "no-store");
+    if (req.method === 'GET' && ['/api/memory', '/api/tasks', '/api/chat'].includes(route)
+      && safeTokenEqual(bearerToken(req.headers.authorization), getWorkerToken())) {
+      req.workerAuthenticated = true;
+      return false;
+    }
     req.user = userStore.session(sessionToken(req));
     if (req.user?.role === 'member') req.user.publicProjectIds = getProjects().filter(project => project.isPublic).map(project => project.id);
     if (!authRoute) {
