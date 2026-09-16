@@ -182,12 +182,12 @@ function officeManagerAgent() {
 
 function chatMembers() {
   const members = state.officeChatMembers;
-  const current = { id: signedInUser.id, username: `user-${signedInUser.id}`, name: signedInUser.name, avatar: signedInUser.avatar, type: 'human', status: 'online' };
+  const current = { id: signedInUser.id, username: `user-${signedInUser.id}`, name: signedInUser.name, avatar: signedInUser.avatar, type: 'human', status: state.socketReady ? 'online' : 'offline' };
   return [...members.filter(member => member.username !== current.username), current];
 }
 
 function officeAgents() {
-  const people = chatMembers().filter(member => member.type === 'human').map(member => ({
+  const people = chatMembers().filter(member => member.type === 'human' && member.status === 'online').map(member => ({
     ...member, human: true, selectionKey: `human:${member.id}`, role: 'Office member',
     description: 'Signed in to the office', tools: '',
     status: member.status === 'online' ? 'ready' : member.status,
@@ -422,7 +422,7 @@ function handleSocketMessage(message) {
   if (message.type === "ready") {
     state.socketReady = true;
     addLog("Network", "Orchestration channel ready", "success");
-    renderChat(); renderOffice(); renderSelectedAgent();
+    renderChat(); renderOffice(); renderSelectedAgent(); renderOfficeChat();
     return;
   }
   if (message.type === "info") {
@@ -476,7 +476,7 @@ function handleSocketMessage(message) {
       reply.streaming = false;
       state.chatRunning = false;
       addActivity("Office manager response complete", "success");
-      renderChat(); renderOffice(); renderSelectedAgent();
+      renderChat(); renderOffice(); renderSelectedAgent(); renderOfficeChat();
       managerChat.focusInput();
       return;
     }
@@ -498,7 +498,7 @@ function handleSocketMessage(message) {
       reply.error = true;
       state.chatRunning = false;
       addLog("Coordinator", reply.text, "error");
-      renderChat(); renderOffice(); renderSelectedAgent();
+      renderChat(); renderOffice(); renderSelectedAgent(); renderOfficeChat();
       return;
     }
     updateRunningTask({ status: "failed", progress: 100, error: message.error });
@@ -535,12 +535,13 @@ function connectSocket() {
     addLog("Network", "Orchestration channel disconnected", "error");
     state.socketReady = false;
     if (state.runningTaskId || state.chatRunning) handleSocketMessage({ type: "error", error: "Orchestration channel disconnected." });
-    renderChat(); renderOffice(); renderSelectedAgent();
+    renderChat(); renderOffice(); renderSelectedAgent(); renderOfficeChat();
     setTimeout(connectSocket, 1800);
   });
   socket.addEventListener("error", () => {
     state.socketReady = false;
     addLog("Network", "Orchestration channel error", "error");
+    renderOffice(); renderSelectedAgent(); renderOfficeChat();
   });
 }
 

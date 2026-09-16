@@ -1,3 +1,4 @@
+import { canAccessProject } from './lib/project-access.js';
 import { formatThreadRequest, threadReplyText } from './lib/chat-thread.js';
 import { createUserStore } from "./lib/users.js";
 import { createAuthService, sessionToken } from "./api/auth.js";
@@ -401,6 +402,10 @@ function handleOfficeManagerMention({ message, text }) {
 
 officeChatService = createOfficeChatService({
   getOnlineUsers: () => connectedUsers(userSockets, userStore),
+  getProjectUsers: projectId => {
+    const project = uiStateStore.requireProject(projectId);
+    return userStore.list().filter(user => !user.disabled && canAccessProject(user, projectId, project));
+  },
   uiStateStore,
   subAgentManager,
   onManagerMention: handleOfficeManagerMention,
@@ -589,7 +594,10 @@ attachWebSocketServer(server, (socket, req) => {
     if (!authService.authorizeSocket(req)) socket.destroy();
   }, 30_000);
   expiryCheck.unref();
-  socket.once("close", () => { clearInterval(expiryCheck); userSockets.delete(socket); });
+  const removePresence = () => { clearInterval(expiryCheck); userSockets.delete(socket); };
+  socket.once('end', removePresence);
+  socket.once('error', removePresence);
+  socket.once('close', removePresence);
   handleWebSocket(socket, req);
 }, "/ws", { "/ws/workers": handleWorkerWebSocket });
 

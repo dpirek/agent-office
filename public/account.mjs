@@ -174,7 +174,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     if (user.role === 'member') summary.querySelector('p').textContent = user.projectIds?.length === 0
       ? 'You can join public projects or create your own. Ask an administrator for access to other private projects.'
       : 'You can work in public projects, private projects assigned to you, and projects you create.';
-    const enter = document.createElement("a"); enter.href = "/"; enter.className = "enter-office"; enter.textContent = "Open your office →"; summary.append(enter);
+    const enter = document.createElement("a"); enter.href = "/dashboard"; enter.className = "enter-office"; enter.textContent = "Open your office →"; summary.append(enter);
     panels.profile.append(summary);
     if (user.role !== "admin") return;
     const heading = document.createElement("div"); heading.className = "account-section-heading";

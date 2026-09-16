@@ -110,3 +110,17 @@ test("login and registration have standalone documents", async () => {
     }
   }
 });
+
+test('root serves the public landing page while dashboard serves the application', async () => {
+  for (const url of ['/', '/?campaign=launch', '/dashboard']) {
+    const response = { writeHead(status, headers) { this.status = status; this.headers = headers; }, end(body) { this.body = body.toString(); } };
+    await serveStatic({ method: 'GET', url, headers: { host: 'office.test' } }, response, fileURLToPath(new URL('../public', import.meta.url)));
+    assert.equal(response.status, 200);
+    if (url.startsWith('/dashboard')) assert.match(response.body, /<office-shell>/);
+    else {
+      assert.match(response.body, /href="\/register"/);
+      assert.match(response.body, /href="\/login"/);
+      assert.doesNotMatch(response.body, /src="\/app.mjs"|<office-shell>/);
+    }
+  }
+});
