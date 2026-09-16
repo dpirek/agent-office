@@ -7,9 +7,6 @@ export function sessionToken(req) {
 export function createAuthService({ userStore, publicOrigin = "" }) {
   const origin = publicOrigin ? new URL(publicOrigin).origin : "";
   const attempts = new Map();
-  function sameOrigin(req) {
-    return req.headers["sec-fetch-site"] !== "cross-site" && (!req.headers.origin || req.headers.origin === (origin || `http://${req.headers.host}`));
-  }
   function cookie(res, value) {
     res.setHeader("set-cookie", `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${value ? 604800 : 0}${origin.startsWith("https:") ? "; Secure" : ""}`);
   }
@@ -23,7 +20,7 @@ export function createAuthService({ userStore, publicOrigin = "" }) {
   }
   function authorizeSocket(req) {
     const user = userStore.session(sessionToken(req));
-    return sameOrigin(req) && user && user.role !== "pending" ? user : null;
+    return user && user.role !== "pending" ? user : null;
   }
   async function handle(req, res, url) {
     const route = url.pathname;
@@ -33,7 +30,6 @@ export function createAuthService({ userStore, publicOrigin = "" }) {
     if (route === "/api/worker-artifacts" || route.startsWith("/mcp/projects/")) return false;
     if (!authRoute && !protectedRoute) return false;
     res.setHeader("cache-control", "no-store");
-    if (!sameOrigin(req)) { json(res, 403, { ok: false, error: "Cross-origin requests are not allowed." }); return true; }
     req.user = userStore.session(sessionToken(req));
     if (!authRoute) {
       if (!req.user) { json(res, 401, { ok: false, error: "Sign in to continue." }); return true; }

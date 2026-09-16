@@ -78,10 +78,10 @@ test("sessions expire and logout revokes the presented session", async () => {
 });
 
 function client(service) {
-  return async (route, { method = "GET", body, cookie, origin, contentType = "application/json", address = "127.0.0.1" } = {}) => {
+  return async (route, { method = "GET", body, cookie, origin, contentType = "application/json", address = "127.0.0.1", fetchSite } = {}) => {
     const req = Readable.from(body === undefined ? [] : [Buffer.from(JSON.stringify(body))]);
     req.method = method; req.socket = { remoteAddress: address };
-    req.headers = { host: "localhost", "content-type": contentType, ...(cookie ? { cookie } : {}), ...(origin ? { origin } : {}) };
+    req.headers = { host: "localhost", "content-type": contentType, ...(cookie ? { cookie } : {}), ...(origin ? { origin } : {}), ...(fetchSite ? { "sec-fetch-site": fetchSite } : {}) };
     const result = { status: 200, headers: {} };
     const res = { setHeader(key, value) { result.headers[key] = value; }, writeHead(status, headers) { result.status = status; Object.assign(result.headers, headers); }, end(body) { result.body = body ? JSON.parse(body) : null; } };
     result.handled = await service.handle(req, res, new URL(route, "http://localhost"));
@@ -89,7 +89,7 @@ function client(service) {
   };
 }
 
-test("HTTP auth enforces approval, admin access, CSRF, cookies, and rate limits", async () => {
+test("HTTP auth enforces approval, admin access, cookies, and rate limits", async () => {
   const store = createUserStore(":memory:");
   const service = createAuthService({ userStore: store });
   const request = client(service);
@@ -119,10 +119,10 @@ test("HTTP auth enforces approval, admin access, CSRF, cookies, and rate limits"
     const memberCookie = memberLogin.headers["set-cookie"].split(";")[0];
     assert.equal((await request("/api/tasks", { cookie: memberCookie })).handled, false);
     assert.equal((await post("/api/factory-reset", {}, { cookie: memberCookie })).status, 403);
-    assert.equal((await post("/api/auth/logout", {}, { cookie, origin: "http://evil.example" })).status, 403);
+    assert.equal((await request("/api/auth/session", { cookie, origin: "https://office.bohoosh.com" })).body.user.role, "admin");
     assert.equal((await post("/api/auth/login", {}, { contentType: "text/plain" })).status, 415);
     assert.equal(service.authorizeSocket({ headers: { cookie, host: "localhost", origin: "http://localhost" } }).role, "admin");
-    assert.equal(service.authorizeSocket({ headers: { cookie, host: "localhost", origin: "http://evil.example" } }), null);
+    assert.equal(service.authorizeSocket({ headers: { cookie, host: "localhost", origin: "https://office.bohoosh.com" } }).role, "admin");
     assert.equal(service.authorizeSocket({ headers: { host: "localhost" } }), null);
     await post("/api/auth/logout", {}, { cookie });
     assert.equal((await request("/api/tasks", { cookie })).status, 401);
@@ -133,7 +133,7 @@ test("HTTP auth enforces approval, admin access, CSRF, cookies, and rate limits"
   } finally { store.close(); }
 });
 
-test("HTTPS configuration sets secure cookies and uses the configured origin", async () => {
+test("HTTPS configuration sets secure cookies", async () => {
   const store = createUserStore(":memory:");
   try {
     await store.register(account("admin@example.com"));
@@ -156,7 +156,7 @@ test('avatar choices persist and profile updates only affect the signed-in user'
     const request = client(createAuthService({ userStore: store }));
     assert.equal(admin.avatar, 'initials');
     assert.equal((await request('/api/auth/profile', { method: 'PATCH', body: { avatar: 'designer' } })).status, 401);
-    assert.equal((await request('/api/auth/profile', { method: 'PATCH', cookie, origin: 'http://evil.example', body: { avatar: 'designer' } })).status, 403);
+    assert.equal((await request('/api/auth/profile', { method: 'PATCH', cookie, origin: 'https://office.bohoosh.com', body: { avatar: 'designer' } })).status, 200);
     assert.equal((await request('/api/auth/profile', { method: 'PATCH', cookie, body: { avatar: '../../secret' } })).status, 400);
     const result = await request('/api/auth/profile', { method: 'PATCH', cookie, body: { id: admin.id, avatar: 'designer', role: 'admin' } });
     assert.equal(result.status, 200);
@@ -168,4 +168,21 @@ test('avatar choices persist and profile updates only affect the signed-in user'
     store.updateAvatar(member.id, 'initials');
     assert.equal(store.session(login.token).avatar, 'initials');
   } finally { store.close(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test("registration and login accept proxy origin mismatches while protected routes require sessions", async () => {
+  const store = createUserStore(":memory:");
+  try {
+    const request = client(createAuthService({ userStore: store, publicOrigin: "https://configured.example" }));
+    const options = { method: "POST", body: account("proxy@example.com"), origin: "https://office.bohoosh.com", fetchSite: "cross-site" };
+    assert.equal((await request("/api/auth/register", options)).status, 201);
+    const login = await request("/api/auth/login", options);
+    assert.equal(login.status, 200);
+    assert.match(login.headers["set-cookie"], /HttpOnly; SameSite=Lax/);
+    assert.match(login.headers["set-cookie"], /; Secure/);
+    assert.equal((await request("/api/tasks", { origin: options.origin, fetchSite: "cross-site" })).status, 401);
+    const cookie = login.headers["set-cookie"].split(";")[0];
+    assert.equal((await request("/api/auth/logout", { ...options, cookie, body: {} })).status, 200);
+    assert.equal((await request("/api/tasks", { cookie })).status, 401);
+  } finally { store.close(); }
 });

@@ -200,8 +200,9 @@ or task token authentication.
 Passwords require 12–256 characters and are stored using salted scrypt hashes.
 Sessions last seven days and use HttpOnly, SameSite cookies. When serving over
 HTTPS or behind a reverse proxy, set `AI_HARNESS_PUBLIC_ORIGIN` to the exact public
-origin (for example `https://office.example.com`) to enable Secure cookies and
-correct origin checks. The app does not trust forwarded headers for rate limiting;
+origin (for example `https://office.example.com`) to enable Secure cookies.
+HTTP and WebSocket authentication do not validate the Origin or Sec-Fetch-Site
+headers; session and role checks still apply. The app does not trust forwarded headers for rate limiting;
 requests through a proxy share its per-address limit of 20 attempts per endpoint
 per 15 minutes. Limits reset when the server restarts.
 
