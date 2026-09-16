@@ -55,7 +55,7 @@ document.querySelector('office-shell').addEventListener('task-create', event => 
 | `office-manager-chat` | `data: { chatMessages, projectId, health, socketReady, chatRunning }`; `clearDraft()`, `focusInput()` | `chat-send`, `chat-refresh`, `file-open` |
 | `office-dashboard-chat` | `data: { messages, projectId, projectName }`; `clearDraft()` | `chat-send`, `chat-refresh`, `file-open` |
 | `office-workspace` | `projectId`; `load({ quiet }?)`, `openFile(href)`, `reset()` | Notifications |
-| `office-settings` | `load()`, `selectTab(tab)` | `configuration-change`, `office-theme-select { value }` |
+| `office-settings` | `data: { userRole }`; `load()`, `selectTab(tab)` | `configuration-change`, `office-theme-select { value }` |
 | `office-knowledge` | `load()` | Notifications |
 | `office-memory` | `projectId`; `load({ quiet }?)`; `data: { memoryRecords }` | Notifications |
 | `office-system-log` | `data: { logs }` | — |

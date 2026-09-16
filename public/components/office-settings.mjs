@@ -239,8 +239,10 @@ class OfficeSettings extends OfficeComponent {
 
     function selectSettingsTab(tab) {
       if (!['appearance', 'prompts', 'tools', 'mcp', 'provider', 'admin'].includes(tab)) return;
+      if (state.userRole !== 'admin') tab = 'appearance';
       state.settingsTab = tab;
       $$('[data-settings-tab]').forEach((button) => {
+        button.hidden = state.userRole !== 'admin' && button.dataset.settingsTab !== 'appearance';
         const active = button.dataset.settingsTab === tab;
         button.classList.toggle('active', active);
         button.setAttribute('aria-selected', String(active));
@@ -552,8 +554,8 @@ class OfficeSettings extends OfficeComponent {
         $('#theme-save-status').textContent = detail.saved ? `${detail.label} theme saved.` : 'Theme applied for this visit. Browser storage is unavailable.';
       }, { signal: this.connectionSignal });
     };
-    this.load = () => Promise.all([loadSystemPrompts(), loadConfigurationSettings()]);
-    this.update = renderSettingsStatus;
+    this.load = () => state.userRole === 'admin' ? Promise.all([loadSystemPrompts(), loadConfigurationSettings()]) : Promise.resolve();
+    this.update = () => selectSettingsTab(state.settingsTab);
     this.selectTab = selectSettingsTab;
   }
 }

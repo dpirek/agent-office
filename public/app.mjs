@@ -14,13 +14,17 @@ const component = name => shell.querySelector(`office-${name}`);
 const navigation = component('navigation');
 const topbar = component('topbar');
 topbar.data = { user: signedInUser };
-shell.addEventListener('account-user-change', ({ detail }) => { topbar.data = { user: detail.user }; });
+shell.addEventListener('account-user-change', ({ detail }) => {
+  topbar.data = { user: detail.user };
+  component('settings').data = { userRole: detail.user.role };
+});
 const searchPage = component('search');
 const workspace = component('workspace');
 const chat = component('chat');
 const managerChat = component('manager-chat');
 const dashboardChat = component('dashboard-chat');
 const settings = component('settings');
+settings.data = { userRole: signedInUser.role };
 const memory = component('memory');
 const taskQueue = component('task-queue');
 const operationsPanel = component('operations');
