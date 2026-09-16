@@ -1,8 +1,8 @@
 const STORAGE_KEY = "agent-office.workspace-tree-width.v1";
 
-export function initWorkspaceResizing() {
-  const container = document.querySelector(".workspace-explorer");
-  const divider = document.querySelector("#workspace-tree-resizer");
+export function initWorkspaceResizing({ root = document, signal } = {}) {
+  const container = root.querySelector(".workspace-explorer");
+  const divider = root.querySelector("#workspace-tree-resizer");
   if (!container || !divider) return;
   let preferredWidth = null;
   let pointer = null;
@@ -54,12 +54,12 @@ export function initWorkspaceResizing() {
     container.classList.add("is-resizing-workspace");
     divider.focus();
     event.preventDefault();
-  });
+  }, { signal });
   divider.addEventListener("pointermove", (event) => {
     if (pointer !== event.pointerId) return;
     setWidth(event.clientX - container.getBoundingClientRect().left - divider.offsetWidth / 2);
-  });
-  for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) divider.addEventListener(event, finish);
+  }, { signal });
+  for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) divider.addEventListener(event, finish, { signal });
   divider.addEventListener("keydown", (event) => {
     if (divider.getAttribute("aria-disabled") === "true") return;
     const direction = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
@@ -67,11 +67,13 @@ export function initWorkspaceResizing() {
     setWidth(Number(divider.getAttribute("aria-valuenow")) + direction * (event.shiftKey ? 48 : 16));
     save();
     event.preventDefault();
-  });
-  divider.addEventListener("dblclick", () => { preferredWidth = null; apply(); save(); });
-  new ResizeObserver(() => {
+  }, { signal });
+  divider.addEventListener("dblclick", () => { preferredWidth = null; apply(); save(); }, { signal });
+  const observer = new ResizeObserver(() => {
     if (pointer !== null && (window.matchMedia("(max-width: 700px)").matches || !container.clientWidth)) finish();
     apply();
-  }).observe(container);
+  });
+  observer.observe(container);
+  signal?.addEventListener("abort", () => { finish(); observer.disconnect(); }, { once: true });
   apply();
 }

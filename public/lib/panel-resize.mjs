@@ -33,6 +33,7 @@ function clampPanelWidth(width, availableWidth, minLeft = MIN_LEFT_WIDTH, minRig
 
 function initPanelResizing({
   storage = window.localStorage,
+  signal,
   container = document.querySelector(".main-content"),
   resizer = document.querySelector("#main-panel-resizer"),
 } = {}) {
@@ -75,11 +76,11 @@ function initPanelResizing({
     document.body.classList.add("is-resizing-panels");
     resizeAt(event.clientX);
     event.preventDefault();
-  });
+  }, { signal });
   resizer.addEventListener("pointermove", (event) => {
     if (!dragging || !resizer.hasPointerCapture(event.pointerId)) return;
     resizeAt(event.clientX);
-  });
+  }, { signal });
   function finish(event) {
     if (!dragging) return;
     if (resizer.hasPointerCapture(event.pointerId)) resizer.releasePointerCapture(event.pointerId);
@@ -88,8 +89,8 @@ function initPanelResizing({
     document.body.classList.remove("is-resizing-panels");
     writePanelRatio(storage, ratio);
   }
-  resizer.addEventListener("pointerup", finish);
-  resizer.addEventListener("pointercancel", finish);
+  resizer.addEventListener("pointerup", finish, { signal });
+  resizer.addEventListener("pointercancel", finish, { signal });
   resizer.addEventListener("keydown", (event) => {
     const direction = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
     if (!direction || resizer.getAttribute("aria-disabled") === "true") return;
@@ -98,13 +99,18 @@ function initPanelResizing({
     apply((available * ratio + direction * step) / available);
     writePanelRatio(storage, ratio);
     event.preventDefault();
-  });
+  }, { signal });
   resizer.addEventListener("dblclick", () => {
     ratio = DEFAULT_PANEL_RATIO;
     apply();
     writePanelRatio(storage, ratio);
-  });
-  window.addEventListener("resize", () => apply());
+  }, { signal });
+  window.addEventListener("resize", () => apply(), { signal });
+  signal?.addEventListener("abort", () => {
+    dragging = false;
+    resizer.classList.remove("is-dragging");
+    document.body.classList.remove("is-resizing-panels");
+  }, { once: true });
   apply();
   return { refresh: apply };
 }

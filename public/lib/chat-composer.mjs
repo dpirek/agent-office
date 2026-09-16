@@ -1,11 +1,11 @@
-export function initChatComposer() {
-  const form = document.getElementById('office-board-form');
-  const input = document.getElementById('office-board-input');
-  const picker = document.getElementById('composer-emoji-picker');
-  const toggle = document.getElementById('composer-emoji-toggle');
+export function initChatComposer({ root = document, signal } = {}) {
+  const form = root.querySelector('#office-board-form');
+  const input = root.querySelector('#office-board-input');
+  const picker = root.querySelector('#composer-emoji-picker');
+  const toggle = root.querySelector('#composer-emoji-toggle');
   let selection = [0, 0];
   const rememberSelection = () => { selection = [input.selectionStart, input.selectionEnd]; };
-  for (const event of ['select', 'keyup', 'click', 'input', 'blur']) input.addEventListener(event, rememberSelection);
+  for (const event of ['select', 'keyup', 'click', 'input', 'blur']) input.addEventListener(event, rememberSelection, { signal });
   const closePicker = () => { picker.hidden = true; toggle.setAttribute('aria-expanded', 'false'); };
   function insert(text, wrap = false) {
     const [start, end] = selection;
@@ -18,22 +18,22 @@ export function initChatComposer() {
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }
   form.querySelectorAll('[data-composer-format]').forEach(button => {
-    button.addEventListener('click', () => insert(button.dataset.composerFormat, true));
+    button.addEventListener('click', () => insert(button.dataset.composerFormat, true), { signal });
   });
-  document.getElementById('composer-mention').addEventListener('click', () => insert('@'));
+  root.querySelector('#composer-mention').addEventListener('click', () => insert('@'), { signal });
   toggle.addEventListener('click', () => {
     picker.hidden = !picker.hidden;
     toggle.setAttribute('aria-expanded', String(!picker.hidden));
     if (!picker.hidden) picker.querySelector('button').focus();
-  });
+  }, { signal });
   picker.addEventListener('click', event => {
     const button = event.target.closest('[data-emoji]');
     if (button) { insert(button.dataset.emoji); closePicker(); }
-  });
+  }, { signal });
   document.addEventListener('click', event => {
     if (!picker.contains(event.target) && !toggle.contains(event.target)) closePicker();
-  });
+  }, { signal });
   form.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !picker.hidden) { closePicker(); toggle.focus(); }
-  });
+  }, { signal });
 }

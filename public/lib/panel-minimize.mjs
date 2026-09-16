@@ -58,8 +58,8 @@ function createButton(header) {
   return button;
 }
 
-function initPanelMinimizing({ storage = window.localStorage, onChange = () => {} } = {}) {
-  const panels = [...document.querySelectorAll(".panel")]
+function initPanelMinimizing({ storage = window.localStorage, onChange = () => {}, root = document, signal } = {}) {
+  const panels = [...root.querySelectorAll(".panel")]
     .filter((panel) => panel.querySelector(":scope > .panel-header"));
   const availablePanels = new Set(panels.map(panelId));
   const minimizedPanels = readMinimizedPanels(storage, availablePanels);
@@ -75,7 +75,7 @@ function initPanelMinimizing({ storage = window.localStorage, onChange = () => {
       updateButton(button, nextMinimized);
       writeMinimizedPanels(storage, panels);
       onChange(panel, nextMinimized);
-    });
+    }, { signal });
   });
   onChange();
   return { panels };

@@ -9,32 +9,17 @@
     document.documentElement.dataset.themeFamily = ['teams', 'sakura'].includes(theme) ? 'modern' : 'terminal';
     const { logo, color } = themes[theme];
     document.querySelector('link[rel="icon"]').href = logo;
-    document.querySelectorAll('.sidebar-logo img, .sidebar-toggle-logo').forEach((image) => {
-      image.src = logo;
-    });
     document.querySelector('meta[name="theme-color"]').content = color;
-    document.querySelectorAll('input[name="office-theme"]').forEach((input) => {
-      input.checked = input.value === theme;
-    });
+    window.dispatchEvent(new CustomEvent('office-theme-change', { detail: { value: theme, logo, label: themes[theme].label } }));
   }
   let saved;
   try { saved = localStorage.getItem(key); } catch { /* Storage may be disabled. */ }
   apply(saved);
-  document.addEventListener('DOMContentLoaded', () => {
-    apply(document.documentElement.dataset.theme);
-    document.querySelectorAll('input[name="office-theme"]').forEach((input) => {
-      input.addEventListener('change', () => {
-        if (!input.checked) return;
-        apply(input.value);
-        const status = document.getElementById('theme-save-status');
-        try {
-          localStorage.setItem(key, input.value);
-          status.textContent = `${themes[input.value].label} theme saved.`;
-        } catch {
-          status.textContent = 'Theme applied for this visit. Browser storage is unavailable.';
-        }
-      });
-    });
+  window.addEventListener('office-theme-select', ({ detail }) => {
+    apply(detail.value);
+    let saved = true;
+    try { localStorage.setItem(key, normalize(detail.value)); } catch { saved = false; }
+    window.dispatchEvent(new CustomEvent('office-theme-saved', { detail: { saved, label: themes[normalize(detail.value)].label } }));
   });
   window.addEventListener('storage', (event) => {
     if (event.key === key || event.key === null) apply(event.newValue);

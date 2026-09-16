@@ -2,6 +2,8 @@
 /db
 .office-workspace/
 .workspace/
+.ui-verification/
+.office-artifacts/
 *.sqlite
 .env
 !.env.example
