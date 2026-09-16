@@ -197,7 +197,7 @@ html[data-theme="matrix"] .theme-banner { background: #00100775; border: 1px sol
 html[data-theme="matrix"] :is(.chat-message-content, .office-board-avatar, .portrait, .office-chat-sidebar, .workspace-tree-pane, .account-profile, .user-card, .account-panel form) { background: #00170c; border-color: #205535; }
 html[data-theme="matrix"] :is(button.primary, .header-action) { background: #48ff88; color: #002910; border-color: #48ff88; box-shadow: 0 0 12px #43ff822b; }
 html[data-theme="matrix"] :is(button.primary, .header-action):hover:not(:disabled) { background: #9cffbc; }
-html[data-theme="matrix"] .office { background-image: linear-gradient(#002c18a0, #001508b0), url('/assets/office/background.png'); background-blend-mode: color, normal; border-color: #123d25; }
+html[data-theme="matrix"] .office { border-color: #123d25; }
 html[data-theme="matrix"] .portrait img, html[data-theme="matrix"] .agent-avatar-sprite { filter: grayscale(1) sepia(1) hue-rotate(80deg) saturate(2); }
 html[data-theme="matrix"] .theme-option { border-radius: 6px; }
 html[data-theme="matrix"] * { scrollbar-color: #236c3d #000b05; }
@@ -210,7 +210,7 @@ html[data-theme="sakura"] .theme-banner { color: #fff8ff; background: linear-gra
 html[data-theme="sakura"] :is(.panel, .panel-header, .panel-body) { background-color: #fffdfef5; }
 html[data-theme="sakura"] .panel { box-shadow: 0 4px 20px #6040800a; }
 html[data-theme="sakura"] :is(button.primary, .header-action) { background: linear-gradient(135deg, #976fe0, #6754cf); border-color: #8a6cce; }
-html[data-theme="sakura"] .office { background-image: url('/assets/themes/sakura-city.png'); background-size: cover; background-position: center; image-rendering: auto; }
+html[data-theme="sakura"] .office { border-color: #664555; }
 html[data-theme="sakura"] .appearance-eyebrow { color: #a34c87; }
 @media (min-width: 1101px) {
   html[data-theme="matrix"] .sidebar-topbar { display: flex; align-items: center; justify-content: space-between; flex: 0 0 58px; padding: 10px; }
@@ -233,3 +233,9 @@ html[data-theme="matrix"] .office .office-empty { background: #00100788; color: 
 html[data-theme="matrix"] .office .office-empty strong { color: #48ff88; }
 html[data-theme="sakura"] .office .office-empty { background: #22213d66; color: #fff3fc; text-shadow: 0 1px 6px #191329; }
 html[data-theme="sakura"] .office .office-empty strong { color: white; }
+
+/* Separate room artwork keeps the agent floor aligned across themes. */
+:root[data-theme="terminal"] { --office-background: url('/assets/office/background-terminal.png'); }
+:root[data-theme="teams"] { --office-background: url('/assets/office/background-teams.png'); }
+:root[data-theme="matrix"] { --office-background: url('/assets/office/background-matrix.png'); }
+:root[data-theme="sakura"] { --office-background: url('/assets/office/background-sakura.png'); }
