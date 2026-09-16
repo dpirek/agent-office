@@ -12,9 +12,12 @@ const sessionId = createClientId();
 const shell = document.querySelector('office-shell');
 const component = name => shell.querySelector(`office-${name}`);
 const navigation = component('navigation');
+navigation.data = { userRole: signedInUser.role };
 const topbar = component('topbar');
 topbar.data = { user: signedInUser };
 shell.addEventListener('account-user-change', ({ detail }) => {
+  Object.assign(signedInUser, detail.user);
+  navigation.data = { userRole: detail.user.role };
   topbar.data = { user: detail.user };
   component('settings').data = { userRole: detail.user.role };
 });
@@ -91,6 +94,10 @@ shell.addEventListener('file-open', ({ detail: { href } }) => {
 });
 
 function renderPage(section) {
+  if (['knowledge', 'operations'].includes(section) && signedInUser.role !== 'admin') {
+    router.navigate(projectPagePath('dashboard', state.projectId), { replace: true });
+    return;
+  }
   if (section === 'account') void component('account').load();
   if (section === 'search') {
     const projectId = new URLSearchParams(location.search).get('project');
@@ -597,7 +604,7 @@ setInterval(() => {
 
 renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat();
 void settings.load();
-void component("knowledge").load();
+if (signedInUser.role === 'admin') void component("knowledge").load();
 void loadMemory();
 
 void loadSystemLogs();

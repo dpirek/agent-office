@@ -176,6 +176,7 @@ class OfficeNavigation extends OfficeComponent {
     };
     this.update = () => {
       $$('.nav-item[data-section]').forEach(link => {
+        link.hidden = ['knowledge', 'operations'].includes(link.dataset.section) && state.userRole !== 'admin';
         link.href = projectPagePath(link.dataset.section, state.projectId);
         const active = link.dataset.section === state.page;
         const changed = active && !link.classList.contains('active');
