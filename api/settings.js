@@ -1,3 +1,5 @@
+import { testMcpServer } from '../lib/mcp.js';
+import { validateMcpServer } from '../public/lib/mcp-form.mjs';
 import {
   defaultBaseUrlForProvider,
   defaultModelForProvider,
@@ -281,6 +283,17 @@ export function createSettingsApiHandlers({
   return {
     "/api/health": handleHealthApi,
     "/api/config": handleConfigApi,
+    '/api/mcp/test': async (req, res) => {
+      if (req.user?.role !== 'admin') return json(res, 403, { ok: false, error: 'Administrator access required.' });
+      if (req.method !== 'POST') return methodNotAllowed(res, 'POST');
+      try {
+        const body = JSON.parse(await readRequestBody(req, 20000) || '{}');
+        const input = body.server || {};
+        const server = validateMcpServer({ server_label: input.server_label, server_url: input.server_url, headers: input.headers || {} });
+        const tools = await testMcpServer(server);
+        json(res, 200, { ok: true, tools });
+      } catch (error) { json(res, 400, { ok: false, error: error.message }); }
+    },
     "/api/models": handleModelsApi,
     "/api/ui-state": handleUiStateApi,
     "/api/rig-configurations": handleRigConfigurationsApi,

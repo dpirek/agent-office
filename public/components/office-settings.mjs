@@ -1,3 +1,4 @@
+import './office-mcp-settings.mjs';
 import OfficeComponent from "./office-component.mjs";
 import { escapeHtml, fetchJson } from "./office-format.mjs";
 
@@ -140,9 +141,9 @@ class OfficeSettings extends OfficeComponent {
       this.createElement("div", { "class": "settings-view editor-settings panel-body", "data-settings-view": "mcp", "hidden": "", children: [
         this.createElement("div", { "class": "settings-section-intro", children: [
           this.createElement("strong", { textContent: "MCP CONFIGURATION" }),
-          this.createElement("span", { textContent: "JSON configuration for connected Model Context Protocol servers." })
+          this.createElement("span", { textContent: "Connect MCP servers with a URL and optional authentication headers. Test to discover available methods." })
         ] }),
-        this.createElement("textarea", { "id": "mcp-config-content", "spellcheck": "false", "placeholder": "{\n  \"mcpServers\": {}\n}" }),
+        this.createElement('office-mcp-settings', { id: 'mcp-config-content' }),
         this.createElement("footer", { "class": "settings-actions", children: [
           this.createElement("button", { "id": "reset-mcp-config", "type": "button", textContent: "RESET CHANGES" }),
           this.createElement("button", { "class": "primary", "id": "save-mcp-config", "type": "button", textContent: "SAVE MCP" })
@@ -455,8 +456,8 @@ class OfficeSettings extends OfficeComponent {
         renderSettingsStatus();
       }
     });
-    $("#mcp-config-content").addEventListener("input", () => {
-      state.mcpDirty = $("#mcp-config-content").value !== state.mcpConfig;
+    $("#mcp-config-content").addEventListener("mcp-change", () => {
+      state.mcpDirty = true;
       renderSettingsStatus();
     });
     $("#reset-mcp-config").addEventListener("click", () => {
@@ -466,9 +467,9 @@ class OfficeSettings extends OfficeComponent {
     });
     $("#save-mcp-config").addEventListener("click", async () => {
       const button = $("#save-mcp-config");
-      const content = $("#mcp-config-content").value.trim();
       button.disabled = true;
       try {
+        const content = $("#mcp-config-content").value.trim();
         if (content) JSON.parse(content);
         const response = await fetch("/api/config", {
           method: "PUT",

@@ -1,0 +1,61 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readMcpForm, writeMcpForm, validateMcpServer } from '../public/lib/mcp-form.mjs';
+import { testMcpServer } from '../lib/mcp.js';
+import { createSettingsApiHandlers } from '../api/settings.js';
+
+const server = { server_label: 'gmail', server_url: 'https://gmail.example/mcp', headers: { Authorization: 'Bearer secret' } };
+
+test('MCP form preserves config options and local/connector entries while editing HTTP servers', () => {
+  const source = { mcp: { auto_approve: true, servers: [{ ...server, allowed_tools: ['search'] }, { server_label: 'connector', connector_id: 'one' }] }, mcp_servers: { local: { command: 'node', args: ['server.js'] } } };
+  const { config, servers } = readMcpForm(JSON.stringify(source));
+  servers[0].server_url = 'https://new.example/mcp';
+  const saved = JSON.parse(writeMcpForm(config, servers));
+  assert.equal(saved.mcp.servers[0].server_url, 'https://new.example/mcp');
+  assert.deepEqual(saved.mcp.servers[0].allowed_tools, ['search']);
+  assert.deepEqual(saved.mcp_servers, source.mcp_servers);
+  assert.equal(saved.mcp.auto_approve, true);
+  assert.deepEqual(saved.mcp.servers[1], source.mcp.servers[1]);
+  assert.deepEqual(JSON.parse(writeMcpForm([], [server])), [server]);
+  assert.deepEqual(JSON.parse(writeMcpForm({ servers: [] }, [server])), { servers: [server] });
+  assert.throws(() => readMcpForm('{broken'), SyntaxError);
+});
+test('MCP connection form validates URL, names, and HTTP headers', () => {
+  assert.equal(validateMcpServer(server), server);
+  for (const server_url of ['invalid', 'file:///etc/passwd', 'https://user:secret@example.com/mcp']) assert.throws(() => validateMcpServer({ ...server, server_url }));
+  assert.throws(() => validateMcpServer({ ...server, server_label: 'bad name' }));
+  assert.throws(() => validateMcpServer({ ...server, headers: { Authorization: 'secret\r\nX-Injected: yes' } }));
+});
+test('Test discovers paginated tools without invoking them or saving, and redacts header secrets', async () => {
+  const methods=[];
+  const tools = await testMcpServer(server, { fetchImpl: async (url, options) => {
+    assert.equal(url, server.server_url);
+    assert.equal(options.headers.get('authorization'), 'Bearer secret');
+    assert.equal(options.redirect, 'error');
+    const request=JSON.parse(options.body); methods.push(request.method);
+    const result=request.params.cursor ? {tools:[{name:'second',description:'secret',inputSchema:{type:'object'}}]} : {tools:[{name:'first',description:'First method'}],nextCursor:'page-two'};
+    return new Response(JSON.stringify({jsonrpc:'2.0',id:request.id,result}),{headers:{'content-type':'application/json'}});
+  } });
+  assert.deepEqual(methods,['tools/list','tools/list']);
+  assert.deepEqual(tools.map(tool=>tool.name),['first','second']);
+  assert.equal(tools[1].description,'[redacted]');
+});
+test('Test supports initialization and cleans up sessions without calling tools', async () => {
+  const methods=[];
+  const tools=await testMcpServer(server,{fetchImpl:async(_url,options)=>{
+    if(options.method==='DELETE'){methods.push('DELETE');return new Response(null,{status:204});}
+    const req=JSON.parse(options.body);methods.push(req.method);
+    if(methods.length===1)return new Response(JSON.stringify({error:'not initialized'}),{status:400});
+    if(req.method==='notifications/initialized')return new Response(null,{status:202});
+    return new Response(JSON.stringify({jsonrpc:'2.0',id:req.id,result:req.method==='initialize'?{protocolVersion:'2025-06-18'}:{tools:[]}}),{headers:{'mcp-session-id':'session-one'}});
+  }});
+  assert.deepEqual(tools,[]);
+  assert.deepEqual(methods,['tools/list','initialize','notifications/initialized','tools/list','DELETE']);
+});
+test('Test errors do not expose returned credentials and test API is admin-only', async () => {
+  await assert.rejects(testMcpServer(server,{fetchImpl:async()=>new Response('Bearer secret',{status:401})}),error=>!error.message.includes('secret')&&error.message.includes('401'));
+  const handler=createSettingsApiHandlers({})['/api/mcp/test'];
+  const result={};
+  await handler({method:'POST',user:{role:'member'}},{writeHead(status){result.status=status;},end(body){result.body=JSON.parse(body);}});
+  assert.equal(result.status,403);
+});
