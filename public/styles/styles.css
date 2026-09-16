@@ -656,7 +656,7 @@ svg.header-icon { height: 18px; }
 .dashboard-task-status.status-running, .dashboard-task-status.status-completed { color: var(--green); }
 .dashboard-task-status.status-failed, .dashboard-task-status.status-cancelled { color: var(--red); }
 @media (min-width: 1101px) {
-  body[data-page="dashboard"] .main-content { grid-template-rows: minmax(180px, 1fr) minmax(130px, .55fr) minmax(140px, .6fr); }
+  body[data-page="dashboard"] .main-content { grid-template-rows: minmax(260px, 1.8fr) minmax(130px, .55fr) minmax(140px, .6fr); }
   body[data-page="dashboard"] .right-column { grid-row: 1 / 4; }
 }
 @media (max-width: 1100px) {

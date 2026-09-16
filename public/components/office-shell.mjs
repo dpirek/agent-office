@@ -71,7 +71,7 @@ class OfficeShell extends OfficeComponent {
 ] }));
   }
   initialize() {
-    this.syncHeader = bindOfficeHeader(this, () => ["dashboard", "search"].includes(this.page));
+    this.syncHeader = bindOfficeHeader(this);
     this.onConnect = () => {
       this.syncHeader();
       window.addEventListener('office-theme-change', this.syncHeader, { signal: this.connectionSignal });
