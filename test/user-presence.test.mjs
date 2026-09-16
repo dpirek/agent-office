@@ -32,3 +32,31 @@ test('human members use unique handles and human mentions do not dispatch agent 
   users.splice(0);
   assert.equal(chat.list().members.length, 1);
 });
+
+test('ended connections go offline; another open tab keeps the same person online', () => {
+  const user = { id: 'person', name: 'Person', role: 'member' };
+  const first = { readableEnded: true }, second = {};
+  const sockets = new Map([[first, { token: 'one' }], [second, { token: 'two' }]]);
+  const store = { session: () => user };
+  assert.equal(connectedUsers(sockets, store).length, 1);
+  second.writableEnded = true;
+  assert.equal(connectedUsers(sockets, store).length, 0);
+});
+
+test('project members remain in chat as offline after their final tab disconnects', () => {
+  const users = [{ id: 'one', name: 'Alex', role: 'member', email: 'private@example.com' }, { id: 'two', name: 'Sam', role: 'member' }];
+  let online = [users[0]];
+  const chat = createOfficeChatService({
+    uiStateStore: { getOfficeChatMessages: () => [], requireProject() {} },
+    getOnlineUsers: () => online,
+    getProjectUsers: projectId => projectId === 'alpha' ? users : [],
+  });
+  const people = () => chat.list({ projectId: 'alpha' }).members.filter(member => member.type === 'human');
+  assert.deepEqual(people().map(member => member.status), ['online', 'offline']);
+  online = [];
+  assert.deepEqual(people().map(member => member.status), ['offline', 'offline']);
+  assert.equal(people()[0].email, undefined);
+  assert.equal(chat.list({ projectId: 'beta' }).members.length, 1);
+  online = [users[0]];
+  assert.equal(people()[0].status, 'online');
+});
