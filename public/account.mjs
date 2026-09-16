@@ -1,8 +1,7 @@
 import { USER_AVATARS, renderUserAvatar } from './lib/user-avatars.mjs';
 
 export async function renderAccount(root, { onAuthenticated = () => {}, onSignedOut = () => location.replace("/account") } = {}) {
-  root.innerHTML = `<header class="panel-header"><div><span class="header-icon" aria-hidden="true">♙</span><h2>ACCOUNT</h2></div><span class="panel-meta">IDENTITY & ACCESS</span></header>
-    <div class="account-body"><div class="account-heading"><span class="account-eyebrow">YOUR OFFICE</span><h1 id="account-title">Account</h1><p id="account-description"></p></div><p id="account-message" role="status" aria-live="polite" hidden></p><div id="account-content"></div></div>`;
+  root.innerHTML = `<div class="account-body"><div class="account-heading"><span class="account-eyebrow">YOUR WORKSPACE, CONNECTED</span><h1 id="account-title">Welcome back</h1><p id="account-description">Checking your session…</p></div><p id="account-message" role="status" aria-live="polite" hidden></p><div id="account-content"></div></div>`;
   const content = root.querySelector("#account-content");
   const message = root.querySelector("#account-message");
   const title = root.querySelector("#account-title");
@@ -28,17 +27,28 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     return element;
   }
   function form(mode) {
+    notify("");
+    root.classList.remove("is-profile");
     content.replaceChildren();
     const registration = mode === "register";
-    title.textContent = registration ? (session.needsSetup ? "Create administrator account" : "Register") : "Sign in";
-    description.textContent = registration ? (session.needsSetup ? "The first account manages users and office access." : "An administrator must approve your account before you can enter the office.") : "Sign in to your shared office.";
+    title.textContent = registration ? (session.needsSetup ? "Create administrator account" : "Create your account") : "Welcome back";
+    description.textContent = registration ? (session.needsSetup ? "The first account manages users and office access." : "Admin approval is required to join.") : "Sign in to your office.";
+    document.title = `${registration ? "Create account" : "Sign in"} · Agent Office`;
     const element = document.createElement("form");
     function field(label, name, type, autocomplete) {
       const wrapper = document.createElement("label"); wrapper.textContent = label;
       const input = document.createElement("input"); input.name = name; input.type = type; input.autocomplete = autocomplete; input.required = true;
       if (type === "password") input.maxLength = 256;
       else input.maxLength = name === "name" ? 100 : 254;
-      wrapper.append(input); element.append(wrapper);
+      input.placeholder = name === "name" ? "Your full name" : name === "email" ? "you@example.com" : name === "confirmation" ? "Re-enter your password" : registration ? "Choose a password" : "Enter your password";
+      if (name === "email") { input.autocapitalize = "none"; input.spellcheck = false; }
+      if (name === "password") {
+        const group = document.createElement("span"); group.className = "password-field";
+        const toggle = document.createElement("button"); toggle.type = "button"; toggle.textContent = "Show"; toggle.setAttribute("aria-label", "Show password"); toggle.setAttribute("aria-pressed", "false");
+        toggle.addEventListener("click", () => { const show = input.type === "password"; input.type = show ? "text" : "password"; toggle.textContent = show ? "Hide" : "Show"; toggle.setAttribute("aria-label", show ? "Hide password" : "Show password"); toggle.setAttribute("aria-pressed", String(show)); });
+        group.append(input, toggle); wrapper.append(group);
+      } else wrapper.append(input);
+      element.append(wrapper);
     }
     if (registration) field("Name", "name", "text", "name");
     field("Email", "email", "email", "username");
@@ -48,6 +58,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     element.append(submit);
     element.addEventListener("submit", async (event) => {
       event.preventDefault(); notify(""); submit.disabled = true;
+      submit.textContent = registration ? "Creating account…" : "Signing in…";
       try {
         const body = Object.fromEntries(new FormData(element));
         if (registration && body.password !== body.confirmation) throw new Error("Passwords do not match.");
@@ -56,15 +67,18 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
         await load();
         if (session.user && session.user.role !== "pending") onAuthenticated(session.user);
       } catch (error) { notify(error.message); }
-      finally { submit.disabled = false; }
+      finally { submit.disabled = false; submit.textContent = registration ? "Create account" : "Sign in"; }
     });
     content.append(element);
     const actions = document.createElement("div"); actions.className = "account-actions";
-    if (mode !== "login") actions.append(button("Sign in", () => form("login")));
-    if (mode === "login") actions.append(button("Register", () => form("register")));
+    actions.append(document.createTextNode(registration ? "Already have an account?" : "New to Agent Office?"));
+    if (mode !== "login") actions.append(button("Sign in", () => { form("login"); content.querySelector("input").focus(); }));
+    if (mode === "login") actions.append(button("Create an account", () => { form("register"); content.querySelector("input").focus(); }));
     content.append(actions);
   }
   async function account() {
+    root.classList.add("is-profile");
+    document.title = "Your account · Agent Office";
     const user = session.user;
     title.textContent = "Your account";
     description.textContent = "Manage your identity and access to the shared office.";
@@ -111,6 +125,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     }
     const summary = document.createElement("section"); summary.className = "account-access";
     summary.innerHTML = `<span class="account-eyebrow">WORKSPACE ACCESS</span><h2>One office. Shared work.</h2><p>You can work with shared projects, files, agent tools, and office settings.</p>`;
+    const enter = document.createElement("a"); enter.href = "/"; enter.className = "enter-office"; enter.textContent = "Open your office →"; summary.append(enter);
     content.append(summary);
     if (user.role !== "admin") return;
     const heading = document.createElement("div"); heading.className = "account-section-heading";
@@ -150,3 +165,5 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
   catch (error) { notify(error.message); }
 
 }
+
+void renderAccount(document.querySelector("#account-view"), { onAuthenticated: () => location.assign("/") });

@@ -1,5 +1,4 @@
 import { initChatComposer } from "./lib/chat-composer.mjs";
-import { renderAccount } from "./account.mjs";
 import { requireSession } from "./lib/auth.mjs";
 import { initSidebar } from "./sidebar.mjs";
 import { initializeDashboardOfficeChat } from "./lib/dashboard-office-chat.mjs";
@@ -220,6 +219,7 @@ document.addEventListener("click", (event) => {
 });
 
 function renderPage(section) {
+  if (section === "account") { location.assign("/account"); return; }
   const page = PAGES[section] || PAGES.dashboard;
   document.body.dataset.page = section;
   document.title = `${page.title} · AI Agent Office`;
@@ -251,7 +251,6 @@ function renderPage(section) {
     $("#route-page-heading").textContent = page.heading;
     $("#route-page-description").textContent = page.description;
   }
-  if (section === "account") void renderAccount($("#account-view"));
   if (section === "chat") void loadOfficeChat({ quiet: true });
   if (section === "workspace") void loadSharedWorkspace({ quiet: true });
   syncCollapsedPanelLayout();
@@ -1736,7 +1735,7 @@ registerProjectRoutes(router, {
   renderPage,
 });
 $$('.nav-item[data-section]').forEach((link) => link.addEventListener("click", (event) => {
-  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (link.dataset.section === "account" || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   event.preventDefault();
   router.navigate(link.getAttribute("href"));
 }));
