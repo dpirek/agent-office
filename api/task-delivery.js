@@ -2,6 +2,9 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { json, methodNotAllowed } from "./http.js";
 import { taskDeliveryFiles, streamTaskZip } from "../lib/task-delivery-zip.js";
+import path from 'node:path';
+import fs from 'node:fs/promises';
+import { requireProjectAccess } from '../lib/project-access.js';
 
 export function createTaskDeliveryHandlers({ uiStateStore, sharedWorkspaceRoot }) {
   return { "/downloads/tasks/": async (req, res, url) => {
@@ -14,6 +17,10 @@ export function createTaskDeliveryHandlers({ uiStateStore, sharedWorkspaceRoot }
       const task = uiStateStore.getOfficeTasks({ id: taskId, projectId, limit: 1 })[0];
       if (!task) throw new Error("Task download not found.");
       const files = await taskDeliveryFiles(sharedWorkspaceRoot, task);
+      if (req.user?.role === 'member') {
+        const base = await fs.realpath(sharedWorkspaceRoot);
+        for (const file of files) requireProjectAccess(req.user, path.relative(base, file.file).split(path.sep)[0]);
+      }
       const filename = (task.title || "delivered-work").replace(/[^A-Za-z0-9_-]+/g, "-").slice(0, 80) + ".zip";
       res.writeHead(200, {
         "content-type": "application/zip",

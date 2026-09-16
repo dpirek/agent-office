@@ -11,6 +11,7 @@ import { createChatApiHandlers } from "./chat.js";
 import { createSharedWorkspaceApiHandlers } from "./shared-workspace.js";
 import { createSystemLogApiHandlers } from "./system-logs.js";
 import { createWorkerArtifactApiHandlers } from "./worker-artifacts.js";
+import { guardProjectRequest } from './project-access.js';
 
 export function createApiRouter(options) {
   const routes = new Map(Object.entries({
@@ -32,6 +33,7 @@ export function createApiRouter(options) {
   return async function handleApiRequest(req, res, url) {
     const handler = routes.get(url.pathname) || (url.pathname.startsWith("/files/") ? routes.get("/files/") : null) || (url.pathname.startsWith("/mcp/projects/") ? routes.get("/mcp/projects/") : null) || (url.pathname.startsWith("/downloads/tasks/") ? routes.get("/downloads/tasks/") : null);
     if (!handler) return false;
+    if (await guardProjectRequest(req, res, url, options)) return true;
     await handler(req, res, url);
     return true;
   };

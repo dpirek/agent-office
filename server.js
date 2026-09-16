@@ -76,6 +76,7 @@ const userStore = createUserStore(path.join(databaseDir, "users.sqlite"), {
 });
 const authService = createAuthService({
   userStore,
+  getProjects: () => uiStateStore.getProjects(),
   publicOrigin: process.env.AI_HARNESS_PUBLIC_ORIGIN,
 });
 const connections = new Set();
@@ -314,6 +315,7 @@ function startServer({ port = defaultPort, host } = {}) {
 }
 
 const handleWebSocket = createWebSocketHandler({
+  authorizeMessage: req => authService.authorizeSocket(req)?.role === 'admin',
   createAgentSession,
   getRigConfigurations: () => uiStateStore.getRigConfigurations(),
   normalizeToolPermissions,
@@ -526,6 +528,7 @@ server = http.createServer(async (req, res) => {
   });
   if (await authService.handle(req, res, url)) return;
   const handleApiRequest = createApiRouter({
+    userStore,
     webSocketUrl,
     uiStateStore,
     defaultWorkspace,

@@ -23,6 +23,7 @@ export function registerProjectRoutes(router, { pages, getProjectId, selectProje
     router.addRoute(page.path, () => router.navigate(projectPagePath(section, getProjectId()), { replace: true }));
     router.addRoute(`/:projectId/${section}`, ({ projectId }) => {
       const selected = selectProject(projectId);
+      if (!selected) { router.navigate('/account', { replace: true }); return; }
       const canonical = projectPagePath(section, selected);
       if (window.location.pathname !== canonical) {
         router.navigate(canonical, { replace: true });

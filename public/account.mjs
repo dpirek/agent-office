@@ -162,13 +162,16 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     }
     const summary = document.createElement("section"); summary.className = "account-access";
     summary.innerHTML = `<span class="account-eyebrow">WORKSPACE ACCESS</span><h2>One office. Shared work.</h2><p>You can work with shared projects, files, agent tools, and office settings.</p>`;
+    if (user.role === 'member') summary.querySelector('p').textContent = user.projectIds?.length === 0
+      ? 'No existing projects are assigned to you. Create a new project or ask an administrator for access.'
+      : 'You can work in projects assigned to you and any new projects you create.';
     const enter = document.createElement("a"); enter.href = "/"; enter.className = "enter-office"; enter.textContent = "Open your office →"; summary.append(enter);
     panels.profile.append(summary);
     if (user.role !== "admin") return;
     const heading = document.createElement("div"); heading.className = "account-section-heading";
     heading.innerHTML = `<div><span class="account-eyebrow">ADMINISTRATION</span><h2>Users</h2><p>Approve new members and manage who can access the office.</p></div>`;
     panels.users.append(heading);
-    const { users } = await api("/api/users");
+    const [{ users }, { projects }] = await Promise.all([api('/api/users'), api('/api/projects')]);
     const count = document.createElement("span"); count.className = "account-badge"; count.textContent = `${users.length} ${users.length === 1 ? "user" : "users"}`; heading.append(count);
     const roleGuide = document.createElement("div"); roleGuide.className = "account-role-guide";
     roleGuide.innerHTML = `<div><strong>Administrator</strong><span>Office access, users & factory reset</span></div><div><strong>Member</strong><span>Shared projects, tools & settings</span></div><div><strong>Pending</strong><span>Awaiting approval · no office access</span></div>`; panels.users.append(roleGuide);
@@ -192,6 +195,43 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
       const controls = document.createElement("div"); controls.className = "account-user-controls"; controls.append(select, save, disable);
       const status = document.createElement("span"); status.className = `account-badge ${entry.disabled ? "disabled" : entry.role}`; status.textContent = entry.disabled ? "Disabled" : entry.role === "pending" ? "Awaiting approval" : "Active";
       row.append(label, status, controls); list.append(row);
+      if (entry.role !== 'admin') {
+        const access = document.createElement('details'); access.className = 'user-project-access';
+        const summary = document.createElement('summary');
+        summary.textContent = `Project access · ${entry.projectIds == null ? 'All projects' : `${entry.projectIds.length} selected`}`;
+        const form = document.createElement('form'); form.className = 'project-access-form';
+        const scopeLabel = document.createElement('label'); scopeLabel.textContent = 'Access to projects';
+        const scope = document.createElement('select'); scope.setAttribute('aria-label', `Project access for ${entry.email}`);
+        for (const [value, text] of [['all', 'All projects, including future projects'], ['selected', 'Only selected projects']]) {
+          const option = document.createElement('option'); option.value = value; option.textContent = text; scope.append(option);
+        }
+        scope.value = entry.projectIds == null ? 'all' : 'selected'; scopeLabel.append(scope); form.append(scopeLabel);
+        const choices = document.createElement('fieldset'); choices.className = 'project-access-choices';
+        const legend = document.createElement('legend'); legend.textContent = 'Allowed projects'; choices.append(legend);
+        for (const project of projects) {
+          const label = document.createElement('label');
+          const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'projectId'; checkbox.value = project.id;
+          checkbox.checked = entry.projectIds?.includes(project.id) || false;
+          label.append(checkbox, document.createTextNode(project.name)); choices.append(label);
+        }
+        const syncScope = () => { choices.hidden = scope.value === 'all'; };
+        scope.addEventListener('change', syncScope); syncScope();
+        const hint = document.createElement('p'); hint.textContent = 'No selections means no existing project access. Members can still create projects and automatically access their own new projects.';
+        const submit = document.createElement('button'); submit.type = 'submit'; submit.textContent = 'Save project access';
+        const status = document.createElement('p'); status.setAttribute('role', 'status');
+        form.append(choices, hint, submit, status); access.append(summary, form); row.append(access);
+        form.addEventListener('submit', async event => {
+          event.preventDefault(); submit.disabled = true; status.textContent = 'Saving…';
+          try {
+            const projectIds = scope.value === 'all' ? null : new FormData(form).getAll('projectId');
+            await api('/api/users', { id: entry.id, projectIds }, 'PATCH');
+            entry.projectIds = projectIds;
+            summary.textContent = `Project access · ${projectIds === null ? 'All projects' : `${projectIds.length} selected`}`;
+            status.textContent = 'Project access saved.';
+          } catch (error) { status.textContent = error.message; }
+          finally { submit.disabled = false; }
+        });
+      }
     }
   }
   async function load() {

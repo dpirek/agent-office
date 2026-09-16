@@ -8,6 +8,10 @@ export function json(res, status, payload) {
 }
 
 export async function readRequestBuffer(req, limit = 250_000) {
+  if (req.cachedBody) {
+    if (req.cachedBody.length > limit) throw new Error('Request body is too large.');
+    return req.cachedBody;
+  }
   const chunks = [];
   let size = 0;
   for await (const chunk of req) {
@@ -15,7 +19,8 @@ export async function readRequestBuffer(req, limit = 250_000) {
     if (size > limit) throw new Error("Request body is too large.");
     chunks.push(chunk);
   }
-  return Buffer.concat(chunks);
+  req.cachedBody = Buffer.concat(chunks);
+  return req.cachedBody;
 }
 
 export async function readRequestBody(req, limit = 250_000) {

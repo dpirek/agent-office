@@ -4,7 +4,7 @@ export function createSystemLogApiHandlers({ uiStateStore }) {
   async function handleSystemLogsApi(req, res, url) {
     if (req.method === "GET") {
       const limit = Number(url.searchParams.get("limit") || 200);
-      json(res, 200, { ok: true, logs: uiStateStore.getSystemActivity({ limit }) });
+      json(res, 200, { ok: true, logs: req.user?.role === 'member' ? [] : uiStateStore.getSystemActivity({ limit }) });
       return;
     }
     if (req.method !== "POST") {

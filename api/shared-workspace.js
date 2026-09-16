@@ -5,6 +5,7 @@ import { projectWorkspace } from "../lib/projects.js";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { json, methodNotAllowed } from "./http.js";
+import { requireProjectAccess } from '../lib/project-access.js';
 
 const CONTENT_TYPES = {
   ".htm": "text/html; charset=utf-8", ".ico": "image/x-icon", ".avif": "image/avif",
@@ -100,6 +101,7 @@ export function createSharedWorkspaceApiHandlers({ sharedWorkspaceRoot, uiStateS
         stat = await fs.stat(file);
       }
       if (!stat.isFile()) throw new Error("Selected path is not a file.");
+      if (req.user?.role === 'member') requireProjectAccess(req.user, path.relative(base, file).split(path.sep)[0]);
       res.writeHead(200, {
         "content-type": CONTENT_TYPES[path.extname(file).toLowerCase()] || "application/octet-stream",
         "content-length": stat.size,

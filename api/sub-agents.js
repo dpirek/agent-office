@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { canAccessProject } from '../lib/project-access.js';
 import { json, methodNotAllowed, readRequestBody } from "./http.js";
 
 export function createSubAgentApiHandlers({ subAgentManager, uiStateStore }) {
@@ -22,7 +23,7 @@ export function createSubAgentApiHandlers({ subAgentManager, uiStateStore }) {
       workers: [...workers.values()].sort((left, right) => (
         Number(right.status === "connected") - Number(left.status === "connected") || left.name.localeCompare(right.name)
       )),
-      tasks: subAgentManager?.listTasks() || [],
+      tasks: (subAgentManager?.listTasks() || []).filter(task => !req.user || canAccessProject(req.user, task.projectId || 'central-office')),
       orchestrator: active ? {
         id: active.id,
         name: active.name,

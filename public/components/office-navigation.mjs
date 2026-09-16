@@ -1,5 +1,5 @@
 import OfficeComponent from "./office-component.mjs";
-import { projectPagePath } from "../lib/project-routes.mjs";
+import { projectPagePath, PROJECT_PAGES } from "../lib/project-routes.mjs";
 
 class OfficeNavigation extends OfficeComponent {
   static hostAttributes = {"class": "sidebar", "role": "navigation", "id": "primary-navigation", "aria-label": "Primary navigation"};
@@ -176,7 +176,7 @@ class OfficeNavigation extends OfficeComponent {
     };
     this.update = () => {
       $$('.nav-item[data-section]').forEach(link => {
-        link.hidden = ['knowledge', 'operations'].includes(link.dataset.section) && state.userRole !== 'admin';
+        link.hidden = (['knowledge', 'operations'].includes(link.dataset.section) && state.userRole !== 'admin') || (PROJECT_PAGES.has(link.dataset.section) && !state.projects.length);
         link.href = projectPagePath(link.dataset.section, state.projectId);
         const active = link.dataset.section === state.page;
         const changed = active && !link.classList.contains('active');

@@ -4,7 +4,7 @@ const COOKIE = "office_session";
 export function sessionToken(req) {
   return String(req.headers.cookie || "").split(";").map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1) || "";
 }
-export function createAuthService({ userStore, publicOrigin = "" }) {
+export function createAuthService({ userStore, publicOrigin = "", getProjects = () => [] }) {
   const origin = publicOrigin ? new URL(publicOrigin).origin : "";
   const attempts = new Map();
   function cookie(res, value) {
@@ -67,6 +67,7 @@ export function createAuthService({ userStore, publicOrigin = "" }) {
         userStore.logout(sessionToken(req)); cookie(res, ""); json(res, 200, { ok: true });
       } else if (route === "/api/users") {
         if (typeof body.id !== "string") throw new Error("User ID is required.");
+        if (Array.isArray(body.projectIds) && body.projectIds.some(id => !getProjects().some(project => project.id === id))) throw new Error('Unknown project.');
         json(res, 200, { ok: true, user: userStore.update(body.id, body) });
       } else json(res, 404, { ok: false, error: "Not found." });
     } catch (error) {

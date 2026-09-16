@@ -95,6 +95,7 @@ shell.addEventListener('file-open', ({ detail: { href } }) => {
 });
 
 function renderPage(section) {
+  if (!state.projectId && (PROJECT_PAGES.has(section) || section === 'search')) { router.navigate('/account', { replace: true }); return; }
   if (['knowledge', 'operations'].includes(section) && signedInUser.role !== 'admin') {
     router.navigate(projectPagePath('dashboard', state.projectId), { replace: true });
     return;
@@ -239,6 +240,7 @@ function renderOfficeChat() {
 }
 
 async function loadOfficeChat({ quiet = false } = {}) {
+  if (!state.projects.some(project => project.id === state.projectId)) return;
   try {
     const projectId = state.projectId;
     const data = await fetchJson(`/api/chat?limit=300&projectId=${encodeURIComponent(projectId)}`);
@@ -277,13 +279,13 @@ function renderTasks() {
   renderSelectedAgent();
 }
 
-function loadSharedWorkspace(options) { return workspace.load(options); }
+function loadSharedWorkspace(options) { if (state.projects.some(project => project.id === state.projectId)) return workspace.load(options); }
 
 function renderOperationAgentOptions() { operationsPanel.data = { workers: state.workers }; }
 
 function renderOperations() { operationsPanel.data = { operations: state.operations, projectId: state.projectId }; }
 
-function loadMemory(options) { return memory.load(options); }
+function loadMemory(options) { if (state.projects.some(project => project.id === state.projectId)) return memory.load(options); }
 
 function formatUptime() {
   const seconds = Math.floor((Date.now() - startedAt) / 1000);
@@ -360,6 +362,7 @@ async function deleteTask(id) {
 }
 
 async function refreshDashboard({ quiet = false } = {}) {
+  if (!state.projects.some(project => project.id === state.projectId)) return;
   try {
     const projectId = state.projectId;
     const [health, subAgents, operations, officeTasks] = await Promise.all([
@@ -552,9 +555,9 @@ registerProjectRoutes(router, {
   pages: PAGES,
   getProjectId: () => state.projectId,
   selectProject: (id) => {
-    const selected = state.projects.some((project) => project.id === id) ? id : "central-office";
-    if (selected !== id) showToast("Project not found. Showing Central Office.", true);
-    if (state.projectId !== selected) void switchProject(selected, { navigate: false });
+    const selected = state.projects.some((project) => project.id === id) ? id : state.projects[0]?.id || null;
+    if (selected !== id) showToast("Project unavailable. Showing your available workspace.", true);
+    if (selected && state.projectId !== selected) void switchProject(selected, { navigate: false });
     return selected;
   },
   renderPage,
@@ -605,9 +608,24 @@ handleRequest('chat-refresh', () => loadOfficeChat());
 handleRequest('project-create', async ({ name, description }) => {
   const project = await saveProject({ name, description });
   await switchProject(project.id);
+  if (!PROJECT_PAGES.has(document.body.dataset.page)) router.navigate(projectPagePath('dashboard', project.id));
   return project;
 });
 
+setInterval(async () => {
+  if (signedInUser.role !== 'member') return;
+  const previous = state.projectId;
+  try {
+    await loadProjects();
+    if (previous !== state.projectId) {
+      state.officeTasks = []; state.officeChatMessages = []; state.chatMessages = []; state.operations = [];
+      workspace.reset(); memory.data = { memoryRecords: [] };
+      renderTasks(); renderOfficeChat(); renderChat(); renderOperations();
+      router.navigate(state.projectId ? projectPagePath('dashboard', state.projectId) : '/account', { replace: true });
+      if (state.projectId) await switchProject(state.projectId, { navigate: false });
+    }
+  } catch { /* Retry when the connection returns. */ }
+}, 10000);
 setInterval(renderSelectedAgent, 1000);
 setInterval(() => void refreshDashboard({ quiet: true }), 2500);
 setInterval(() => void loadMemory({ quiet: true }), 5000);
@@ -642,10 +660,11 @@ function renderProjects() {
 async function loadProjects() {
   const data = await fetchJson("/api/projects");
   state.projects = data.projects;
-  if (!state.projects.some((entry) => entry.id === state.projectId)) state.projectId = "central-office";
+  if (!state.projects.some((entry) => entry.id === state.projectId)) state.projectId = state.projects[0]?.id || null;
   renderProjects();
 }
 async function switchProject(id, { navigate = true } = {}) {
+  if (!id || !state.projects.some(project => project.id === id)) return;
   if (navigate && PROJECT_PAGES.has(document.body.dataset.page)) {
     router.navigate(projectPagePath(document.body.dataset.page, id));
     return;

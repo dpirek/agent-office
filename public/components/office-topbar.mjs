@@ -64,6 +64,8 @@ class OfficeTopbar extends OfficeComponent {
       const projects = this.querySelector('.topbar-projects select');
       projects.replaceChildren(...this.model.projects.map(project => this.createElement('option', { value: project.id, textContent: project.name })));
       projects.value = this.model.projectId;
+      projects.disabled = !this.model.projects.length;
+      if (!this.model.projects.length) projects.append(this.createElement('option', { textContent: 'No projects' }));
       const brand = this.querySelector('.topbar-brand');
       const label = this.model.collapsed ? 'Expand navigation' : 'Collapse navigation';
       brand.setAttribute('aria-expanded', String(!this.model.collapsed));
