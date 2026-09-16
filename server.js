@@ -411,6 +411,7 @@ officeChatService = createOfficeChatService({
   uiStateStore,
   subAgentManager,
   onManagerMention: handleOfficeManagerMention,
+  isManagerBusy: () => officeManagerBoardRunning,
   isManagerTyping: (projectId) => officeManagerBoardRunning && officeManagerProjectId === projectId,
 });
 taskReviewTrigger = new TaskReviewTrigger({

@@ -177,3 +177,26 @@ test('reply targets must exist in the same project before any message or manager
   assert.throws(() => chat.postUserMessage({ text: 'Reply', replyToId: 'missing' }), /Reply target not found/);
   assert.equal(chat.list().messages.length, 0);
 });
+
+test('agents typing in one project are busy in other projects and return online when finished', context => {
+  const { directory, store } = setup();
+  context.after(() => { store.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const alpha = store.createProject({ name: 'Alpha' }).id;
+  const beta = store.createProject({ name: 'Beta' }).id;
+  let activeProject = alpha;
+  let directMessages = [{ agent: 'Builder', projectId: alpha, state: 'waiting' }];
+  const chat = createOfficeChatService({
+    uiStateStore: store,
+    subAgentManager: { listWorkers: () => [{ name: 'Builder' }], listDirectMessages: () => directMessages },
+    isManagerTyping: projectId => activeProject === projectId,
+    isManagerBusy: () => activeProject !== null,
+  });
+  const statuses = projectId => chat.list({ projectId }).members.map(member => member.status);
+  assert.deepEqual(statuses(alpha), ['is typing', 'is typing']);
+  assert.deepEqual(statuses(beta), ['busy', 'busy']);
+  assert.deepEqual(statuses('central-office'), ['busy', 'busy']);
+  activeProject = null;
+  directMessages = [];
+  assert.deepEqual(statuses(alpha), ['online', 'online']);
+  assert.deepEqual(statuses(beta), ['online', 'online']);
+});

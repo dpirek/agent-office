@@ -152,7 +152,7 @@ class OfficeChat extends OfficeComponent {
             avatar,
             this.createElement('span', { class: 'office-chat-member-name', children: [
               this.createElement('strong', { textContent: member.name }),
-              member.status === 'is typing' ? this.createElement('em', { textContent: 'is typing' }) : null,
+              ['is typing', 'busy'].includes(member.status) ? this.createElement('em', { textContent: member.status }) : null,
             ] }),
           ],
         });
