@@ -1,6 +1,6 @@
 import { initChatComposer } from "./lib/chat-composer.mjs";
 import { requireSession } from "./lib/auth.mjs";
-import { initSidebar } from "./sidebar.mjs";
+import { initSidebar } from "./lib/sidebar.mjs";
 import { initializeDashboardOfficeChat } from "./lib/dashboard-office-chat.mjs";
 initSidebar();
 initChatComposer();
