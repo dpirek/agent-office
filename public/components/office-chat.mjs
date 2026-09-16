@@ -1,3 +1,4 @@
+import { renderUserAvatar } from '../lib/user-avatars.mjs';
 import OfficeComponent from "./office-component.mjs";
 import { escapeHtml, shortTime, officeSprite } from "./office-format.mjs";
 import { renderChatArtifacts, renderMarkdown } from "../lib/markdown.mjs";
@@ -115,16 +116,17 @@ class OfficeChat extends OfficeComponent {
     const renderMembers = () => {
       $('#office-chat-members').replaceChildren(...state.officeChatMembers.map((member, index) => {
         const sprite = officeSprite({ name: member.name, role: member.description || '', internal: member.username === 'office-manager' }, Math.max(1, index));
+        const avatar = this.createElement('span', { class: 'office-chat-member-avatar', 'aria-hidden': 'true' });
+        if (member.type === 'human') renderUserAvatar(avatar, member);
+        else avatar.append(this.createElement('img', { src: `/assets/avatars/${sprite}.png`, alt: '', draggable: 'false', width: '28', height: '28' }));
+        avatar.append(this.createElement('i', { class: 'office-chat-member-status' }));
         return this.createElement('button', {
           class: 'office-chat-member', type: 'button',
           'data-username': member.username, 'data-status': member.status,
           title: `Mention @${member.username} · ${member.status}`,
           'aria-label': `${member.name}, ${member.status}. Mention @${member.username}`,
           children: [
-            this.createElement('span', { class: 'office-chat-member-avatar', 'aria-hidden': 'true', children: [
-              this.createElement('img', { src: `/assets/avatars/${sprite}.png`, alt: '', draggable: 'false', width: '28', height: '28' }),
-              this.createElement('i', { class: 'office-chat-member-status' }),
-            ] }),
+            avatar,
             this.createElement('span', { class: 'office-chat-member-name', children: [
               this.createElement('strong', { textContent: member.name }),
               member.status === 'is typing' ? this.createElement('em', { textContent: 'is typing' }) : null,

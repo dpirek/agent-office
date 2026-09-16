@@ -20,6 +20,7 @@ shell.addEventListener('account-user-change', ({ detail }) => {
   navigation.data = { userRole: detail.user.role };
   topbar.data = { user: detail.user };
   component('settings').data = { userRole: detail.user.role };
+  renderOffice(); renderSelectedAgent(); renderOfficeChat();
 });
 const searchPage = component('search');
 const workspace = component('workspace');
@@ -178,17 +179,31 @@ function officeManagerAgent() {
   };
 }
 
+function chatMembers() {
+  const members = state.officeChatMembers;
+  const current = { id: signedInUser.id, username: `user-${signedInUser.id}`, name: signedInUser.name, avatar: signedInUser.avatar, type: 'human', status: 'online' };
+  return [...members.filter(member => member.username !== current.username), current];
+}
+
 function officeAgents() {
-  return [officeManagerAgent(), ...state.agents];
+  const people = chatMembers().filter(member => member.type === 'human').map(member => ({
+    ...member, human: true, selectionKey: `human:${member.id}`, role: 'Office member',
+    description: 'Signed in to the office', tools: '',
+    status: member.status === 'online' ? 'ready' : member.status,
+  }));
+  return [officeManagerAgent(), ...people, ...state.agents];
 }
 
 function currentAgent() {
   const agents = officeAgents();
-  return agents.find((agent) => agent.name === state.selectedAgent) || agents[0];
+  return agents.find((agent) => (agent.selectionKey || agent.name) === state.selectedAgent) || agents[0];
 }
 
 function renderOffice() {
-  component('floor').data = { agents: officeAgents(), selectedAgent: state.selectedAgent };
+  const agents = officeAgents();
+  const floor = component('floor');
+  floor.data = { agents, selectedAgent: state.selectedAgent };
+  floor.meta = `1 MANAGER · ${state.workers.length} REMOTE WORKERS · ${agents.filter(agent => agent.human).length} PEOPLE`;
 }
 
 function renderAgentRegistry() { component('worker-registry').data = { workers: state.workers }; }
@@ -219,7 +234,7 @@ async function loadSystemLogs() {
 function renderChat() { managerChat.data = { chatMessages: state.chatMessages, socketReady: state.socketReady, chatRunning: state.chatRunning, health: state.health, projectId: state.projectId }; }
 
 function renderOfficeChat() {
-  chat.data = { officeChatMessages: state.officeChatMessages, officeChatMembers: state.officeChatMembers, projects: state.projects, projectId: state.projectId, chatRunning: state.chatRunning };
+  chat.data = { officeChatMessages: state.officeChatMessages, officeChatMembers: chatMembers(), projects: state.projects, projectId: state.projectId, chatRunning: state.chatRunning };
   dashboardChat.data = { messages: state.officeChatMessages, projectId: state.projectId, projectName: state.projects.find(project => project.id === state.projectId)?.name || 'Central Office' };
 }
 
@@ -232,6 +247,7 @@ async function loadOfficeChat({ quiet = false } = {}) {
     state.chatMessages = state.officeChatMessages.filter((message) => ["user", "manager"].includes(message.kind)).map((message) => ({ role: message.kind === "user" ? "user" : "agent", text: message.text }));
     renderChat();
     state.officeChatMembers = data.members || [];
+    renderOffice(); renderSelectedAgent();
     renderOfficeChat({ preserveScroll: true });
   } catch (error) {
     if (!quiet) showToast(error.message, true);
@@ -297,7 +313,7 @@ function mergeConfiguredAgents(workers) {
     };
   });
   state.agents = normalized;
-  if (!officeAgents().some((agent) => agent.name === state.selectedAgent)) {
+  if (!officeAgents().some((agent) => (agent.selectionKey || agent.name) === state.selectedAgent)) {
     state.selectedAgent = "Office Manager";
   }
 }
@@ -363,7 +379,6 @@ async function refreshDashboard({ quiet = false } = {}) {
     state.operations = operations.operations || [];
     mergeConfiguredAgents(state.workers);
 
-    component("floor").meta = `1 MANAGER · ${subAgents.workers?.length || 0} REMOTE WORKERS`;
     renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderTasks();
     renderChat();
     if (!quiet) addLog("System", "Agent configuration synchronized", "success");
@@ -566,7 +581,7 @@ shell.addEventListener('search-result-open', async ({ detail }) => {
 shell.addEventListener('office-navigate', ({ detail }) => router.navigate(detail.href));
 shell.addEventListener('project-select', ({ detail }) => void switchProject(detail.id));
 shell.addEventListener('agent-select', ({ detail }) => {
-  state.selectedAgent = detail.name;
+  state.selectedAgent = detail.selectionKey || detail.name;
   renderOffice(); renderSelectedAgent();
 });
 shell.addEventListener('configuration-change', refreshOrchestratorConnection);

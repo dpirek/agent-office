@@ -113,6 +113,7 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 .desk-agent.active .nameplate i { background: var(--red); box-shadow: 0 0 8px var(--red); }
 .desk-agent.selected .nameplate { border-color: var(--green); box-shadow: 0 0 0 1px #173d2a, 0 3px 8px #0008; }
 .desk-agent.manager .nameplate { border-color: var(--green); }
+.agent-floor.is-crowded { grid-auto-rows: minmax(140px, auto); overflow-y: auto; }
 
 .selected-panel { display: flex; flex-direction: column; }
 .selected-body { display: flex; flex-direction: column; overflow: hidden; }
@@ -224,6 +225,7 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .office-chat-member:hover, .office-chat-member:focus-visible { background: #8882; }
 .office-chat-member:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
 .office-chat-member-avatar { position: relative; display: block; width: 28px; height: 28px; border-radius: 50%; background: var(--panel-hi); }
+.office-chat-member-avatar { display: grid; place-items: center; color: var(--text); font-size: 11px; }
 .office-chat-member-avatar img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
 .office-chat-member-status { position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px; border: 2px solid var(--panel); border-radius: 50%; background: #29a443; }
 .office-chat-member[data-status="busy"] .office-chat-member-status { background: #d73545; }
@@ -641,7 +643,7 @@ svg.header-icon { height: 18px; }
 .sidebar-logo, .sidebar-toggle-logo { display: none; }
 .sidebar-toggle { order: 3; }
 
-.dashboard-tasks-panel { grid-column: 1; grid-row: 3; }
+.dashboard-tasks-panel { grid-column: 1; grid-row: 2 / 4; }
 .dashboard-tasks-body { overflow: auto; }
 .dashboard-tasks-link, .dashboard-tasks-body a { color: var(--green); text-decoration: none; }
 .dashboard-tasks-link:hover, .dashboard-tasks-body a:hover { text-decoration: underline; }

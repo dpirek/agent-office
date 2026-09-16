@@ -1,3 +1,4 @@
+import { renderUserAvatar } from '../lib/user-avatars.mjs';
 import OfficeComponent from "./office-component.mjs";
 import { escapeHtml, clock, officeSprite } from "./office-format.mjs";
 
@@ -46,6 +47,7 @@ class OfficeSelectedAgent extends OfficeComponent {
     const $ = (selector, root = this) => root.querySelector(selector);
     const $$ = (selector, root = this) => [...root.querySelectorAll(selector)];
     function detailRows(agent) {
+      if (agent.human) return [['NAME', agent.name], ['ROLE', 'Office member'], ['STATUS', agent.status === 'ready' ? 'Online' : agent.status]];
       const model = agent.model?.name || state.orchestrator?.model || state.health?.model || "not configured";
       const workspace = state.health?.workspace || "—";
       const tasks = allTasks().filter((task) => task.agent === agent.name);
@@ -84,7 +86,8 @@ class OfficeSelectedAgent extends OfficeComponent {
       $("#selected-name").textContent = agent.name;
       $("#selected-status").textContent = agent.status;
       $("#selected-description").textContent = agent.description;
-      $("#selected-portrait").innerHTML = `<img src="/assets/avatars/${officeSprite(agent, officeAgents().indexOf(agent))}.png" alt="" draggable="false">`;
+      if (agent.human) renderUserAvatar($("#selected-portrait"), agent);
+      else $("#selected-portrait").innerHTML = `<img src="/assets/avatars/${officeSprite(agent, officeAgents().indexOf(agent))}.png" alt="" draggable="false">`;
       $("#agent-details").innerHTML = detailRows(agent).map(([key, value]) => `<div class="detail-row"><label>${escapeHtml(key)}</label><span class="${key === "STATUS" && ["ready", "running"].includes(value) ? "green" : ""}">${escapeHtml(value)}</span></div>`).join("");
     }
 

@@ -6,6 +6,11 @@
 .account-heading h1 { font-size: clamp(24px, 2.5vw, 34px); letter-spacing: -.04em; font-weight: 600; }
 .account-heading p, .account-section-heading p, .account-access p, .account-notice p { color: var(--muted); line-height: 1.7; margin-top: 8px; }
 #account-content { margin-top: 28px; }
+.account-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line-dim); margin-bottom: 24px; }
+.account-panel .account-tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; padding: 12px 16px; color: var(--muted); }
+.account-panel .account-tabs button[aria-selected="true"] { border-bottom-color: var(--green); color: var(--green); }
+.account-tab-panel > .account-section-heading, .account-tab-panel > .account-avatar-picker { margin-top: 0; }
+.account-avatar-picker h2 { font-size: 18px; font-weight: 500; }
 #account-message:not([hidden]) { margin-top: 20px; padding: 12px 16px; border: 1px solid var(--amber); color: var(--amber); background: #e5b7490a; overflow-wrap: anywhere; }
 .account-profile { display: flex; gap: 20px; align-items: center; padding: 24px; border: 1px solid var(--line-dim); background: linear-gradient(110deg, #5b52cf09, #f8f8fc); }
 .account-avatar { display: grid; place-items: center; flex: 0 0 64px; height: 64px; border: 1px solid #5b52cf55; color: var(--green); background: #5b52cf0b; font-size: 22px; }

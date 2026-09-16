@@ -85,6 +85,40 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     title.textContent = "Your account";
     description.textContent = "Manage your identity and access to the shared office.";
     content.replaceChildren();
+    const panels = { profile: content, appearance: content, users: content };
+    if (mode === 'account') {
+      const tabs = document.createElement('nav');
+      tabs.className = 'account-tabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Account sections');
+      const sections = [['profile', 'Profile'], ['appearance', 'Appearance'], ...(user.role === 'admin' ? [['users', 'Users']] : [])];
+      const buttons = [];
+      const selectTab = (id, focus = false) => {
+        root.dataset.accountTab = id;
+        buttons.forEach(button => {
+          const selected = button.dataset.tab === id;
+          button.setAttribute('aria-selected', String(selected)); button.tabIndex = selected ? 0 : -1;
+          panels[button.dataset.tab].hidden = !selected;
+          if (selected && focus) button.focus();
+        });
+      };
+      content.append(tabs);
+      for (const [id, label] of sections) {
+        const tab = document.createElement('button');
+        tab.type = 'button'; tab.id = `account-tab-${id}`; tab.dataset.tab = id; tab.textContent = label;
+        tab.setAttribute('role', 'tab'); tab.setAttribute('aria-controls', `account-panel-${id}`);
+        const panel = document.createElement('section');
+        panel.id = `account-panel-${id}`; panel.className = 'account-tab-panel'; panel.tabIndex = 0;
+        panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-labelledby', tab.id);
+        panels[id] = panel; buttons.push(tab); tabs.append(tab); content.append(panel);
+        tab.addEventListener('click', () => selectTab(id));
+        tab.addEventListener('keydown', event => {
+          const index = buttons.indexOf(tab);
+          const target = { ArrowRight: (index + 1) % buttons.length, ArrowLeft: (index + buttons.length - 1) % buttons.length, Home: 0, End: buttons.length - 1 }[event.key];
+          if (target === undefined) return;
+          event.preventDefault(); selectTab(buttons[target].dataset.tab, true);
+        });
+      }
+      selectTab(sections.some(([id]) => id === root.dataset.accountTab) ? root.dataset.accountTab : 'profile');
+    }
     const profile = document.createElement("section"); profile.className = "account-profile";
     const avatar = document.createElement("div"); avatar.className = "account-avatar"; avatar.setAttribute("aria-hidden", "true"); renderUserAvatar(avatar, user);
     const identity = document.createElement("div"); identity.className = "account-identity";
@@ -93,9 +127,9 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     const badge = document.createElement("span"); badge.className = `account-badge ${user.role}`; badge.textContent = user.role === "admin" ? "Administrator" : user.role;
     identity.append(name, email, badge);
     const logout = button("Sign out", async () => { await api("/api/auth/logout", {}); onSignedOut(); }); logout.className = "account-signout";
-    profile.append(avatar, identity, logout); content.append(profile);
-    const picker = document.createElement('details'); picker.className = 'account-avatar-picker';
-    const summaryLabel = document.createElement('summary'); summaryLabel.textContent = 'Change avatar'; picker.append(summaryLabel);
+    profile.append(avatar, identity, logout); panels.profile.append(profile);
+    const picker = document.createElement(mode === 'account' ? 'section' : 'details'); picker.className = 'account-avatar-picker';
+    const summaryLabel = document.createElement(mode === 'account' ? 'h2' : 'summary'); summaryLabel.textContent = 'Change avatar'; picker.append(summaryLabel);
     const avatarForm = document.createElement('form'); avatarForm.className = 'avatar-choice-form';
     const choices = document.createElement('fieldset'); choices.className = 'avatar-choices';
     const legend = document.createElement('legend'); legend.textContent = 'Choose your avatar'; choices.append(legend);
@@ -108,7 +142,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     }
     const saveAvatar = document.createElement('button'); saveAvatar.type = 'submit'; saveAvatar.textContent = 'Save avatar';
     const avatarStatus = document.createElement('span'); avatarStatus.className = 'avatar-save-status'; avatarStatus.setAttribute('role', 'status');
-    avatarForm.append(choices, saveAvatar, avatarStatus); picker.append(avatarForm); content.append(picker);
+    avatarForm.append(choices, saveAvatar, avatarStatus); picker.append(avatarForm); panels.appearance.append(picker);
     avatarForm.addEventListener('submit', async event => {
       event.preventDefault(); saveAvatar.disabled = true; avatarStatus.textContent = 'Saving…';
       try {
@@ -129,16 +163,16 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     const summary = document.createElement("section"); summary.className = "account-access";
     summary.innerHTML = `<span class="account-eyebrow">WORKSPACE ACCESS</span><h2>One office. Shared work.</h2><p>You can work with shared projects, files, agent tools, and office settings.</p>`;
     const enter = document.createElement("a"); enter.href = "/"; enter.className = "enter-office"; enter.textContent = "Open your office →"; summary.append(enter);
-    content.append(summary);
+    panels.profile.append(summary);
     if (user.role !== "admin") return;
     const heading = document.createElement("div"); heading.className = "account-section-heading";
     heading.innerHTML = `<div><span class="account-eyebrow">ADMINISTRATION</span><h2>Users</h2><p>Approve new members and manage who can access the office.</p></div>`;
-    content.append(heading);
+    panels.users.append(heading);
     const { users } = await api("/api/users");
     const count = document.createElement("span"); count.className = "account-badge"; count.textContent = `${users.length} ${users.length === 1 ? "user" : "users"}`; heading.append(count);
     const roleGuide = document.createElement("div"); roleGuide.className = "account-role-guide";
-    roleGuide.innerHTML = `<div><strong>Administrator</strong><span>Office access, users & factory reset</span></div><div><strong>Member</strong><span>Shared projects, tools & settings</span></div><div><strong>Pending</strong><span>Awaiting approval · no office access</span></div>`; content.append(roleGuide);
-    const list = document.createElement("div"); list.className = "account-user-list"; content.append(list);
+    roleGuide.innerHTML = `<div><strong>Administrator</strong><span>Office access, users & factory reset</span></div><div><strong>Member</strong><span>Shared projects, tools & settings</span></div><div><strong>Pending</strong><span>Awaiting approval · no office access</span></div>`; panels.users.append(roleGuide);
+    const list = document.createElement("div"); list.className = "account-user-list"; panels.users.append(list);
     const activeAdmins = users.filter(entry => entry.role === "admin" && !entry.disabled).length;
     for (const entry of users) {
       const row = document.createElement("section"); row.className = "user-card";

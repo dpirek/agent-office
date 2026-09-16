@@ -53,7 +53,7 @@ class OfficeShell extends OfficeComponent {
         ] }),
         this.createElement("section", { "class": "bottom-grid", children: [
           this.createElement("office-task-summary", { "class": "panel dashboard-tasks-panel", "data-view": "dashboard" }),
-          this.createElement("office-manager-chat", { "class": "panel chat-panel", "data-view": "dashboard" }),
+          this.createElement("office-manager-chat", { "class": "panel chat-panel", "data-view": "", "hidden": "" }),
           this.createElement("office-task-queue", { "class": "panel task-panel", "data-view": "tasks" })
         ] }),
         this.createElement("office-operations", { "class": "panel operations-panel", "data-view": "operations", "hidden": "" }),

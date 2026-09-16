@@ -15,6 +15,7 @@ import { loadMcpTools } from "./lib/mcp.js";
 import { SubAgentManager } from "./lib/sub-agents.js";
 import { PeriodicOperationScheduler } from "./lib/operations.js";
 import { agentUsername, createOfficeChatService } from "./lib/office-chat.js";
+import { connectedUsers } from "./lib/user-presence.js";
 import {
   createUiStateStore,
   normalizeStoredToolPermissions as normalizeToolPermissions,
@@ -388,6 +389,7 @@ function handleOfficeManagerMention({ message, text }) {
 }
 
 officeChatService = createOfficeChatService({
+  getOnlineUsers: () => connectedUsers(userSockets, userStore),
   uiStateStore,
   subAgentManager,
   onManagerMention: handleOfficeManagerMention,

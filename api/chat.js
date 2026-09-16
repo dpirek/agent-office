@@ -9,6 +9,7 @@ export function createChatApiHandlers({ officeChatService }) {
     if (req.method === "GET") {
       try {
         json(res, 200, { ok: true, ...officeChatService.list({
+          user: req.user,
           projectId: url.searchParams.get("projectId") || "central-office",
           after: Number(url.searchParams.get("after")) || 0,
           limit: Number(url.searchParams.get("limit")) || 200,
@@ -24,7 +25,7 @@ export function createChatApiHandlers({ officeChatService }) {
     }
     try {
       const body = JSON.parse(await readRequestBody(req, 120_000) || "{}");
-      const result = officeChatService.postUserMessage(body);
+      const result = officeChatService.postUserMessage({ ...body, user: req.user });
       json(res, 201, { ok: true, ...result });
     } catch (error) {
       json(res, 400, { ok: false, error: error.message });
