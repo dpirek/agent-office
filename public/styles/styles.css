@@ -107,7 +107,8 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 .desk-agent:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .desk-sprite { width: 100%; height: calc(100% - 16px); display: block; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(5px 7px 2px #05070866); user-select: none; }
 .desk-agent:not(.online) .desk-sprite { filter: grayscale(.55) brightness(.72) drop-shadow(5px 7px 2px #05070866); }
-.desk-agent .nameplate { position: absolute; z-index: 6; right: 12%; bottom: 0; left: 12%; height: 21px; opacity: .4; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; border: 1px solid #718086; background: #0b1113ee; box-shadow: 0 3px 8px #0008; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.desk-agent .nameplate { position: absolute; z-index: 6; top: 0; left: 0; width: max-content; max-width: 100%; height: 21px; padding: 0 6px; opacity: .25; transition: opacity .12s ease; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; border: 1px solid #718086; background: #0b1113ee; box-shadow: 0 3px 8px #0008; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.desk-agent:is(:hover, :focus-visible) .nameplate { opacity: 1; }
 .desk-agent .nameplate i { width: 6px; height: 6px; border-radius: 50%; background: #5c676b; }
 .desk-agent.online .nameplate i { background: var(--green); box-shadow: 0 0 8px var(--green); }
 .desk-agent.active .nameplate i { background: var(--red); box-shadow: 0 0 8px var(--red); }
@@ -594,6 +595,18 @@ select {
 #project-dialog::backdrop { background: #000a; }
 .project-form { display: flex; flex-direction: column; gap: 12px; }
 .project-form > div { display: flex; justify-content: flex-end; gap: 10px; }
+#project-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.project-visibility, .project-member-picker label { display: flex; align-items: center; gap: 8px; }
+.project-form input[type="checkbox"] { width: 16px; height: 16px; padding: 0; flex: 0 0 auto; accent-color: var(--green); }
+#project-private-options { display: grid; gap: 10px; }
+.project-member-picker { border: 1px solid var(--line); padding: 12px; min-width: 0; }
+#project-member-options { display: grid; gap: 10px; max-height: 160px; overflow-y: auto; }
+.project-member-picker label { font-size: 12px; overflow-wrap: anywhere; }
+#project-visibility-description, #project-invite-help { color: var(--muted); font-size: 12px; line-height: 1.5; }
+#project-invitations { display: grid; gap: 12px; }
+#project-invitations p { font-size: 13px; line-height: 1.5; }
+#project-invitations input { width: 100%; min-width: 0; padding: 10px; background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+#project-invitations button { padding: 8px 12px; background: var(--panel-hi); color: var(--text); border: 1px solid var(--line); }
 .task-project-label { display: block; color: #92ad99; font-size: 10px; margin-top: 4px; }
 
 .project-content { min-width: 0; min-height: 0; display: flex; flex-direction: column; }

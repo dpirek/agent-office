@@ -1,4 +1,5 @@
 import { json, readRequestBody, methodNotAllowed } from "./http.js";
+import { canAccessProject } from '../lib/project-access.js';
 
 const COOKIE = "office_session";
 export function sessionToken(req) {
@@ -31,6 +32,7 @@ export function createAuthService({ userStore, publicOrigin = "", getProjects = 
     if (!authRoute && !protectedRoute) return false;
     res.setHeader("cache-control", "no-store");
     req.user = userStore.session(sessionToken(req));
+    if (req.user?.role === 'member') req.user.publicProjectIds = getProjects().filter(project => project.isPublic).map(project => project.id);
     if (!authRoute) {
       if (!req.user) { json(res, 401, { ok: false, error: "Sign in to continue." }); return true; }
       if (req.user.role === "pending") { json(res, 403, { ok: false, error: "Your account is awaiting administrator approval." }); return true; }
@@ -38,6 +40,20 @@ export function createAuthService({ userStore, publicOrigin = "", getProjects = 
       return false;
     }
     try {
+      const checkInvitation = code => {
+        const invite = userStore.getInvitation(code);
+        const project = getProjects().find(project => project.id === invite.projectId);
+        const inviter = userStore.list().find(user => user.id === invite.invitedBy);
+        if (!project || !canAccessProject(inviter, project.id, project)) throw Object.assign(new Error('This invitation is no longer available.'), { statusCode: 400 });
+        return { ...invite, projectName: project.name };
+      };
+      if (route === '/api/auth/invitation') {
+        if (req.method !== 'GET') return methodNotAllowed(res, 'GET'), true;
+        rateLimit(req, route);
+        const { email, projectId, projectName, expiresAt } = checkInvitation(url.searchParams.get('code'));
+        json(res, 200, { ok: true, invitation: { email, projectId, projectName, expiresAt } });
+        return true;
+      }
       if (route === "/api/auth/session") {
         if (req.method !== "GET") { methodNotAllowed(res, "GET"); return true; }
         json(res, 200, { ok: true, user: req.user, needsSetup: userStore.needsSetup() });
@@ -57,12 +73,22 @@ export function createAuthService({ userStore, publicOrigin = "", getProjects = 
       if (route === "/api/auth/profile") {
         json(res, 200, { ok: true, user: userStore.updateAvatar(req.user.id, body.avatar) });
       } else if (route === "/api/auth/register") {
+        if (body.invitation) checkInvitation(body.invitation);
         const user = await userStore.register(body);
         json(res, 201, { ok: true, user });
       } else if (route === "/api/auth/login") {
+        if (body.invitation) checkInvitation(body.invitation);
         const result = await userStore.login(body);
+        if (body.invitation) {
+          try { result.user = userStore.acceptInvitation(body.invitation, result.user.id); }
+          catch (error) { userStore.logout(result.token); throw error; }
+        }
         cookie(res, result.token);
         json(res, 200, { ok: true, user: result.user });
+      } else if (route === '/api/auth/accept-invitation') {
+        if (!req.user) throw Object.assign(new Error('Sign in to accept this invitation.'), { statusCode: 401 });
+        checkInvitation(body.invitation);
+        json(res, 200, { ok: true, user: userStore.acceptInvitation(body.invitation, req.user.id) });
       } else if (route === "/api/auth/logout") {
         userStore.logout(sessionToken(req)); cookie(res, ""); json(res, 200, { ok: true });
       } else if (route === "/api/users") {

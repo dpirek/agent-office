@@ -8,6 +8,8 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
   const description = root.querySelector("#account-description");
   function notify(text) { message.textContent = text; message.hidden = !text; }
   let session;
+  const invitationCode = mode === 'account' ? null : new URLSearchParams(location.search).get('invite');
+  let invitationInfo, invitationAccepted = false;
   async function api(path, body, method = "POST") {
     const response = await fetch(path, body === undefined ? { cache: "no-store" } : {
       method, headers: { "content-type": "application/json" }, body: JSON.stringify(body),
@@ -33,6 +35,9 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     const registration = mode === "register";
     title.textContent = registration ? (session.needsSetup ? "Create administrator account" : "Create your account") : "Welcome back";
     description.textContent = registration ? (session.needsSetup ? "The first account manages users and office access." : "Admin approval is required to join.") : "Sign in to your office.";
+    if (invitationInfo) description.textContent = registration
+      ? `Create your account to join ${invitationInfo.projectName}. Your membership will be approved automatically.`
+      : `Sign in to join ${invitationInfo.projectName}.`;
     document.title = `${registration ? "Create account" : "Sign in"} · Agent Office`;
     const element = document.createElement("form");
     function field(label, name, type, autocomplete) {
@@ -52,6 +57,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     }
     if (registration) field("Name", "name", "text", "name");
     field("Email", "email", "email", "username");
+    if (invitationInfo) { element.elements.email.value = invitationInfo.email; element.elements.email.readOnly = true; }
     field("Password", "password", "password", mode === "login" ? "current-password" : "new-password");
     if (registration) field("Confirm password", "confirmation", "password", "new-password");
     const submit = document.createElement("button"); submit.type = "submit"; submit.textContent = registration ? "Create account" : "Sign in";
@@ -61,9 +67,11 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
       submit.textContent = registration ? "Creating account…" : "Signing in…";
       try {
         const body = Object.fromEntries(new FormData(element));
+        if (invitationCode) body.invitation = invitationCode;
         if (registration && body.password !== body.confirmation) throw new Error("Passwords do not match.");
         if (registration) await api("/api/auth/register", body);
-        await api("/api/auth/login", body);
+        await api("/api/auth/login", registration ? { ...body, invitation: undefined } : body);
+        invitationAccepted = Boolean(invitationCode);
         await load();
 
       } catch (error) { notify(error.message); }
@@ -74,6 +82,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     actions.append(document.createTextNode(registration ? "Already have an account?" : "New to Agent Office?"));
     const link = document.createElement("a");
     link.href = registration ? "/login" : "/register";
+    if (invitationCode) link.href += `?invite=${encodeURIComponent(invitationCode)}`;
     link.textContent = registration ? "Sign in" : "Create an account";
     actions.append(link);
     content.append(actions);
@@ -163,8 +172,8 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     const summary = document.createElement("section"); summary.className = "account-access";
     summary.innerHTML = `<span class="account-eyebrow">WORKSPACE ACCESS</span><h2>One office. Shared work.</h2><p>You can work with shared projects, files, agent tools, and office settings.</p>`;
     if (user.role === 'member') summary.querySelector('p').textContent = user.projectIds?.length === 0
-      ? 'No existing projects are assigned to you. Create a new project or ask an administrator for access.'
-      : 'You can work in projects assigned to you and any new projects you create.';
+      ? 'You can join public projects or create your own. Ask an administrator for access to other private projects.'
+      : 'You can work in public projects, private projects assigned to you, and projects you create.';
     const enter = document.createElement("a"); enter.href = "/"; enter.className = "enter-office"; enter.textContent = "Open your office →"; summary.append(enter);
     panels.profile.append(summary);
     if (user.role !== "admin") return;
@@ -202,7 +211,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
         const form = document.createElement('form'); form.className = 'project-access-form';
         const scopeLabel = document.createElement('label'); scopeLabel.textContent = 'Access to projects';
         const scope = document.createElement('select'); scope.setAttribute('aria-label', `Project access for ${entry.email}`);
-        for (const [value, text] of [['all', 'All projects, including future projects'], ['selected', 'Only selected projects']]) {
+        for (const [value, text] of [['all', 'All projects, including future projects'], ['selected', 'Selected projects, plus public projects']]) {
           const option = document.createElement('option'); option.value = value; option.textContent = text; scope.append(option);
         }
         scope.value = entry.projectIds == null ? 'all' : 'selected'; scopeLabel.append(scope); form.append(scopeLabel);
@@ -216,7 +225,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
         }
         const syncScope = () => { choices.hidden = scope.value === 'all'; };
         scope.addEventListener('change', syncScope); syncScope();
-        const hint = document.createElement('p'); hint.textContent = 'No selections means no existing project access. Members can still create projects and automatically access their own new projects.';
+        const hint = document.createElement('p'); hint.textContent = 'Public projects remain visible to all approved members. Selecting no projects restricts existing private projects. Members automatically get access to projects they create.';
         const submit = document.createElement('button'); submit.type = 'submit'; submit.textContent = 'Save project access';
         const status = document.createElement('p'); status.setAttribute('role', 'status');
         form.append(choices, hint, submit, status); access.append(summary, form); row.append(access);
@@ -236,14 +245,32 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
   }
   async function load() {
     session = await api("/api/auth/session");
+    if (invitationCode && !invitationInfo) invitationInfo = (await api(`/api/auth/invitation?code=${encodeURIComponent(invitationCode)}`)).invitation;
     if (session.user) {
-      if (mode !== "account" && session.user.role !== "pending") { onAuthenticated(session.user); return; }
+      if (invitationInfo && !invitationAccepted) {
+        title.textContent = `Join ${invitationInfo.projectName}`;
+        description.textContent = `This invitation is for ${invitationInfo.email}. You are signed in as ${session.user.email}.`;
+        content.replaceChildren();
+        if (session.user.email.toLowerCase() === invitationInfo.email.toLowerCase()) content.append(button('Join project', async () => {
+          const result = await api('/api/auth/accept-invitation', { invitation: invitationCode });
+          invitationAccepted = true; onAuthenticated(result.user, invitationInfo.projectId);
+        }));
+        content.append(button('Use another account', async () => {
+          await api('/api/auth/logout', {});
+          location.replace(`/login?invite=${encodeURIComponent(invitationCode)}`);
+        }));
+        return;
+      }
+      if (mode !== "account" && session.user.role !== "pending") { onAuthenticated(session.user, invitationInfo?.projectId); return; }
       onUserChanged(session.user);
       await account();
     } else if (mode === "account") location.replace("/login");
     else form(mode);
   }
   try { await load(); }
-  catch (error) { notify(error.message); }
+  catch (error) {
+    if (invitationCode) { title.textContent = 'Invitation unavailable'; description.textContent = 'Ask the project owner for a new invitation link.'; }
+    notify(error.message);
+  }
 
 }

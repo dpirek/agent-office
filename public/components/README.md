@@ -44,7 +44,7 @@ document.querySelector('office-shell').addEventListener('task-create', event => 
 | `office-topbar` | `data: { user, query, collapsed, projects, projectId }` | `office-search { query }`, `new-task`, `navigation-toggle`, `project-select { id }`, `project-create-open` |
 | `office-account` | `load()` | `account-user-change { user }` |
 | `office-search` | `search(query, projectId, projectName)`, `deactivate()` | `search-result-open { type, id, title, description, href }` |
-| `office-navigation` | `data: { projects, projectId, page, online, context }`; `collapsed` property/attribute; `toggle()`, `openProjectDialog()` | `office-navigate { href }`, `project-select { id }`, `project-create { name, description, respondWith }`, `sidebar-toggle { collapsed }` |
+| `office-navigation` | `data: { projects, projectId, page, online, context }`; `collapsed` property/attribute; `toggle()`, `openProjectDialog()` | `office-navigate { href }`, `project-select { id }`, `project-create { name, description, isPublic, memberIds, inviteEmails, respondWith }`, `sidebar-toggle { collapsed }` |
 | `office-floor` | `data: { agents, selectedAgent }`; `meta` | `agent-select { name }` |
 | `office-selected-agent` | `data: { agent, agents, tasks, activity, health, orchestrator, chatRunning, uptime, sessionId }`; `activeTab` / `active-tab` | — |
 | `office-worker-registry` | `data: { workers, workerTokenConfigured, workerTokenName }` | `worker-token-change { configured, name }` (never emits the secret) |
@@ -73,3 +73,7 @@ the coordinator so sibling views stay synchronized.
 
 `/login` and `/register` use standalone authentication documents. `/account`
 is rendered by `office-account` inside the same application shell as other pages.
+
+New-project requests resolve to `{ project, invitations }`. The navigation component
+keeps the dialog open to present invitation links when supplied. Registration and
+login preserve `?invite=` and redeem it through the authentication API.

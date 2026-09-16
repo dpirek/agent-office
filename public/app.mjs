@@ -605,11 +605,12 @@ handleRequest('task-delete', ({ id }) => deleteTask(id));
 handleRequest('dashboard-refresh', () => refreshDashboard({ quiet: true }));
 handleRequest('chat-send', ({ text }) => postOfficeChat({ text }));
 handleRequest('chat-refresh', () => loadOfficeChat());
-handleRequest('project-create', async ({ name, description }) => {
-  const project = await saveProject({ name, description });
+handleRequest('project-create', async ({ name, description, isPublic, memberIds, inviteEmails }) => {
+  const result = await saveProject({ name, description, isPublic, memberIds, inviteEmails });
+  const project = result.project;
   await switchProject(project.id);
   if (!PROJECT_PAGES.has(document.body.dataset.page)) router.navigate(projectPagePath('dashboard', project.id));
-  return project;
+  return result;
 });
 
 setInterval(async () => {
@@ -691,7 +692,7 @@ async function saveProject(payload, method = "POST") {
   const data = await response.json();
   if (!response.ok) throw new Error(data.error);
   await loadProjects();
-  return data.project;
+  return data;
 }
 void loadProjects().then(async () => {
   router.start();

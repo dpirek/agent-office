@@ -9,6 +9,7 @@ export async function guardProjectRequest(req, res, url, { uiStateStore, sharedW
   const route = url.pathname;
   try {
     if (route === '/api/projects') return false;
+    if (route === '/api/project-members' && req.method === 'GET') return false;
     if (['/api/health', '/api/sub-agents', '/api/system-logs'].includes(route) && req.method === 'GET') return false;
     if (route === '/api/system-logs' && req.method === 'POST') return false;
     if (route === '/api/skills' && req.method === 'GET') { json(res, 200, { ok: true, skills: [] }); return true; }

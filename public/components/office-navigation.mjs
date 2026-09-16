@@ -111,11 +111,26 @@ class OfficeNavigation extends OfficeComponent {
           this.createElement("input", { "id": "project-name", "required": "", "maxlength": "100", "autocomplete": "off" }),
           this.createElement("label", { "for": "project-summary", textContent: "Description" }),
           this.createElement("textarea", { "id": "project-summary", "maxlength": "10000", "rows": "4" }),
+          this.createElement('label', { class: 'project-visibility', children: [
+            this.createElement('input', { id: 'project-public', type: 'checkbox' }),
+            this.createElement('span', { textContent: 'Public project' }),
+          ] }),
+          this.createElement('p', { id: 'project-visibility-description', textContent: 'Private by default. Choose who can join below.' }),
+          this.createElement('section', { id: 'project-private-options', children: [
+            this.createElement('fieldset', { class: 'project-member-picker', children: [
+              this.createElement('legend', { textContent: 'Add registered members' }),
+              this.createElement('div', { id: 'project-member-options' }),
+            ] }),
+            this.createElement('label', { for: 'project-invite-emails', textContent: 'Invite by email' }),
+            this.createElement('textarea', { id: 'project-invite-emails', rows: '2', maxlength: '12000', placeholder: 'alex@example.com, sam@example.com', 'aria-describedby': 'project-invite-help' }),
+            this.createElement('p', { id: 'project-invite-help', textContent: 'Separate addresses with commas or new lines. Invitation links will appear after you create the project.' }),
+          ] }),
           this.createElement("div", { children: [
             this.createElement("button", { "type": "button", "id": "cancel-project-button", textContent: "Cancel" }),
             this.createElement("button", { "type": "submit", textContent: "Save project" })
           ] })
-        ] })
+        ] }),
+        this.createElement('section', { id: 'project-invitations', hidden: '' }),
       ] })
     ]);
   }
@@ -151,20 +166,67 @@ class OfficeNavigation extends OfficeComponent {
     });
     $('#project-select').addEventListener('change', event => this.emit('project-select', { id: event.target.value }));
     const dialog = $('#project-dialog');
+    let creating = false;
+    const syncVisibility = () => {
+      $('#project-private-options').hidden = $('#project-public').checked;
+      $('#project-visibility-description').textContent = $('#project-public').checked
+        ? 'Public: visible to all approved office members.'
+        : 'Private: invited members and users granted access by an administrator.';
+    };
+    $('#project-public').addEventListener('change', syncVisibility);
+    dialog.addEventListener('cancel', event => { if (creating) event.preventDefault(); });
     this.openProjectDialog = () => {
+      if (creating) return;
+      $('#project-form').hidden = false;
+      $('#project-invitations').hidden = true;
+      $('#project-invitations').replaceChildren();
       $('#project-form').reset(); dialog.showModal(); $('#project-name').focus();
+      syncVisibility();
+      $('#project-member-options').textContent = 'Loading members…';
+      fetch('/api/project-members', { cache: 'no-store' }).then(async response => {
+        if (!response.ok) throw new Error('Could not load members. You can still invite by email.');
+        const { users } = await response.json();
+        $('#project-member-options').replaceChildren(...users.map(user => this.createElement('label', { children: [
+          this.createElement('input', { type: 'checkbox', name: 'project-member', value: user.id }),
+          this.createElement('span', { textContent: `${user.name} · ${user.email}` }),
+        ] })));
+        if (!users.length) $('#project-member-options').textContent = 'No other registered members yet.';
+      }).catch(error => { $('#project-member-options').textContent = error.message; });
     };
     $('#new-project-button').addEventListener('click', () => this.openProjectDialog());
     $('#cancel-project-button').addEventListener('click', () => dialog.close());
     $('#project-form').addEventListener('submit', async event => {
       event.preventDefault();
       const button = event.submitter;
+      if (creating) return;
+      creating = true;
+      $('#cancel-project-button').disabled = true;
       if (button) button.disabled = true;
       try {
-        await this.request('project-create', { name: $('#project-name').value, description: $('#project-summary').value });
-        dialog.close();
+        const isPublic = $('#project-public').checked;
+        const result = await this.request('project-create', {
+          name: $('#project-name').value, description: $('#project-summary').value, isPublic,
+          memberIds: isPublic ? [] : $$('input[name="project-member"]:checked').map(input => input.value),
+          inviteEmails: isPublic ? [] : $('#project-invite-emails').value.split(/[\s,;]+/).filter(Boolean),
+        });
+        if (result.invitations?.length) {
+          $('#project-form').hidden = true;
+          const links = $('#project-invitations'); links.hidden = false;
+          links.replaceChildren(this.createElement('h2', { textContent: 'Project created' }), this.createElement('p', { textContent: 'Share these invitation links. Each works once for the specified email and expires in 7 days.' }));
+          for (const invitation of result.invitations) {
+            const url = new URL(invitation.path, location.origin).href;
+            const input = this.createElement('input', { type: 'text', readonly: '', value: url, 'aria-label': `Invitation link for ${invitation.email}` });
+            const copy = this.createElement('button', { type: 'button', textContent: 'Copy link', addEventListener: { name: 'click', handler: async () => {
+              try { await navigator.clipboard.writeText(url); copy.textContent = 'Copied'; }
+              catch { input.focus(); input.select(); }
+            } } });
+            links.append(this.createElement('label', { textContent: invitation.email }), input, copy);
+          }
+          const done = this.createElement('button', { type: 'button', textContent: 'Done', addEventListener: { name: 'click', handler: () => dialog.close() } });
+          links.append(done); done.focus();
+        } else dialog.close();
       } catch (error) { showToast(error.message, true); }
-      finally { if (button) button.disabled = false; }
+      finally { creating = false; $('#cancel-project-button').disabled = false; if (button) button.disabled = false; }
     });
     this.onConnect = () => {
       const syncLogo = () => {
