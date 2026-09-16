@@ -59,3 +59,37 @@ test('Test errors do not expose returned credentials and test API is admin-only'
   await handler({method:'POST',user:{role:'member'}},{writeHead(status){result.status=status;},end(body){result.body=JSON.parse(body);}});
   assert.equal(result.status,403);
 });
+
+test('MCP form JSON survives SQLite save and loads into the Office Manager', async t => {
+  const { loadMcpTools } = await import('../lib/mcp.js');
+  const { createUiStateStore } = await import('../lib/ui-state.js');
+  const { mkdtemp, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { Readable } = await import('node:stream');
+  const directory = await mkdtemp(join(tmpdir(), 'office-mcp-config-'));
+  const store = createUiStateStore(join(directory, 'state.sqlite'));
+  t.after(async () => { store.close(); await rm(directory, { recursive: true, force: true }); });
+  const content = writeMcpForm({ mcp: { auto_approve: true } }, [server]);
+  const req = Readable.from([Buffer.from(JSON.stringify({ content }))]); req.method = 'PUT';
+  const res = { writeHead(status) { this.status = status; }, end() {} };
+  await createSettingsApiHandlers({ uiStateStore: store })['/api/config'](req, res);
+  assert.equal(res.status, 200);
+  const tools = await loadMcpTools({ configContent: store.getMcpConfig(), env: {} });
+  assert.equal(tools.length, 1);
+  assert.equal(tools[0].server_url, server.server_url);
+  assert.equal(tools[0].headers.Authorization, server.headers.Authorization);
+  assert.equal(tools[0].require_approval, 'never');
+});
+
+test('stored MCP config supports legacy TOML, JSON arrays, whitespace and empty settings', async () => {
+  const { loadMcpTools } = await import('../lib/mcp.js');
+  const toml = '[mcp]\nauto_approve = true\n[[mcp.servers]]\nserver_label = "gmail"\nserver_url = "https://gmail.example/mcp"\n';
+  for (const configContent of [toml, JSON.stringify([server]), '\uFEFF \n' + JSON.stringify({ servers: [server] })]) {
+    const tools = await loadMcpTools({ configContent, env: {} });
+    assert.equal(tools[0].server_label, 'gmail');
+    assert.equal(tools[0].server_url, server.server_url);
+  }
+  for (const configContent of ['', '{}', '[]']) assert.deepEqual(await loadMcpTools({ configContent, env: {} }), []);
+  await assert.rejects(loadMcpTools({ configContent: '{broken', env: {} }), /Invalid MCP config JSON/);
+});
