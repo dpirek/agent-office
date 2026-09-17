@@ -42,3 +42,24 @@ test("system activity is persisted and exposed in chronological order", async (c
   assert.equal(logs[0].source, "Builder");
   assert.equal(logs[1].category, "network");
 });
+
+test('browser log forwarding is enabled only while an enabled provider exists', async () => {
+  const store = createUiStateStore(':memory:');
+  try {
+    const handler = createSystemLogApiHandlers({ uiStateStore: store })['/api/system-logs'];
+    const enabled = async () => {
+      const response = responseRecorder();
+      await handler({ method: 'GET' }, response, new URL('http://localhost/api/system-logs'));
+      return JSON.parse(response.body).forwardingEnabled;
+    };
+    assert.equal(await enabled(), false);
+    const provider = store.addObservabilityProvider({ type: 'loki', name: 'Logs', url: 'https://logs.example.test/loki/api/v1/push', enabled: true });
+    assert.equal(await enabled(), true);
+    store.setObservabilityEnabled(provider.id, false);
+    assert.equal(await enabled(), false);
+    store.setObservabilityEnabled(provider.id, true);
+    assert.equal(await enabled(), true);
+    store.deleteObservabilityProvider(provider.id);
+    assert.equal(await enabled(), false);
+  } finally { store.close(); }
+});

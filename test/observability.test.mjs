@@ -11,6 +11,25 @@ import { normalizeObservabilityProvider, pushLoki, lokiPayload, createObservabil
 const config = { type: 'loki', name: 'Production', url: 'https://logs.example.test', auth: 'basic', username: '123', secret: 'private-token', tenantId: 'office' };
 const event = { category: 'model', source: 'Manager', message: 'Model completed', metadata: { projectId: 'alpha', token: 'hidden' }, createdAt: 1700000000000 };
 
+test('exporter makes no outbound requests without an enabled provider', async () => {
+  const store = createUiStateStore(':memory:');
+  try {
+    let requests = 0;
+    const exporter = createObservabilityExporter({ store, fetchImpl: async () => { requests++; return new Response(null, { status: 204 }); } });
+    store.recordSystemActivity(event);
+    await exporter.flush();
+    assert.equal(requests, 0);
+    const provider = store.addObservabilityProvider(normalizeObservabilityProvider(config));
+    store.recordSystemActivity(event);
+    store.setObservabilityEnabled(provider.id, false);
+    await exporter.flush();
+    assert.equal(requests, 0);
+    store.deleteObservabilityProvider(provider.id);
+    await exporter.flush();
+    assert.equal(requests, 0);
+  } finally { store.close(); }
+});
+
 test('Loki payload uses nanosecond strings, low-cardinality labels, JSON context and redaction', () => {
   const payload = lokiPayload([event, { ...event, createdAt: event.createdAt - 1 }]);
   assert.equal(payload.streams.length, 1);
@@ -48,7 +67,7 @@ test('observability APIs require admin, test real ingestion, hide credentials an
     let pushes = 0;
     const routes = createObservabilityApiHandlers({ uiStateStore: store, observabilityFetch: async () => { pushes++; return new Response(null, { status: 204 }); } });
     const request = async (method, body, role = 'admin', suffix = '') => {
-      const req = Readable.from(body ? [JSON.stringify(body)] : []); req.method = method; req.user = role ? { role } : null;
+      const req = Readable.from(body ? [Buffer.from(JSON.stringify(body))] : []); req.method = method; req.user = role ? { role } : null;
       const res = { writeHead(status) { this.status = status; }, end(body) { this.body = JSON.parse(body); } };
       const url = new URL(`http://office.test/api/observability${suffix}`);
       await routes[url.pathname](req, res, url); return res;

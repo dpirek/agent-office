@@ -35,6 +35,7 @@ const operationsPanel = component('operations');
 
 shell.addEventListener('office-notify', ({ detail }) => showToast(detail.message, detail.error));
 shell.addEventListener('office-log', ({ detail }) => addLog(detail.source, detail.text, detail.tone));
+shell.addEventListener('observability-change', ({ detail }) => { state.logForwardingEnabled = detail.enabled === true; });
 shell.addEventListener('office-activity', ({ detail }) => addActivity(detail.text, detail.tone));
 function handleRequest(name, handler) {
   shell.addEventListener(name, event => event.detail.respondWith(Promise.resolve().then(() => handler(event.detail))));
@@ -79,6 +80,7 @@ const state = {
   chatRunning: false,
   activity: [],
   logs: [],
+  logForwardingEnabled: false,
   health: null,
   orchestrator: null,
   socket: null,
@@ -144,10 +146,13 @@ function addLog(source, text, tone = "") {
   state.logs.push({ at: Date.now(), source, text, tone });
   state.logs = state.logs.slice(-500);
   renderLogs();
+  if (!state.logForwardingEnabled) return;
   void fetch("/api/system-logs", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ category: "browser", source, message: text, tone }),
+  }).then(response => {
+    if (response.status === 401 || response.status === 403) state.logForwardingEnabled = false;
   }).catch(() => {});
 }
 
@@ -229,6 +234,7 @@ function renderLogs() { component('system-log').data = { logs: state.logs, userR
 async function loadSystemLogs() {
   try {
     const data = await fetchJson("/api/system-logs?limit=500");
+    state.logForwardingEnabled = data.forwardingEnabled === true;
     state.logs = (data.logs || []).map((entry) => ({
       id: entry.id, category: entry.category, metadata: entry.metadata,
       at: entry.createdAt,
@@ -238,6 +244,7 @@ async function loadSystemLogs() {
     }));
     renderLogs();
   } catch {
+    state.logForwardingEnabled = false;
     // Preserve the most recent local events while the server is unreachable.
   }
 }

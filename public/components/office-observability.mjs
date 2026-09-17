@@ -57,6 +57,7 @@ class OfficeObservability extends OfficeComponent {
       const current = revision;
       const { providers } = await api('');
       if (current !== revision || !dialog.open) return;
+      this.emit('observability-change', { enabled: providers.some(provider => provider.enabled) });
       const el = (tag, props) => this.createElement(tag, props);
       const list = this.querySelector('.observability-providers');
       list.replaceChildren(el('h3', { textContent: 'Connected providers' }));
@@ -97,7 +98,7 @@ class OfficeObservability extends OfficeComponent {
         const data = await api(test ? '/test' : '', 'POST', payload);
         if (current !== revision || !dialog.open) return;
         status.textContent = test ? data.message : 'Provider added. New logs will be forwarded automatically.';
-        if (!test) { form.reset(); authFields(); await refresh(); this.emit('observability-change', { provider: data.provider }); }
+        if (!test) { form.reset(); authFields(); await refresh(); }
       } catch (error) { if (current === revision && dialog.open) status.textContent = error.message; }
       finally { busy = false; buttons.forEach(button => { button.disabled = false; }); }
     };
