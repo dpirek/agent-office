@@ -271,22 +271,43 @@ class OfficeChat extends OfficeComponent {
       const room = event.target.closest('[data-project-id]');
       if (room) this.emit('project-select', { id: room.dataset.projectId });
     });
+    function revealSelectedProject() {
+      requestAnimationFrame(() => {
+        const rooms = $('#project-chat-rooms');
+        const selected = rooms.querySelector('[aria-current="true"]');
+        if (!selected || !rooms.clientWidth || !rooms.clientHeight) return;
+        const list = rooms.getBoundingClientRect();
+        const item = selected.getBoundingClientRect();
+        // Scroll only the project list, without moving chat messages or the page.
+        if (item.top < list.top) rooms.scrollTop += item.top - list.top;
+        else if (item.bottom > list.top + rooms.clientHeight) rooms.scrollTop += item.bottom - list.top - rooms.clientHeight;
+        if (item.left < list.left) rooms.scrollLeft += item.left - list.left;
+        else if (item.right > list.left + rooms.clientWidth) rooms.scrollLeft += item.right - list.left - rooms.clientWidth;
+      });
+    }
+    let projectRoomsMarkup = null;
     this.update = () => {
       $('office-add-member').data = { projectId: state.projectId, userRole: state.userRole, workerTokenName: state.workerTokenName };
       const project = state.projects.find(entry => entry.id === state.projectId);
       if (project) {
         $('#project-chat-title').textContent = project.name.toUpperCase();
-        $('#project-chat-rooms').innerHTML = state.projects.map(entry => `<button class="office-chat-channel project-room${entry.id === project.id ? ' active' : ''}" type="button" data-project-id="${escapeHtml(entry.id)}" ${entry.id === project.id ? 'aria-current="true"' : ''}><span>#</span><strong>${escapeHtml(entry.name)}</strong></button>`).join('');
+        const markup = state.projects.map(entry => `<button class="office-chat-channel project-room${entry.id === project.id ? ' active' : ''}" type="button" data-project-id="${escapeHtml(entry.id)}" ${entry.id === project.id ? 'aria-current="true"' : ''}><span>#</span><strong>${escapeHtml(entry.name)}</strong></button>`).join('');
+        if (markup !== projectRoomsMarkup) {
+          $('#project-chat-rooms').innerHTML = markup;
+          projectRoomsMarkup = markup;
+          revealSelectedProject();
+        }
         $('#project-room-heading').textContent = `# ${project.name}`;
         $('#office-board-input').placeholder = `Message #${project.name} · use @name`;
       }
       renderOfficeChat({ preserveScroll: true });
     };
     this.clearDraft = () => { setReply(null); $('#office-board-input').value = ''; resizeOfficeBoardInput(); };
-    this.syncComposer = syncOfficeBoardComposerHeight;
+    this.syncComposer = () => { syncOfficeBoardComposerHeight(); revealSelectedProject(); };
     this.onConnect = () => {
       initChatComposer({ root: this, signal: this.connectionSignal });
       window.addEventListener('resize', syncOfficeBoardComposerHeight, { signal: this.connectionSignal });
+      window.addEventListener('resize', revealSelectedProject, { signal: this.connectionSignal });
       window.visualViewport?.addEventListener('resize', syncOfficeBoardComposerHeight, { signal: this.connectionSignal });
       syncOfficeBoardComposerHeight();
     };
