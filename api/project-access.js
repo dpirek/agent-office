@@ -12,6 +12,11 @@ export async function guardProjectRequest(req, res, url, { uiStateStore, sharedW
     if (route === '/api/project-members' && req.method === 'GET') return false;
     if (['/api/health', '/api/sub-agents', '/api/system-logs'].includes(route) && req.method === 'GET') return false;
     if (route === '/api/system-logs' && req.method === 'POST') return false;
+    if (route === '/api/workspace-file-asset' && req.method === 'GET' && url.searchParams.has('projectId')) {
+      const project = uiStateStore.requireProject(url.searchParams.get('projectId'));
+      requireProjectAccess(req.user, project.id, project);
+      return false;
+    }
     if (route === '/api/skills' && req.method === 'GET') { json(res, 200, { ok: true, skills: [] }); return true; }
     if (['/api/tasks', '/api/chat', '/api/operations', '/api/memory', '/api/shared-workspace', '/api/project-invitations'].includes(route)) {
       let projectId = url.searchParams.get('projectId') || 'central-office';

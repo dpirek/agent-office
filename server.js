@@ -96,7 +96,19 @@ let officeManagerQueue = Promise.resolve();
 let taskReviewTrigger;
 let taskProgressMonitor;
 
-const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot, getWorkerToken: () => uiStateStore.getWorkerToken() });
+const sharedWorkspace = createSharedWorkspace({
+  root: sharedWorkspaceRoot,
+  getWorkerToken: () => uiStateStore.getWorkerToken(),
+  getOfficeOrigins: () => {
+    const address = server?.address();
+    const origins = process.env.AI_HARNESS_PUBLIC_ORIGIN ? [new URL(process.env.AI_HARNESS_PUBLIC_ORIGIN).origin] : [];
+    if (address && typeof address === 'object') {
+      const hosts = new Set(['127.0.0.1', 'localhost', '[::1]', address.address.includes(':') ? `[${address.address}]` : address.address]);
+      for (const host of hosts) origins.push(`http://${host}:${address.port}`);
+    }
+    return origins;
+  },
+});
 const workerArtifactStore = createWorkerArtifactStore({ root: sharedWorkspaceRoot, getWorkerToken: () => uiStateStore.getWorkerToken() });
 await workerArtifactStore.clearStaleUploads();
 const subAgentManager = new SubAgentManager({

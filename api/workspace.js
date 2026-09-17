@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { safeTokenEqual, bearerToken } from '../lib/worker-auth.js';
+import { projectWorkspace } from '../lib/projects.js';
 
 import {
   createConversationWorkspace,
@@ -27,9 +28,13 @@ const ASSET_CONTENT_TYPES = {
   ".webp": "image/webp",
 };
 
-export function createWorkspaceApiHandlers({ uiStateStore, resolveWorkspace, officeChatService }) {
-  async function resolveWorkspaceFile(workspace, requestedPath) {
-    const root = await resolveWorkspace(workspace);
+export function createWorkspaceApiHandlers({ uiStateStore, resolveWorkspace, officeChatService, sharedWorkspaceRoot }) {
+  async function resolveWorkspaceFile(workspace, requestedPath, projectId) {
+    let root;
+    if (projectId !== undefined && projectId !== null) {
+      uiStateStore.requireProject(projectId);
+      root = await projectWorkspace(sharedWorkspaceRoot, projectId);
+    } else root = await resolveWorkspace(workspace);
     if (typeof requestedPath !== "string" || !requestedPath.trim()) throw new Error("Select a file.");
     const candidate = path.resolve(root, requestedPath.trim());
     const realFile = await fs.realpath(candidate);
@@ -169,8 +174,9 @@ export function createWorkspaceApiHandlers({ uiStateStore, resolveWorkspace, off
     }
     try {
       const { file, stat } = await resolveWorkspaceFile(
-        url.searchParams.get("workspace"),
+        url.searchParams.get("workspace") || (req.workerAuthenticated ? '.' : null),
         url.searchParams.get("path"),
+        url.searchParams.get('projectId'),
       );
       const extension = path.extname(file).toLowerCase();
       const contentType = ASSET_CONTENT_TYPES[extension] || "application/octet-stream";

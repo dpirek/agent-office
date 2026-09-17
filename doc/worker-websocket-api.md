@@ -206,6 +206,14 @@ Tool schemas advertise a required `projectId` argument matching the endpoint;
 a mismatched payload is rejected. Older clients omitting that argument remain
 compatible, using the endpoint's project scope.
 
+Download an existing project file with the worker registration key using
+`GET /api/workspace-file-asset?projectId=<project-id>&path=docs/contract.md`.
+The path is relative to that project's delivery folder; omit `workspace` when
+using `projectId`. The legacy `workspace` query remains for non-project files.
+The Office authenticates its own artifact downloads to this endpoint on the first
+request, using its listening address or configured `AI_HARNESS_PUBLIC_ORIGIN`.
+During task delivery, a project-scoped download must match the task's project.
+
 Task and direct-message envelopes include `context.project` (`id`, `name`) and
 `context.task` (`id`, `title`, `workerTaskId`), plus `officeTaskId`. The task is
 `null` for general project conversations. Project and task identity also appear
