@@ -54,6 +54,26 @@ class OfficeSettings extends OfficeComponent {
             ] })
           ] }),
           this.createElement("label", { "class": "theme-option", children: [
+            this.createElement("input", { "type": "radio", "name": "office-theme", "value": "grog" }),
+            this.createElement("span", { "class": "theme-preview preview-grog", "aria-hidden": "true", children: [
+              this.createElement("span", { "class": "preview-top" }),
+              this.createElement("span", { "class": "preview-rail" }),
+              this.createElement("span", { "class": "preview-content", children: [
+                this.createElement("i", {  }),
+                this.createElement("i", {  }),
+                this.createElement("i", {  }),
+                this.createElement("i", {  })
+              ] })
+            ] }),
+            this.createElement("span", { "class": "theme-option-copy", children: [
+              this.createElement("strong", { children: [
+                document.createTextNode("Grog "),
+                this.createElement("span", { "class": "theme-selected", textContent: "Selected" })
+              ] }),
+              this.createElement("small", { textContent: "Warm charcoal, glowing amber, and mint and cyan details in a monospace command center." })
+            ] })
+          ] }),
+          this.createElement("label", { "class": "theme-option", children: [
             this.createElement("input", { "type": "radio", "name": "office-theme", "value": "teams" }),
             this.createElement("span", { "class": "theme-preview preview-teams", "aria-hidden": "true", children: [
               this.createElement("span", { "class": "preview-top" }),

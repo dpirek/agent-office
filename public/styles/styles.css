@@ -736,13 +736,19 @@ office-mcp-settings { display: block; flex: 1; min-height: 0; overflow-y: auto; 
 .observability-add { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin-left: auto; border: 1px solid var(--line-dim); background: transparent; color: var(--green); }
 .observability-add[hidden] { display: none; }
 .observability-add:hover { border-color: var(--green); }
-.observability-dialog { width: min(620px, calc(100vw - 24px)); max-height: calc(100dvh - 40px); padding: 0; overflow-y: auto; }
-.observability-body { padding: 20px; }
+.observability-dialog { width: min(680px, calc(100% - 24px)); max-height: calc(100dvh - 40px); padding: 4px; overflow: hidden; }
+.observability-dialog[open] { display: flex; flex-direction: column; }
+.observability-dialog .panel-header > div:first-child { min-width: 0; gap: 8px; }
+.observability-dialog .panel-header h2 { overflow: hidden; font-size: 11px; text-overflow: ellipsis; text-transform: uppercase; }
+.observability-dialog .dialog-close { flex-shrink: 0; }
+.observability-body { min-height: 0; padding: 20px; overflow-y: auto; overscroll-behavior: contain; }
 .observability-body h3 { margin: 0 0 12px; font-size: 14px; }
-.observability-form { display: grid; gap: 12px; }
-.observability-form label { display: grid; gap: 6px; font-size: 12px; }
+.observability-dialog .observability-form { display: grid; gap: 12px; padding: 0; }
+.observability-form label { display: grid; gap: 12px; }
+.observability-form label > span { color: var(--green); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
 .observability-form label[hidden] { display: none; }
-.observability-form input, .observability-form select { width: 100%; min-width: 0; min-height: 36px; padding: 8px 10px; border: 1px solid var(--line-dim); background: var(--bg); color: var(--text); font: inherit; }
+.observability-form input, .observability-form select { width: 100%; min-width: 0; height: 38px; padding: 0 11px; border: 1px solid var(--line); outline: 0; background: #05090a; color: var(--text); font: inherit; }
+.observability-form input:focus, .observability-form select:focus { border-color: var(--green); }
 .observability-help { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .observability-providers { padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--line-dim); }
 .observability-provider { margin-top: 12px; padding: 12px; border: 1px solid var(--line-dim); }
@@ -750,4 +756,5 @@ office-mcp-settings { display: block; flex: 1; min-height: 0; overflow-y: auto; 
 .observability-provider p { font-size: 12px; margin: 8px 0; }
 .observability-provider button { margin-right: 8px; padding: 6px 10px; background: transparent; border: 1px solid var(--line-dim); }
 .observability-form .dialog-actions { padding: 12px 0 0; flex-wrap: wrap; }
+.observability-form .dialog-actions button { text-transform: uppercase; }
 .observability-status { margin: 12px 0 0; font-size: 12px; color: var(--muted); }

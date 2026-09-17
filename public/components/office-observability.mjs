@@ -6,8 +6,14 @@ class OfficeObservability extends OfficeComponent {
     const el = (tag, props) => this.createElement(tag, props);
     const field = (label, input) => el('label', { children: [el('span', { textContent: label }), input] });
     const input = (name, props = {}) => el('input', { name, autocomplete: 'off', ...props });
-    this.append(el('dialog', { class: 'observability-dialog', 'aria-labelledby': 'observability-title', children: [
-      el('header', { class: 'panel-header', children: [el('h2', { id: 'observability-title', textContent: 'Observability providers' }), el('button', { type: 'button', class: 'dialog-close', 'aria-label': 'Close observability providers', textContent: '×', 'data-close': '' })] }),
+    this.append(el('dialog', { class: 'agent-dialog observability-dialog', 'aria-labelledby': 'observability-title', children: [
+      el('header', { class: 'panel-header', children: [
+        el('div', { children: [
+          el('svg', { class: 'header-icon bi', width: '20', height: '20', viewBox: '0 0 16 16', fill: 'currentColor', 'aria-hidden': 'true', focusable: 'false', children: [el('use', { href: '/assets/bootstrap-icons/bootstrap-icons.svg#activity' })] }),
+          el('h2', { id: 'observability-title', textContent: 'Observability providers' }),
+        ] }),
+        el('button', { type: 'button', class: 'dialog-close', 'aria-label': 'Close observability providers', textContent: '×', 'data-close': '' }),
+      ] }),
       el('div', { class: 'observability-body', children: [
         el('section', { class: 'observability-providers', 'aria-label': 'Connected providers' }),
         el('form', { class: 'observability-form', children: [
