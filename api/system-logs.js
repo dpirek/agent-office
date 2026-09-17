@@ -1,5 +1,16 @@
 import { json, methodNotAllowed, readRequestBody } from "./http.js";
 
+// Older/open tabs may still post telemetry. With no destination, discard it
+// before authentication and HTTP activity recording; never ingest the body.
+export function discardDisabledLogPost(req, res, url, store) {
+  if (req.method !== 'POST' || url.pathname !== '/api/system-logs') return false;
+  if (store.getObservabilityProviders().some(provider => provider.enabled)) return false;
+  req.resume();
+  res.writeHead(204, { 'cache-control': 'no-store' });
+  res.end();
+  return true;
+}
+
 export function createSystemLogApiHandlers({ uiStateStore }) {
   async function handleSystemLogsApi(req, res, url) {
     if (req.method === "GET") {

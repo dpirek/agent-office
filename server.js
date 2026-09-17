@@ -1,4 +1,5 @@
 import { createObservabilityExporter } from './lib/observability.js';
+import { discardDisabledLogPost } from './api/system-logs.js';
 import { instrumentModelClient } from './lib/system-activity.js';
 import { workerMessageContext } from './lib/worker-message-context.js';
 import { formatThreadRequest, threadReplyText } from './lib/chat-thread.js';
@@ -545,6 +546,7 @@ periodicOperationScheduler.start();
 
 server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  if (discardDisabledLogPost(req, res, url, uiStateStore)) return;
   if (url.pathname === "/account.html") { res.writeHead(302, { location: "/account" }); res.end(); return; }
   const requestStartedAt = Date.now();
   res.once("finish", () => {

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
 import test from "node:test";
-import { createSystemLogApiHandlers } from "../api/system-logs.js";
+import { createSystemLogApiHandlers, discardDisabledLogPost } from "../api/system-logs.js";
 import { createUiStateStore } from "../lib/ui-state.js";
 
 function responseRecorder() {
@@ -15,6 +15,31 @@ function responseRecorder() {
     end(body = "") { this.body = body; },
   };
 }
+
+test('disabled log POSTs are discarded before auth without storing activity', () => {
+  const store = createUiStateStore(':memory:');
+  try {
+    const url = new URL('http://localhost/api/system-logs');
+    const discard = () => {
+      let drained = false;
+      const res = responseRecorder();
+      const handled = discardDisabledLogPost({ method: 'POST', resume() { drained = true; } }, res, url, store);
+      return { handled, drained, status: res.status, body: res.body };
+    };
+    const ignored = { handled: true, drained: true, status: 204, body: '' };
+    assert.deepEqual(discard(), ignored);
+    const provider = store.addObservabilityProvider({ type: 'loki', name: 'Logs', url: 'https://logs.example.test', enabled: false });
+    assert.deepEqual(discard(), ignored);
+    store.setObservabilityEnabled(provider.id, true);
+    assert.deepEqual(discard(), { handled: false, drained: false, status: null, body: '' });
+    store.deleteObservabilityProvider(provider.id);
+    assert.deepEqual(discard(), ignored);
+    assert.deepEqual(store.getSystemActivity(), []);
+    for (const [method, path] of [['GET', '/api/system-logs'], ['POST', '/api/tasks']]) {
+      assert.equal(discardDisabledLogPost({ method }, responseRecorder(), new URL(path, url), store), false);
+    }
+  } finally { store.close(); }
+});
 
 test("system activity is persisted and exposed in chronological order", async (context) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "agent-office-system-logs-"));

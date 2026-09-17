@@ -152,7 +152,7 @@ function addLog(source, text, tone = "") {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ category: "browser", source, message: text, tone }),
   }).then(response => {
-    if (response.status === 401 || response.status === 403) state.logForwardingEnabled = false;
+    if ([204, 401, 403].includes(response.status)) state.logForwardingEnabled = false;
   }).catch(() => {});
 }
 
