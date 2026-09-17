@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PassThrough } from 'node:stream';
 import { EventEmitter } from 'node:events';
+import { stripVTControlCharacters } from 'node:util';
+import { officePixels } from '../lib/office-tui-art.js';
 import { renderOfficeTui, startOfficeTui, tuiRequested } from '../lib/office-tui.js';
 
 const snapshot = {
@@ -35,6 +37,25 @@ test('views show office data, scroll, fit small terminals and strip injected ter
   }
 });
 
+test('pixel office fits the terminal, reflects live desk status and falls back on small screens', () => {
+  for (const [columns, rows] of [[120, 40], [80, 24], [39, 20], [32, 8], [10, 2]]) {
+    const frame = renderOfficeTui(snapshot, { view: 4, columns, rows });
+    assert.equal(frame.lines.length, rows);
+    assert.ok(frame.lines.every(line => stripVTControlCharacters(line).length === columns - 1));
+    if (columns >= 39 && rows >= 20) {
+      assert.match(frame.lines.join(''), /\x1b\[38;2;/);
+      assert.match(frame.lines.join(''), /▀/);
+      assert.equal(frame.maxOffset, 0);
+    } else assert.doesNotMatch(frame.lines.join(''), /\x1b/);
+  }
+  const busy = officePixels(snapshot, 80, 32).pixels;
+  const idle = officePixels({ ...snapshot, managerBusy: false, tasks: [] }, 80, 32).pixels;
+  assert.notDeepEqual(busy, idle);
+  assert.ok(busy.flat().includes('#ecb657'));
+  assert.ok(idle.flat().includes('#68c69c'));
+  assert.ok(busy.flat().includes('#596360'));
+});
+
 function terminal() {
   const input = new PassThrough(), output = new PassThrough(), signals = new EventEmitter();
   input.isTTY = output.isTTY = true;
@@ -54,6 +75,8 @@ test('monitor switches views, pauses, captures diagnostics, and restores termina
   const monitor = startOfficeTui({ ...term, getSnapshot: () => { reads++; return snapshot; } });
   try {
     assert.equal(term.input.isRaw, true);
+    assert.match(term.text(), /\[5 Office\]/);
+    assert.match(term.text(), /▀/);
     term.input.emit('keypress', '3', { name: '3' });
     assert.match(term.text(), /\[3 Tasks\]/);
     term.input.emit('keypress', ' ', { name: 'space' });

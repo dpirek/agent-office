@@ -61,7 +61,11 @@ npm start -- --tui
 when npm forwards the option as `npm_config_tui`; the `-- --tui` form works across npm versions.
 The monitor reads office state locally and refreshes every second, without a browser login.
 
-- **1–4:** Overview, Workers, Tasks, and Logs.
+- **1–5:** Overview, Workers, Tasks, Logs, and Office.
+- **Office** opens by default with a pixel-art room rendered in hex-based truecolor
+  using terminal half-block characters. Desk screens show busy (amber), online
+  (mint), and offline (gray) agents. The manager sits first; the scene adapts to
+  the terminal size. Use at least 39 columns × 20 rows for the artwork.
 - **Up/Down, Page Up/Page Down, Home/End:** scroll the selected view.
 - **Space:** pause or resume state updates.
 - **q / Escape:** close the monitor and leave the web server running.
