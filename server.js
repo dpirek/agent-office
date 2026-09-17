@@ -1,3 +1,4 @@
+import { requestClientIp } from './lib/request-client-ip.mjs';
 import { createObservabilityExporter } from './lib/observability.js';
 import { discardDisabledLogPost } from './api/system-logs.js';
 import { instrumentModelClient } from './lib/system-activity.js';
@@ -549,6 +550,7 @@ server = http.createServer(async (req, res) => {
   if (discardDisabledLogPost(req, res, url, uiStateStore)) return;
   if (url.pathname === "/account.html") { res.writeHead(302, { location: "/account" }); res.end(); return; }
   const requestStartedAt = Date.now();
+  const clientIp = requestClientIp(req);
   let staticAssetRequest = false;
   res.once("finish", () => {
     try {
@@ -556,9 +558,9 @@ server = http.createServer(async (req, res) => {
       if (req.method === 'GET' && res.statusCode < 400 && url.pathname.startsWith('/api/') && !req.workerAuthenticated) return;
       uiStateStore.recordSystemActivity({
         category: req.workerAuthenticated ? 'mcp' : "network", source: req.workerAuthenticated ? 'Worker context API' : "HTTP",
-        message: `${req.method} ${url.pathname} → ${res.statusCode} · ${Date.now() - requestStartedAt}ms`,
+        message: `${req.method} ${url.pathname} → ${res.statusCode} · ${Date.now() - requestStartedAt}ms · IP ${clientIp || "unknown"}`,
         tone: res.statusCode >= 400 ? "error" : "tool",
-        metadata: { method: req.method, path: url.pathname, statusCode: res.statusCode, projectId: url.searchParams.get("projectId"), durationMs: Date.now() - requestStartedAt },
+        metadata: { method: req.method, path: url.pathname, clientIp, statusCode: res.statusCode, projectId: url.searchParams.get("projectId"), durationMs: Date.now() - requestStartedAt },
       });
     } catch (error) {
       if (!storeClosed) console.error("Unable to record HTTP activity:", error);
