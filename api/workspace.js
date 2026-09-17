@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import crypto from "node:crypto";
+import { safeTokenEqual, bearerToken } from '../lib/worker-auth.js';
 
 import {
   createConversationWorkspace,
@@ -89,9 +89,7 @@ export function createWorkspaceApiHandlers({ uiStateStore, resolveWorkspace, off
       const agentName = String(req.headers["x-agent-name"] || "").trim();
       const workerUpload = Boolean(agentName || req.headers.authorization);
       if (workerUpload) {
-        const supplied = Buffer.from(/^Bearer\s+(.+)$/i.exec(String(req.headers.authorization || ""))?.[1] || "");
-        const expected = Buffer.from(uiStateStore.getWorkerToken() || "");
-        if (!expected.length || supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) {
+        if (!safeTokenEqual(bearerToken(req.headers.authorization), uiStateStore.getWorkerToken())) {
           json(res, 401, { ok: false, error: "Worker upload credentials were rejected." });
           return;
         }

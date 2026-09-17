@@ -45,7 +45,7 @@ test('worker token reads prior memory, full task details and chat without a brow
   assert.equal(chat.body.messages[0].text, 'Prior discussion');
 });
 
-test('worker token only authorizes context reads; missing, invalid and rotated credentials fail', async () => {
+test('worker context credentials cannot mutate tasks, chat or memory; invalid and rotated credentials fail', async () => {
   const { request, rotate } = setup();
   for (const authorization of ['', 'Bearer wrong', 'Basic worker-secret']) {
     assert.equal((await request('/api/tasks', { authorization })).status, 401);
@@ -67,6 +67,15 @@ test('project MCP accepts worker token without a browser session or active task 
   const response = await request('/mcp/projects/central-office/tasks/task-one', options);
   assert.equal(response.status, 200);
   assert.equal(response.body.result.structuredContent.latestUserRequests[0].text, 'Prior discussion');
+  for (const method of ['initialize', 'tools/list', 'ping']) {
+    const result = await request('/mcp/projects/central-office/tasks/task-one', { method: 'POST', body: { jsonrpc: '2.0', id: 2, method } });
+    assert.equal(result.status, 200);
+    assert.ok(result.body.result);
+  }
+  for (const authorization of ['', 'Bearer wrong', 'Basic worker-secret']) {
+    assert.equal((await request('/mcp/projects/central-office/tasks/task-one', { ...options, authorization })).status, 401);
+  }
   rotate('replacement');
   assert.equal((await request('/mcp/projects/central-office/tasks/task-one', options)).status, 401);
+  assert.equal((await request('/mcp/projects/central-office/tasks/task-one', { ...options, authorization: 'Bearer replacement' })).status, 200);
 });

@@ -6,7 +6,8 @@ import { Readable } from "node:stream";
 import test from "node:test";
 import { createUiStateStore } from "../lib/ui-state.js";
 import { createOfficeChatService } from "../lib/office-chat.js";
-import { createWorkspaceApiHandlers } from "../api/workspace.js";
+import { createAuthService } from '../api/auth.js';
+import { createApiRouter } from '../api/index.js';
 
 test("worker test upload announces once after storage, including retries, reconnects and restarts", async (context) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "office-worker-upload-"));
@@ -23,13 +24,17 @@ test("worker test upload announces once after storage, including retries, reconn
     req.method = "POST";
     req.headers = { "content-type": "text/markdown; charset=utf-8", "content-length": Buffer.byteLength(body) };
     if (!browser) Object.assign(req.headers, { "x-agent-name": agent, authorization: `Bearer ${credential}` });
-    const response = { writeHead(status) { this.status = status; }, end(value) { this.body = JSON.parse(value); } };
+    const response = { setHeader() {}, writeHead(status) { this.status = status; }, end(value) { this.body = JSON.parse(value); } };
+    const userStore = { session: () => browser ? { role: 'admin' } : null };
+    const auth = createAuthService({ userStore, getWorkerToken: () => store.getWorkerToken() });
     const chat = createOfficeChatService({ uiStateStore: store });
-    const handler = createWorkspaceApiHandlers({
+    const handler = createApiRouter({
+      userStore,
       uiStateStore: store, officeChatService: chat,
       resolveWorkspace: async (requested) => { assert.equal(requested, workspace); return path.join(root, requested); },
-    })["/api/workspace-upload"];
-    await handler(req, response, new URL(`http://office.test/api/workspace-upload?workspace=${workspace}&name=${name}`));
+    });
+    const url = new URL(`http://office.test/api/workspace-upload?workspace=${workspace}&name=${name}`);
+    if (!await auth.handle(req, response, url)) await handler(req, response, url);
     return response;
   }
   assert.equal((await upload({ credential: "wrong" })).status, 401);
@@ -55,6 +60,11 @@ test("worker test upload announces once after storage, including retries, reconn
   store.upsertRegisteredWorker({ ...worker, name: "Reviewer" });
   await upload({ agent: "Reviewer" });
   assert.equal(store.getOfficeChatMessages().length, 2);
+  store.setWorkerToken('b'.repeat(32));
+  assert.equal((await upload()).status, 401);
+  assert.equal((await upload({ credential: 'b'.repeat(32) })).status, 201);
+  store.markRegisteredWorkerOffline('Builder');
+  assert.equal((await upload({ credential: 'b'.repeat(32) })).status, 403);
 });
 
 test("a failed chat insert rolls back the connectivity flag", (context) => {

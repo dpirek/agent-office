@@ -96,7 +96,7 @@ let taskReviewTrigger;
 let taskProgressMonitor;
 
 const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
-const workerArtifactStore = createWorkerArtifactStore({ root: sharedWorkspaceRoot });
+const workerArtifactStore = createWorkerArtifactStore({ root: sharedWorkspaceRoot, getWorkerToken: () => uiStateStore.getWorkerToken() });
 await workerArtifactStore.clearStaleUploads();
 const subAgentManager = new SubAgentManager({
   getMessageContext: message => workerMessageContext(uiStateStore, message),

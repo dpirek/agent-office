@@ -102,6 +102,10 @@ Abort the matching model request, commands, child processes, and artifact upload
 
 First upload the raw file bytes to the task-specific URL supplied with the assignment:
 
+The bearer credential can be the assignment's upload token or the current worker
+registration key. Both require an active task upload; completed or discarded
+tasks cannot receive new files. No browser session is required.
+
 ```http
 POST /api/worker-artifacts?taskId=task-generated-uuid&name=release.zip HTTP/1.1
 Authorization: Bearer task-specific-upload-token
@@ -138,6 +142,8 @@ registered worker name, `content-length` in bytes, and
 `Content-Type: text/markdown; charset=utf-8`. Include the worker name, connection
 ID, join timestamp, and a connectivity-test message in the Markdown body.
 No task or message ID is required, and the Office does not assign a test task.
+This endpoint accepts the same registration key as `/ws/workers`, without a
+browser login. The `x-agent-name` must match a currently connected worker.
 
 Once the file is saved, the Office posts a group-chat notice confirming that
 the agent joined and can send files. This notice is recorded once per worker
@@ -177,8 +183,9 @@ Do not wrap deliveries in task, worker, date, or repeated project folders. Inclu
 Workers can use their current registration token as `Authorization: Bearer …` for
 read-only `GET /api/memory`, `GET /api/tasks`, and `GET /api/chat` requests, without
 a browser session. Include `projectId` in the query string to read the relevant
-project. This shared credential permits office context reads; it does not grant
-account administration or write access. Rotating the worker token revokes its
+project. This shared credential also authorizes the file-upload endpoints above;
+it does not grant account administration or task/chat/memory mutation access.
+Rotating the worker token revokes its
 HTTP access immediately.
 
 Project MCP endpoints accept either the registration token or the supplied
