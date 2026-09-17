@@ -723,3 +723,7 @@ office-mcp-settings { display: block; flex: 1; min-height: 0; overflow-y: auto; 
 .mcp-test-results pre { overflow: auto; max-height: 240px; font-size: 11px; white-space: pre-wrap; }
 .mcp-help { color: var(--muted); font-size: 12px; margin-top: 12px; }
 @media(max-width: 600px) { .mcp-server-fields { grid-template-columns: 1fr; }.mcp-server-form { padding: 12px; }.mcp-header-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto; } }
+
+.add-member-dialog [data-copy] { align-self: flex-start; display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--green); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
+.add-member-dialog [data-copy]:hover { border-color: var(--green); background: color-mix(in srgb, var(--green) 9%, transparent); }
+.add-member-dialog [data-copy]:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }

@@ -251,11 +251,17 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
         title.textContent = `Join ${invitationInfo.projectName}`;
         description.textContent = `This invitation is for ${invitationInfo.email}. You are signed in as ${session.user.email}.`;
         content.replaceChildren();
-        if (session.user.email.toLowerCase() === invitationInfo.email.toLowerCase()) content.append(button('Join project', async () => {
+        const actions = document.createElement('div'); actions.className = 'invitation-actions';
+        content.append(actions);
+        if (session.user.email.toLowerCase() === invitationInfo.email.toLowerCase()) {
+          const join = button('Join project', async () => {
           const result = await api('/api/auth/accept-invitation', { invitation: invitationCode });
           invitationAccepted = true; onAuthenticated(result.user, invitationInfo.projectId);
-        }));
-        content.append(button('Use another account', async () => {
+          });
+          join.className = 'invitation-primary';
+          actions.append(join);
+        }
+        actions.append(button('Use another account', async () => {
           await api('/api/auth/logout', {});
           location.replace(`/login?invite=${encodeURIComponent(invitationCode)}`);
         }));

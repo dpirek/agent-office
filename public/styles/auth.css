@@ -77,3 +77,11 @@ body > .account-layout { width: calc(100% - 64px); margin: 0 auto; flex-shrink: 
 
 
 .account-actions a { color: var(--green); font-weight: 600; padding: 4px; }
+
+.invitation-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.account-panel .invitation-actions button { min-height: 44px; padding: 12px 20px; border: 1px solid #dce0ec; background: #fff; color: #555a78; font-weight: 600; line-height: 1.4; }
+.account-panel .invitation-actions button:hover:not(:disabled) { background: #f3f2fa; border-color: #b9b2e3; }
+.account-panel .invitation-actions .invitation-primary { background: #5b52cf; border-color: #5b52cf; color: #fff; box-shadow: 0 2px 4px #5146b71f; }
+.account-panel .invitation-actions .invitation-primary:hover:not(:disabled) { background: #4940b5; border-color: #4940b5; }
+.invitation-actions button:focus-visible { outline: 3px solid #aaa2ff; outline-offset: 3px; }
+@media (max-width: 480px) { .invitation-actions { flex-direction: column; }.invitation-actions button { width: 100%; } }
