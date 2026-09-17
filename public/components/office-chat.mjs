@@ -49,17 +49,7 @@ class OfficeChat extends OfficeComponent {
             this.createElement("textarea", { "id": "office-board-input", "rows": "1", "maxlength": "100000", "required": "", "placeholder": "Message #central-office · use @office-manager or @agent-name", "aria-label": "Message central office" }),
             this.createElement("div", { "class": "composer-toolbar", children: [
               this.createElement("div", { "class": "composer-tools", "aria-label": "Message tools", children: [
-                this.createElement("button", { "type": "button", "data-composer-format": "**", "aria-label": "Bold text", "title": "Bold text", children: [
-                  this.createElement("svg", { "class": "bi", "width": "22", "height": "22", "viewBox": "0 0 16 16", "aria-hidden": "true", "focusable": "false", children: [
-                    this.createElement("use", { "href": "/assets/bootstrap-icons/bootstrap-icons.svg#type-bold" })
-                  ] })
-                ] }),
-                this.createElement("button", { "type": "button", "data-composer-format": "_", "aria-label": "Italic text", "title": "Italic text", children: [
-                  this.createElement("svg", { "class": "bi", "width": "22", "height": "22", "viewBox": "0 0 16 16", "aria-hidden": "true", "focusable": "false", children: [
-                    this.createElement("use", { "href": "/assets/bootstrap-icons/bootstrap-icons.svg#type-italic" })
-                  ] })
-                ] }),
-                this.createElement("button", { "type": "button", "data-composer-format": "`", "aria-label": "Inline code", "title": "Inline code", children: [
+                this.createElement("button", { "type": "button", "data-composer-format": "`", "aria-label": "Code", "title": "Code", children: [
                   this.createElement("svg", { "class": "bi", "width": "22", "height": "22", "viewBox": "0 0 16 16", "aria-hidden": "true", "focusable": "false", children: [
                     this.createElement("use", { "href": "/assets/bootstrap-icons/bootstrap-icons.svg#code" })
                   ] })
