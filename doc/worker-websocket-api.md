@@ -106,17 +106,15 @@ The bearer credential can be the assignment's upload token or the current worker
 registration key. Both require an active task upload; completed or discarded
 tasks cannot receive new files. No browser session is required.
 
-Prefer this upload flow on Windows too: send the local file bytes and return the
+Use this upload flow on Windows too: send the local file bytes and return the
 received IDs in `uploadedArtifactIds`. A `C:\...` path or `file://` URI is local to
 the worker and cannot be downloaded by the Office. With PowerShell, use `curl.exe`
 and `--data-binary "@C:\path\delivery.zip"` when uploading raw bytes.
 
-For legacy HTTP artifact URLs, the Office first downloads anonymously. If the
-registered worker's HTTP(S) origin returns 401, it retries with the current worker
-registration key. The worker's file server must accept that key. The key is never
-sent to a different host, port, or protocol, including redirect destinations.
-Use uploads or a signed download URL for files hosted elsewhere; a browser-session
-download link will not work as a worker artifact URL.
+Office never downloads task deliverables from workers or from URLs in completion
+messages. The old `artifacts` URL array is rejected; the task stays active so the
+worker can upload and retry with `uploadedArtifactIds`. Text-only completion may
+omit the IDs or provide an empty array.
 
 ```http
 POST /api/worker-artifacts?taskId=task-generated-uuid&name=release.zip HTTP/1.1
@@ -143,7 +141,7 @@ The response contains an `artifactId`. Reference that ID in the final socket upd
 }
 ```
 
-Worker-reported final states are `completed` or `failed`; the office may additionally finalize an assignment as `cancelled` or `timed_out`. The office stores final deliverables before acknowledging completion. ZIP files are extracted directly into the project workspace with their internal paths preserved and then deleted; non-archive files are copied to the project root. Later deliveries replace matching file paths and preserve unrelated files. No task-specific folder is added. Local file links are attached to the corresponding task and chat message and are available on `/<project-id>/workspace`. The older worker-hosted `artifacts` URL array remains supported for compatibility.
+Worker-reported final states are `completed` or `failed`; the office may additionally finalize an assignment as `cancelled` or `timed_out`. The office stores final deliverables before acknowledging completion. ZIP files are extracted directly into the project workspace with their internal paths preserved and then deleted; non-archive files are copied to the project root. Later deliveries replace matching file paths and preserve unrelated files. No task-specific folder is added. Local file links are attached to the corresponding task and chat message and are available on `/<project-id>/workspace`. Only files uploaded to Office and referenced by `uploadedArtifactIds` are accepted.
 # Registration connectivity upload
 
 After receiving `registered`, the worker sends raw Markdown to

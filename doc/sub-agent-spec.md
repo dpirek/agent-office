@@ -289,21 +289,13 @@ A successful task ends with exactly one `completed` update:
 
 The upload token expires when the task completes, fails, times out, or is cancelled. Uploads made with another task's token, unknown artifact IDs, and IDs from another task are rejected. Unreferenced staged uploads are deleted when the task ends.
 
-For backward compatibility, the office also accepts the older `artifacts` array containing worker-hosted HTTP(S) file URLs. New integrations should use `artifactUpload` and `uploadedArtifactIds` so workers do not need to host files.
+Worker-hosted artifact URLs are no longer supported. A completed update containing a non-empty `artifacts` array is rejected; the task remains active so the worker can upload files and retry using `uploadedArtifactIds`. Text-only results may omit `uploadedArtifactIds` or send an empty array.
 
-Legacy artifact requirements:
+The office stores the referenced uploads before completing the task. ZIP archives are safely extracted directly into the project workspace, preserving their internal paths; the uploaded ZIP is deleted after extraction. Non-archive files are copied into the project root. No task-specific folder is added. Later deliveries replace matching file paths and preserve unrelated files. Tasks without a project use central-office. The local files appear on `/<project-id>/workspace`, and their local links are attached to the task, posted in `#central-office`, and recorded in memory.
 
-- `artifacts` must be an array when provided.
-- Every artifact part must have `kind: "file"` and a `file` object.
-- A file URI must resolve to HTTP or HTTPS. Relative URIs are resolved against the registered worker URL after translating `ws` to `http` and `wss` to `https`.
-- `mimeType` should describe the downloadable file accurately.
-- `metadata` is optional and may contain JSON-compatible values such as byte size or file count.
+Uploads are limited to 100 MB per artifact and ZIP expansion is limited to 500 MB and 5,000 entries. Encrypted archives, symbolic links, path traversal, and unsupported compression methods are rejected. A task is marked failed if its delivered work cannot be stored safely.
 
-The office downloads each deliverable before completing the task. ZIP archives are safely extracted directly into the project workspace, preserving their internal paths; the downloaded ZIP is deleted after extraction. Non-archive files are copied into the project root. No task-specific folder is added. Later deliveries replace matching file paths and preserve unrelated files. Tasks without a project use central-office. The local files appear on `/<project-id>/workspace`, and their local links are attached to the task, posted in `#central-office`, and recorded in memory.
-
-Downloads are limited to 100 MB per artifact and ZIP expansion is limited to 500 MB and 5,000 entries. Encrypted archives, symbolic links, path traversal, and unsupported compression methods are rejected. A task is marked failed if its delivered work cannot be stored safely.
-
-The worker must keep each published URI available until the office returns the final `task_update_ack`. That acknowledgement is sent only after the deliverable has been downloaded and stored.
+Wait for every upload to succeed before sending the final `completed` update. The office returns `task_update_ack` only after the referenced uploads have been stored in the project workspace. Workers do not need to run a file server.
 
 ## 6. Failed completion
 

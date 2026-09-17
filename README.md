@@ -227,6 +227,10 @@ Passwords require 12–256 characters and are stored using salted scrypt hashes.
 Sessions last seven days and use HttpOnly, SameSite cookies. When serving over
 HTTPS or behind a reverse proxy, set `AI_HARNESS_PUBLIC_ORIGIN` to the exact public
 origin (for example `https://office.example.com`) to enable Secure cookies.
+Workers deliver files by posting raw bytes to the assignment's `artifactUpload`
+endpoint, then returning `uploadedArtifactIds` in their completed update. Office
+stores those uploads; it does not download worker-hosted artifact URLs. See the
+[worker protocol](doc/worker-websocket-api.md#complete-with-deliverables).
 HTTP and WebSocket authentication do not validate the Origin or Sec-Fetch-Site
 headers; session and role checks still apply. The app does not trust forwarded headers for rate limiting;
 requests through a proxy share its per-address limit of 20 attempts per endpoint

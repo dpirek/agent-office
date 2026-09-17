@@ -44,8 +44,8 @@ test("queue returns a visible task receipt before the worker completes", async (
     onTaskEvent: (event, task) => taskEvents.push({ event, task }),
     materializeArtifacts: async (task, work) => {
       materialized.push({ task, work });
-      return work.map((artifact) => ({
-        ...artifact,
+      return work.map((artifactId) => ({
+        artifactId, name: "worker-task-1.zip",
         uri: "/api/shared-workspace-file?path=Check-release--task-1%2Fworker-task-1.zip",
         workspacePath: "Check-release--task-1/worker-task-1.zip",
       }));
@@ -86,19 +86,7 @@ test("queue returns a visible task receipt before the worker completes", async (
       role: "agent",
       parts: [{ kind: "text", mimeType: "text/markdown", text: "Work complete." }],
     },
-    artifacts: [{
-      artifactId: "workspace-worker-task-1",
-      name: "worker-task-1.zip",
-      parts: [{
-        kind: "file",
-        file: {
-          name: "worker-task-1.zip",
-          mimeType: "application/zip",
-          uri: "https://worker.example.com/workspace/worker-task-1.zip",
-        },
-      }],
-      metadata: { fileCount: 3, size: 12_480 },
-    }],
+    uploadedArtifactIds: ["workspace-worker-task-1"],
   }, "connection-1");
   assert.equal(update.state, "completed");
   assert.equal(taskEvents.length, 2);
@@ -106,17 +94,14 @@ test("queue returns a visible task receipt before the worker completes", async (
   assert.equal(taskEvents[1].event, "completed");
   assert.equal(taskEvents[1].task.deliveredWork[0].name, "worker-task-1.zip");
   assert.equal(materialized[0].task.title, "Check the release");
-  assert.equal(materialized[0].work[0].uri, "https://worker.example.com/workspace/worker-task-1.zip");
+  assert.equal(materialized[0].work[0], "workspace-worker-task-1");
   const result = await queued.completion;
   assert.equal(result.text, "Work complete.");
   assert.deepEqual(result.deliveredWork[0], {
     artifactId: "workspace-worker-task-1",
-    artifactName: "worker-task-1.zip",
     name: "worker-task-1.zip",
-    mimeType: "application/zip",
     uri: "/api/shared-workspace-file?path=Check-release--task-1%2Fworker-task-1.zip",
     workspacePath: "Check-release--task-1/worker-task-1.zip",
-    metadata: { fileCount: 3, size: 12_480 },
   });
   assert.match(manager.listTasks()[0].deliveredWork[0].uri, /^\/api\/shared-workspace-file/);
   const direct = manager.sendDirectMessage({ agent: "alpha", text: "What version are you using?" });

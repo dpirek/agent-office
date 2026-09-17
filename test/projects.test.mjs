@@ -150,8 +150,10 @@ test("project APIs create workspace folders, update status and filter delivered 
   assert.equal(created.status, 201);
   const project = created.body.project;
   assert.equal((await fs.stat(path.join(workspace, project.id))).isDirectory(), true);
-  const storage = createSharedWorkspace({ root: workspace, fetchImpl: async () => new Response("Alpha report") });
-  const [artifact] = await storage.storeTaskArtifacts({ projectId: project.id, taskId: "task-1", title: "Report" }, [{ name: "report.txt", uri: "https://worker.test/report.txt" }]);
+  const storage = createSharedWorkspace({ root: workspace });
+  const upload = path.join(root, "uploaded-report.txt");
+  await fs.writeFile(upload, "Alpha report");
+  const [artifact] = await storage.storeTaskArtifacts({ projectId: project.id, taskId: "task-1", title: "Report" }, [{ name: "report.txt", file: upload }]);
   assert.equal(artifact.workspacePath, `${project.id}/report.txt`);
   assert.equal(await fs.readFile(path.join(workspace, artifact.workspacePath), "utf8"), "Alpha report");
   const b = store.createProject({ name: "Beta" });

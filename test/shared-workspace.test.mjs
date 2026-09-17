@@ -7,58 +7,21 @@ import { createSharedWorkspace, extractZip } from "../lib/shared-workspace.js";
 import { createSharedWorkspaceApiHandlers } from "../api/shared-workspace.js";
 import { resolveOfficeWorkspaceRoot, resolveSharedWorkspaceRoot } from "../lib/workspace-roots.js";
 
-test('protected worker downloads retry with the current worker key, using the registered worker origin', async context => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'office-auth-delivery-'));
-  context.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  let token = 'worker-key';
-  const requests = [];
-  const workspace = createSharedWorkspace({ root, getWorkerToken: () => token, fetchImpl: async (url, options) => {
-    requests.push({ url, ...options });
-    return options.headers?.Authorization === `Bearer ${token}` ? new Response('checkpoint') : new Response('Sign in to continue.', { status: 401 });
-  } });
-  const task = { projectId: 'alpha', workerUrl: 'ws://windows-worker:8099/agent' };
-  const artifact = { name: 'contract.md', uri: 'http://windows-worker:8099/files/contract.md' };
-  await workspace.storeTaskArtifacts(task, [artifact]);
-  assert.equal(requests.length, 2);
-  assert.equal(requests[0].headers, undefined);
-  assert.equal(requests[1].headers.Authorization, 'Bearer worker-key');
-  assert.ok(requests.every(request => request.redirect === 'manual'));
-  assert.equal(fs.readFileSync(path.join(root, 'alpha', 'contract.md'), 'utf8'), 'checkpoint');
-  token = 'rotated-key';
-  await workspace.storeTaskArtifacts(task, [artifact]);
-  assert.equal(requests.at(-1).headers.Authorization, 'Bearer rotated-key');
-});
-
-test('worker credentials are never sent to another origin, including after authenticated redirects', async context => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'office-redirect-delivery-'));
-  context.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const requests = [];
-  const workspace = createSharedWorkspace({ root, getWorkerToken: () => 'private-key', fetchImpl: async (url, options) => {
-    requests.push({ url, ...options });
-    if (url === 'https://worker.test/file' && options.headers) return new Response(null, { status: 302, headers: { location: 'https://other.test/file' } });
-    return new Response(null, { status: 401 });
-  } });
-  const task = { workerUrl: 'wss://worker.test/agent' };
-  await assert.rejects(workspace.storeTaskArtifacts(task, [{ name: 'file.txt', uri: 'https://worker.test/file' }]), /uploadedArtifactIds/);
-  assert.equal(requests.length, 3);
-  assert.equal(requests[1].headers.Authorization, 'Bearer private-key');
-  assert.equal(requests[2].url, 'https://other.test/file');
-  assert.equal(requests[2].headers, undefined);
-  requests.length = 0;
-  await assert.rejects(workspace.storeTaskArtifacts(task, [{ name: 'file.txt', uri: 'https://other.test/file?token=hidden' }]), error => !error.message.includes('hidden') && /401/.test(error.message));
-  assert.equal(requests.length, 1);
-  assert.equal(requests[0].headers, undefined);
-});
+function staged(context, name, content) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'office-staged-test-'));
+  context.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const file = path.join(directory, name);
+  fs.writeFileSync(file, content);
+  return { name, file };
+}
 
 test("the workspace API lists and opens files from the delivery storage root", async (context) => {
   const appRoot = fs.mkdtempSync(path.join(os.tmpdir(), "office-delivery-root-"));
   context.after(() => fs.rmSync(appRoot, { recursive: true, force: true }));
   const officeWorkspaceRoot = resolveOfficeWorkspaceRoot({ cwd: appRoot, configuredWorkspace: "custom-work" });
   const sharedWorkspaceRoot = resolveSharedWorkspaceRoot({ officeWorkspaceRoot, configuredSharedWorkspace: "" });
-  const workspace = createSharedWorkspace({ root: sharedWorkspaceRoot, fetchImpl: async () => new Response("Delivered report") });
-  const [artifact] = await workspace.storeTaskArtifacts({ title: "Report", taskId: "task-1" }, [{
-    name: "report.txt", mimeType: "text/plain", uri: "http://worker.test/report.txt",
-  }]);
+  const workspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
+  const [artifact] = await workspace.storeTaskArtifacts({ title: "Report", taskId: "task-1" }, [staged(context, "report.txt", "Delivered report")]);
   const handlers = createSharedWorkspaceApiHandlers({ sharedWorkspaceRoot });
   const response = () => ({
     status: null, body: null,
@@ -120,14 +83,9 @@ test("delivered ZIP files are unpacked directly into the project workspace and r
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "agent-office-shared-"));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const archive = zip([["index.html", "<h1>Done</h1>"], ["assets/app.js", "console.log('ok')"]]);
-  const workspace = createSharedWorkspace({
-    root,
-    fetchImpl: async () => new Response(archive, { status: 200, headers: { "content-length": String(archive.length) } }),
-  });
+  const workspace = createSharedWorkspace({ root });
 
-  const delivered = await workspace.storeTaskArtifacts({ title: "Build launch page", taskId: "task-123" }, [{
-    artifactId: "artifact-1", name: "result.zip", mimeType: "application/zip", uri: "https://worker.example/result.zip",
-  }]);
+  const delivered = await workspace.storeTaskArtifacts({ title: "Build launch page", taskId: "task-123" }, [staged(context, "result.zip", archive)]);
 
   assert.deepEqual(delivered.map((file) => file.name), ["index.html", "assets/app.js"]);
   assert.match(delivered[0].uri, /^\/files\//);
@@ -149,14 +107,14 @@ test("ZIP traversal paths are rejected", async (context) => {
 test("successive deliveries share the project root and preserve other projects and unrelated files", async (context) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "office-project-delivery-"));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const workspace = createSharedWorkspace({ root, fetchImpl: async (uri) => new Response(decodeURIComponent(new URL(uri).pathname.slice(1))) });
+  const workspace = createSharedWorkspace({ root });
   await workspace.storeTaskArtifacts({ projectId: "alpha", taskId: "first" }, [
-    { name: "index.html", uri: "https://worker.test/first%20version" }, { name: "notes.txt", uri: "https://worker.test/keep%20me" },
+    staged(context, "index.html", "first version"), staged(context, "notes.txt", "keep me"),
   ]);
-  await workspace.storeTaskArtifacts({ projectId: "beta", taskId: "other" }, [{ name: "index.html", uri: "https://worker.test/other%20project" }]);
+  await workspace.storeTaskArtifacts({ projectId: "beta", taskId: "other" }, [staged(context, "index.html", "other project")]);
   const upload = path.join(root, "upload.zip");
   fs.writeFileSync(upload, zip([["index.html", "second version"], ["assets/app.js", "loaded"]]));
-  const delivered = await workspace.storeTaskArtifacts({ projectId: "alpha", taskId: "second" }, [], [
+  const delivered = await workspace.storeTaskArtifacts({ projectId: "alpha", taskId: "second" }, [
     { name: "site.zip", mimeType: "application/zip", file: upload },
   ]);
   assert.deepEqual(delivered.map((file) => file.workspacePath), ["alpha/index.html", "alpha/assets/app.js"]);
@@ -173,8 +131,8 @@ test("invalid and conflicting deliveries leave the existing project intact", asy
   fs.mkdirSync(path.join(root, "alpha/assets"), { recursive: true });
   fs.writeFileSync(path.join(root, "alpha/index.html"), "original");
   let archive = zip([["index.html", "new"], ["assets", "folder conflict"]]);
-  const workspace = createSharedWorkspace({ root, fetchImpl: async () => new Response(archive) });
-  const deliver = () => workspace.storeTaskArtifacts({ projectId: "alpha" }, [{ name: "site.zip", uri: "https://worker.test/archive" }]);
+  const workspace = createSharedWorkspace({ root });
+  const deliver = () => workspace.storeTaskArtifacts({ projectId: "alpha" }, [staged(context, "site.zip", archive)]);
   await assert.rejects(deliver(), /conflicts with a folder/);
   archive = zip([["index.html", "new"], ["../escape.txt", "invalid"]]);
   await assert.rejects(deliver(), /Unsafe ZIP entry path/);
@@ -194,8 +152,8 @@ test("functional deliveries from different tasks merge under the same project fo
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "office-functional-layout-"));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   let archive = zip([["app/index.html", '<script src="assets/app.js"></script>'], ["research/findings.md", "Findings"]]);
-  const workspace = createSharedWorkspace({ root, fetchImpl: async () => new Response(archive) });
-  const deliver = (taskId) => workspace.storeTaskArtifacts({ projectId: "alpha", taskId }, [{ name: "delivery.zip", uri: "https://worker.test/archive" }]);
+  const workspace = createSharedWorkspace({ root });
+  const deliver = (taskId) => workspace.storeTaskArtifacts({ projectId: "alpha", taskId }, [staged(context, "delivery.zip", archive)]);
   await deliver("research-task");
   archive = zip([["app/assets/app.js", "ready()"], ["docs/requirements.md", "Requirements"], ["designs/homepage.svg", "<svg/>"], ["scripts/check.sh", "echo ok"]]);
   const files = await deliver("implementation-task");

@@ -83,6 +83,7 @@ test("worker artifact API authenticates task uploads and logs outcomes", async (
 });
 
 test("completed task updates attach previously uploaded artifacts", async (context) => {
+  const network = context.mock.method(globalThis, 'fetch', async () => { throw new Error('Delivery must not make network requests.'); });
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "agent-office-worker-finish-"));
   context.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const sent = [];
@@ -92,9 +93,8 @@ test("completed task updates attach previously uploaded artifacts", async (conte
   const manager = new SubAgentManager({
     createArtifactUpload: (task) => uploads.issueTaskUpload(task),
     discardArtifactUploads: (taskId) => uploads.discardTask(taskId),
-    materializeArtifacts: (task, remoteArtifacts, uploadedArtifactIds) => sharedWorkspace.storeTaskArtifacts(
+    materializeArtifacts: (task, uploadedArtifactIds) => sharedWorkspace.storeTaskArtifacts(
       task,
-      remoteArtifacts,
       uploads.resolve(task.taskId, uploadedArtifactIds),
     ),
     onTaskEvent: (event, task) => events.push({ event, task }),
@@ -108,6 +108,15 @@ test("completed task updates attach previously uploaded artifacts", async (conte
   assert.equal(assignment.artifactUpload.method, "POST");
   assert.equal(assignment.artifactUpload.contentType, "application/octet-stream");
   assert.match(assignment.artifactUpload.url, /taskId=task-/);
+
+  for (const uri of ['https://worker.test/result.zip', 'https://office.bohoosh.com/files/project/result.zip']) {
+    assert.throws(() => manager.receiveUpdate('Builder', {
+      type: 'task_update', taskId: assignment.taskId, status: { state: 'completed' },
+      artifacts: [{ parts: [{ kind: 'file', file: { name: 'result.zip', uri } }] }],
+    }, 'worker-1'), /no longer supported.*uploadedArtifactIds/);
+    assert.equal(manager.listTasks()[0].state, 'working');
+    assert.equal(uploads.authorize(assignment.taskId, assignment.artifactUpload.token).taskId, assignment.taskId);
+  }
 
   const artifact = await uploads.upload({
     taskId: assignment.taskId,
@@ -131,6 +140,7 @@ test("completed task updates attach previously uploaded artifacts", async (conte
   assert.equal("file" in result.deliveredWork[0], false);
   assert.equal(fs.readFileSync(path.join(root, result.deliveredWork[0].workspacePath), "utf8"), "finished work");
   assert.equal(events.at(-1).event, "completed");
+  assert.equal(network.mock.callCount(), 0);
 });
 
 test("unknown uploaded artifact IDs fail the task without breaking the worker protocol", async (context) => {
@@ -141,7 +151,7 @@ test("unknown uploaded artifact IDs fail the task without breaking the worker pr
   const manager = new SubAgentManager({
     createArtifactUpload: (task) => uploads.issueTaskUpload(task),
     discardArtifactUploads: (taskId) => uploads.discardTask(taskId),
-    materializeArtifacts: (task, remoteArtifacts, uploadedArtifactIds) => uploads.resolve(task.taskId, uploadedArtifactIds),
+    materializeArtifacts: (task, uploadedArtifactIds) => uploads.resolve(task.taskId, uploadedArtifactIds),
   });
   manager.registerWorker({ name: "Builder", url: "ws://worker.test/socket" }, {
     connectionId: "worker-1",

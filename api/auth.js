@@ -32,7 +32,9 @@ export function createAuthService({ userStore, publicOrigin = "", getProjects = 
     if (route === "/api/worker-artifacts" || route.startsWith("/mcp/projects/")) return false;
     if (!authRoute && !protectedRoute) return false;
     res.setHeader("cache-control", "no-store");
-    const workerRoute = (req.method === 'GET' && ['/api/memory', '/api/tasks', '/api/chat', '/api/workspace-file-asset'].includes(route))
+    const workerFileRoute = ['GET', 'HEAD'].includes(req.method)
+      && (route.startsWith('/files/') || route === '/api/shared-workspace-file');
+    const workerRoute = workerFileRoute || (req.method === 'GET' && ['/api/memory', '/api/tasks', '/api/chat', '/api/workspace-file-asset'].includes(route))
       || (req.method === 'POST' && route === '/api/workspace-upload');
     if (workerRoute
       && safeTokenEqual(bearerToken(req.headers.authorization), getWorkerToken())) {
