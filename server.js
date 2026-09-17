@@ -96,7 +96,7 @@ let officeManagerQueue = Promise.resolve();
 let taskReviewTrigger;
 let taskProgressMonitor;
 
-const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
+const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot, getWorkerToken: () => uiStateStore.getWorkerToken() });
 const workerArtifactStore = createWorkerArtifactStore({ root: sharedWorkspaceRoot, getWorkerToken: () => uiStateStore.getWorkerToken() });
 await workerArtifactStore.clearStaleUploads();
 const subAgentManager = new SubAgentManager({

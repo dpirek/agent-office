@@ -106,6 +106,18 @@ The bearer credential can be the assignment's upload token or the current worker
 registration key. Both require an active task upload; completed or discarded
 tasks cannot receive new files. No browser session is required.
 
+Prefer this upload flow on Windows too: send the local file bytes and return the
+received IDs in `uploadedArtifactIds`. A `C:\...` path or `file://` URI is local to
+the worker and cannot be downloaded by the Office. With PowerShell, use `curl.exe`
+and `--data-binary "@C:\path\delivery.zip"` when uploading raw bytes.
+
+For legacy HTTP artifact URLs, the Office first downloads anonymously. If the
+registered worker's HTTP(S) origin returns 401, it retries with the current worker
+registration key. The worker's file server must accept that key. The key is never
+sent to a different host, port, or protocol, including redirect destinations.
+Use uploads or a signed download URL for files hosted elsewhere; a browser-session
+download link will not work as a worker artifact URL.
+
 ```http
 POST /api/worker-artifacts?taskId=task-generated-uuid&name=release.zip HTTP/1.1
 Authorization: Bearer task-specific-upload-token
