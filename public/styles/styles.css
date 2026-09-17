@@ -107,7 +107,7 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 .desk-agent:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 .desk-sprite { width: 100%; height: calc(100% - 16px); display: block; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(5px 7px 2px #05070866); user-select: none; }
 .desk-agent:not(.online) .desk-sprite { filter: grayscale(.55) brightness(.72) drop-shadow(5px 7px 2px #05070866); }
-.desk-agent .nameplate { position: absolute; z-index: 6; top: 0; left: 0; width: max-content; max-width: 100%; height: 21px; padding: 0 6px; opacity: .25; transition: opacity .12s ease; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; border: 1px solid #718086; background: #0b1113ee; box-shadow: 0 3px 8px #0008; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.desk-agent .nameplate { position: absolute; z-index: 6; top: 0; left: 0; width: max-content; max-width: 100%; height: 21px; padding: 0 6px; opacity: .75; transition: opacity .12s ease; display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; border: 1px solid #718086; background: #0b1113ee; box-shadow: 0 3px 8px #0008; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .desk-agent:is(:hover, :focus-visible) .nameplate { opacity: 1; }
 .desk-agent .nameplate i { width: 6px; height: 6px; border-radius: 50%; background: #5c676b; }
 .desk-agent.online .nameplate i { background: var(--green); box-shadow: 0 0 8px var(--green); }
@@ -727,3 +727,8 @@ office-mcp-settings { display: block; flex: 1; min-height: 0; overflow-y: auto; 
 .add-member-dialog [data-copy] { align-self: flex-start; display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--green); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
 .add-member-dialog [data-copy]:hover { border-color: var(--green); background: color-mix(in srgb, var(--green) 9%, transparent); }
 .add-member-dialog [data-copy]:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+
+.log-entry summary { cursor: pointer; }
+.log-entry[open] { background: var(--bg); }
+.log-details { padding: 6px 12px 12px; color: var(--muted); }
+.log-details pre { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; color: var(--text); }

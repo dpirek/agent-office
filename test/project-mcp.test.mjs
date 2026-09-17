@@ -18,7 +18,9 @@ test("project MCP authenticates tasks and scopes file, worker and conversation t
   await fs.writeFile(path.join(root, "beta/secret.txt"), "Other project secret");
   await fs.symlink(path.join(root, "beta/secret.txt"), path.join(root, "alpha/escape"));
   const task = { id: "research", title: "Research", status: "completed", agent: "Researcher", deliveredWork: [{ workspacePath: "alpha/assets/input.txt" }] };
+  const activity = [];
   const store = {
+    recordSystemActivity(entry) { activity.push(entry); },
     requireProject(id) { assert.equal(id, "alpha"); return { id, name: "Alpha", description: "Build an accessible website" }; },
     getOfficeTasks({ projectId }) { assert.equal(projectId, "alpha"); return [task]; },
     getOfficeChatMessages({ projectId }) { assert.equal(projectId, "alpha"); return [{ author: "Human", kind: "user", text: "Keep the site accessible.", createdAt: 1 }]; },
@@ -60,6 +62,10 @@ test("project MCP authenticates tasks and scopes file, worker and conversation t
   assert.equal((await request("tools/list", {}, { headers: { authorization: "Bearer wrong" } })).status, 401);
   assert.equal((await request("tools/list", {}, { headers: { origin: "http://evil.test" } })).status, 403);
   assert.equal((await request("tools/list", {}, { method: "GET" })).status, 405);
+  assert.ok(activity.some(entry => entry.metadata.tool === 'project_read_file' && entry.message.startsWith('MCP completed')));
+  assert.ok(activity.some(entry => entry.tone === 'error'));
+  assert.ok(activity.every(entry => entry.metadata.projectId === 'alpha' && entry.metadata.taskId === 'task-one'));
+  assert.ok(!JSON.stringify(activity).includes(upload.token));
   await artifacts.discardTask("task-one");
   assert.equal((await request("tools/list")).status, 401);
 });

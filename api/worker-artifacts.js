@@ -39,7 +39,7 @@ export function createWorkerArtifactApiHandlers({ workerArtifactStore, uiStateSt
         source: artifact.task.agent || "Worker",
         message: `Artifact uploaded · ${artifact.name} · ${artifact.size} bytes`,
         tone: "success",
-        metadata: { taskId, artifactId: artifact.artifactId, name: artifact.name, size: artifact.size },
+        metadata: { projectId: artifact.task.projectId || "central-office", taskId, artifactId: artifact.artifactId, name: artifact.name, size: artifact.size },
       });
       json(res, 200, {
         ok: true,

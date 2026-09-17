@@ -432,7 +432,7 @@ class OfficeSettings extends OfficeComponent {
 
     $(".settings-tabs").addEventListener("click", (event) => {
       const button = event.target.closest("button[data-settings-tab]");
-      if (button) selectSettingsTab(button.dataset.settingsTab);
+      if (button) this.emit('office-navigate', { href: `/settings/${button.dataset.settingsTab}` });
     });
     $("#tool-permissions").addEventListener("change", async (event) => {
       const checkbox = event.target.closest("input[data-tool-permission]");

@@ -152,3 +152,19 @@ test("a task update finishing after worker closure does not send an acknowledgem
   assert.deepEqual(errors, []);
   socket.destroy();
 });
+
+test('worker telemetry is bound to its own message and trusted project context', () => {
+  const entries = [];
+  const manager = new SubAgentManager();
+  const socket = new FakeSocket();
+  register(socket, createWorkerWebSocketHandler({ subAgentManager: manager, getToken: () => 'a'.repeat(32), onActivity: entry => entries.push(entry) }));
+  const receipt = manager.sendDirectMessage({ agent: 'Disconnect Test Worker', text: 'Hello', projectId: 'alpha' });
+  const activity = { type: 'activity', messageId: receipt.messageId, event: { category: 'model', message: 'Model completed', metadata: { projectId: 'forged', usage: { total_tokens: 9 } } } };
+  socket.emit('data', clientTextFrame(activity));
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].metadata.projectId, 'alpha');
+  assert.equal(entries[0].source, 'Disconnect Test Worker');
+  socket.emit('data', clientTextFrame({ ...activity, messageId: 'unrelated' }));
+  assert.equal(entries.length, 1);
+  socket.end();
+});

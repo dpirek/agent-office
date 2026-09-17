@@ -18,6 +18,7 @@ export function registerProjectRoutes(router, { pages, getProjectId, selectProje
   for (const [section, page] of Object.entries(pages)) {
     if (!PROJECT_PAGES.has(section)) {
       router.addRoute(page.path, () => renderPage(section));
+      if (["settings", "account"].includes(section)) router.addRoute(`${page.path}/:tabName`, ({ tabName }) => renderPage(section, tabName));
       continue;
     }
     router.addRoute(page.path, () => router.navigate(projectPagePath(section, getProjectId()), { replace: true }));

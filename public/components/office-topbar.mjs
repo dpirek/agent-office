@@ -34,7 +34,7 @@ class OfficeTopbar extends OfficeComponent {
           this.createElement('button', { type: 'button', class: 'topbar-new-project', children: [this.icon('plus-lg'), this.createElement('span', { textContent: 'New project' })], addEventListener: { name: 'click', handler: () => this.emit('project-create-open') } }),
         ] }),
         this.createElement('button', { type: 'button', class: 'topbar-new', children: [this.icon('plus-lg'), this.createElement('span', { textContent: 'New task' })], addEventListener: { name: 'click', handler: () => this.emit('new-task') } }),
-        this.createElement('a', { href: '/account', class: 'topbar-user', children: [
+        this.createElement('button', { type: 'button', 'aria-expanded': 'false', 'aria-controls': 'topbar-user-menu', class: 'topbar-user', children: [
           this.createElement('span', { class: 'topbar-avatar-wrap', children: [
             this.createElement('span', { class: 'topbar-avatar', 'aria-hidden': 'true' }),
             this.createElement('i', { class: 'topbar-user-status', 'aria-hidden': 'true' }),
@@ -50,10 +50,37 @@ class OfficeTopbar extends OfficeComponent {
 
   initialize() {
     const input = this.querySelector('input');
+    const trigger = this.querySelector('.topbar-user');
+    const wrapper = this.createElement('div', { class: 'topbar-user-dropdown' });
+    trigger.replaceWith(wrapper);
+    const menu = this.createElement('nav', { id: 'topbar-user-menu', class: 'topbar-user-menu', 'aria-label': 'User navigation', hidden: '', children:
+      [['Account', '/account/profile', 'person'], ['Settings', '/settings/appearance', 'gear']].map(([label, href, icon]) =>
+        this.createElement('a', { href, children: [this.icon(icon), this.createElement('span', { textContent: label })] }))
+    });
+    wrapper.append(trigger, menu);
+    this.closeMenu = () => { menu.hidden = true; trigger.setAttribute('aria-expanded', 'false'); };
+    const openMenu = () => { menu.hidden = false; trigger.setAttribute('aria-expanded', 'true'); };
+    trigger.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown') { event.preventDefault(); openMenu(); menu.querySelector('a').focus(); }
+    });
+    wrapper.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { this.closeMenu(); trigger.focus(); }
+    });
+    wrapper.addEventListener('focusout', event => { if (!wrapper.contains(event.relatedTarget)) this.closeMenu(); });
+    this.onConnect = () => {
+      document.addEventListener('pointerdown', event => { if (!wrapper.contains(event.target)) this.closeMenu(); }, { signal: this.connectionSignal });
+      window.addEventListener('routechange', this.closeMenu, { signal: this.connectionSignal });
+    };
+    menu.addEventListener('click', event => {
+      const link = event.target.closest('a');
+      if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault(); this.closeMenu();
+      this.emit('office-navigate', { href: link.getAttribute('href') });
+    });
     this.querySelector('.topbar-user').addEventListener('click', event => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
-      this.emit('office-navigate', { href: '/account' });
+      if (menu.hidden) openMenu(); else this.closeMenu();
     });
     this.querySelector('form').addEventListener('submit', event => {
       event.preventDefault();
@@ -75,7 +102,7 @@ class OfficeTopbar extends OfficeComponent {
       const user = this.model.user;
       if (!user) return;
       this.querySelector('.topbar-user-name').textContent = user.name;
-      this.querySelector('.topbar-user').setAttribute('aria-label', `${user.name} — Your account`);
+      this.querySelector('.topbar-user').setAttribute('aria-label', `${user.name} — Account and settings`);
       renderUserAvatar(this.querySelector('.topbar-avatar'), user);
     };
   }

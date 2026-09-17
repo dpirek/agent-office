@@ -22,11 +22,24 @@ class OfficeSystemLog extends OfficeComponent {
   initialize() {
     const state = this.model;
     const $ = (selector, root = this) => root.querySelector(selector);
+    let previous = '';
     function renderLogs() {
       const node = $("#system-log");
-      const entries = state.logs.slice(-200);
-      node.innerHTML = entries.length ? entries.map((entry) => `<div class="log-line"><time>${clock(entry.at)}</time><b>${escapeHtml(entry.source)}</b><span class="${entry.tone}">${escapeHtml(entry.text)}</span></div>`).join("") : `<div class="log-line"><time>--:--:--</time><b>System</b><span>No events recorded.</span></div>`;
-      node.scrollTop = node.scrollHeight;
+      const entries = state.logs.slice(-500);
+      const signature = JSON.stringify(entries);
+      if (signature === previous) return;
+      const follow = !previous || node.scrollHeight - node.scrollTop - node.clientHeight < 40;
+      previous = signature;
+      const opened = new Set([...node.querySelectorAll('details[open]')].map(item => item.dataset.id));
+      const scrollTop = node.scrollTop;
+      node.innerHTML = entries.length ? entries.map((entry, index) => {
+        const id = String(entry.id || `${entry.at}-${index}`);
+        const tone = ['error', 'success', 'tool'].includes(entry.tone) ? entry.tone : '';
+        const metadata = entry.metadata || {};
+        const context = [entry.category, metadata.projectId && `Project: ${metadata.projectId}`, metadata.taskId && `Task: ${metadata.taskId}`].filter(Boolean).join(' · ');
+        return `<details class="log-entry" data-id="${escapeHtml(id)}" ${opened.has(id) ? 'open' : ''}><summary class="log-line"><time>${clock(entry.at)}</time><b>${escapeHtml(entry.source)}</b><span class="${tone}">${escapeHtml(entry.text)}</span></summary><div class="log-details"><small>${escapeHtml(context)}</small><pre>${escapeHtml(JSON.stringify(metadata, null, 2))}</pre></div></details>`;
+      }).join('') : '<div class="log-line"><span>No events recorded.</span></div>';
+      node.scrollTop = follow ? node.scrollHeight : scrollTop;
     }
     this.update = renderLogs;
   }

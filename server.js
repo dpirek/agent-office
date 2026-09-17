@@ -1,3 +1,4 @@
+import { instrumentModelClient } from './lib/system-activity.js';
 import { workerMessageContext } from './lib/worker-message-context.js';
 import { formatThreadRequest, threadReplyText } from './lib/chat-thread.js';
 import { createUserStore } from "./lib/users.js";
@@ -106,11 +107,11 @@ const subAgentManager = new SubAgentManager({
   prepareTask: (assignment) => prepareWorkerTask({ uiStateStore, sharedWorkspaceRoot }, assignment),
   createArtifactUpload: (task) => workerArtifactStore.issueTaskUpload(task),
   discardArtifactUploads: (taskId) => workerArtifactStore.discardTask(taskId),
-  materializeArtifacts: (task, artifacts, uploadedArtifactIds) => sharedWorkspace.storeTaskArtifacts(
-    task,
-    artifacts,
-    workerArtifactStore.resolve(task.taskId, uploadedArtifactIds),
-  ),
+  materializeArtifacts: async (task, artifacts, uploadedArtifactIds) => {
+    const files = await sharedWorkspace.storeTaskArtifacts(task, artifacts, workerArtifactStore.resolve(task.taskId, uploadedArtifactIds));
+    if (files.length) uiStateStore.recordSystemActivity({ category: 'artifact', source: task.agent || 'Worker', message: `Delivered ${files.length} file(s) to project`, tone: 'success', metadata: { projectId: task.projectId || DEFAULT_PROJECT_ID, taskId: task.taskId, files } });
+    return files;
+  },
   onWorkerRegistered(worker) {
     uiStateStore.upsertRegisteredWorker(worker);
     uiStateStore.recordSystemActivity({
@@ -127,12 +128,15 @@ const subAgentManager = new SubAgentManager({
       metadata: { url: worker.url },
     });
   },
+  onDirectMessageSent(message) {
+    uiStateStore.recordSystemActivity({ category: 'agent', source: 'Office Manager', message: `Message sent to ${message.agent}`, tone: 'tool', metadata: { projectId: message.projectId || DEFAULT_PROJECT_ID, taskId: message.officeTaskId, messageId: message.messageId, text: message.text } });
+  },
   onDirectMessage(state, message) {
     uiStateStore.recordSystemActivity({
       category: "agent", source: message.agent || "Worker",
       message: `Direct message ${state}${message.error ? ` · ${message.error}` : ""}`,
       tone: state === "completed" ? "success" : state === "failed" ? "error" : "",
-      metadata: { messageId: message.messageId },
+      metadata: { projectId: message.projectId || DEFAULT_PROJECT_ID, taskId: message.officeTaskId, messageId: message.messageId, text: message.text, error: message.error },
     });
     officeChatService?.postMessage(state === "completed" ? {
       projectId: message.projectId,
@@ -153,7 +157,7 @@ const subAgentManager = new SubAgentManager({
     uiStateStore.recordSystemActivity({
       category: "task", source: task.agent || "Office Manager",
       message: `Task assigned · ${task.title || task.taskId}`, tone: "tool",
-      metadata: { taskId: task.taskId, messageId: task.messageId },
+      metadata: { projectId: task.projectId || DEFAULT_PROJECT_ID, taskId: task.taskId, officeTaskId: task.officeTaskId, messageId: task.messageId, title: task.title, text: task.text, error: task.error, files: task.deliveredWork || [] },
     });
     officeChatService?.postAssignment(task);
   },
@@ -162,7 +166,7 @@ const subAgentManager = new SubAgentManager({
       category: "task", source: task.agent || "Worker",
       message: `Task ${event} · ${task.title || task.taskId}`,
       tone: event === "completed" ? "success" : ["failed", "timed_out", "cancelled"].includes(event) ? "error" : "",
-      metadata: { taskId: task.taskId, messageId: task.messageId },
+      metadata: { projectId: task.projectId || DEFAULT_PROJECT_ID, taskId: task.taskId, officeTaskId: task.officeTaskId, messageId: task.messageId, title: task.title, text: task.text, error: task.error, files: task.deliveredWork || [] },
     });
     const summary = String(task.text || task.error || "").slice(0, 20_000);
     uiStateStore.recordOfficeMemory({
@@ -243,7 +247,15 @@ async function createAgentSession({
   const approveMcp = async () => true;
   const onInfo = (message) => emit({ type: "info", message });
   const onTool = ({ name, args }) => emit({ type: "tool", name, args });
-  const onEvent = (event) => emit({ type: "agent_event", event });
+  const onEvent = (event) => {
+    if (['tool_start', 'tool_result', 'tool_blocked', 'mcp_call'].includes(event.type)) uiStateStore.recordSystemActivity({
+      category: event.type === 'mcp_call' ? 'mcp' : 'tool', source: 'Office Manager',
+      message: `${event.type.replaceAll('_', ' ')} · ${event.name || event.server || ''}`,
+      tone: event.output?.ok === false || event.type === 'tool_blocked' ? 'error' : 'tool',
+      metadata: { projectId: projectId || DEFAULT_PROJECT_ID, provider, model, ...event },
+    });
+    emit({ type: "agent_event", event });
+  };
 
   const apiKey = resolveProviderApiKey(provider, settings.apiKey);
   if (provider === "openai" && !apiKey) {
@@ -255,6 +267,7 @@ async function createAgentSession({
     apiKey,
     baseUrl: settings.baseUrl || defaultBaseUrlForProvider(provider),
   });
+  instrumentModelClient(client, entry => uiStateStore.recordSystemActivity(entry), { projectId: projectId || DEFAULT_PROJECT_ID, provider, agent: 'Office Manager' });
   // Enabling a built-in tool in the web Tools settings is the user's
   // authorization to execute it. Disabled tools are not exposed to the model.
   const disabled = new Set(disabledSteps);
@@ -533,11 +546,12 @@ server = http.createServer(async (req, res) => {
   const requestStartedAt = Date.now();
   res.once("finish", () => {
     try {
+      if (req.method === 'GET' && res.statusCode < 400 && url.pathname.startsWith('/api/') && !req.workerAuthenticated) return;
       uiStateStore.recordSystemActivity({
-        category: "network", source: "HTTP",
+        category: req.workerAuthenticated ? 'mcp' : "network", source: req.workerAuthenticated ? 'Worker context API' : "HTTP",
         message: `${req.method} ${url.pathname} → ${res.statusCode} · ${Date.now() - requestStartedAt}ms`,
         tone: res.statusCode >= 400 ? "error" : "tool",
-        metadata: { method: req.method, path: url.pathname, statusCode: res.statusCode },
+        metadata: { method: req.method, path: url.pathname, statusCode: res.statusCode, projectId: url.searchParams.get("projectId"), durationMs: Date.now() - requestStartedAt },
       });
     } catch (error) {
       if (!storeClosed) console.error("Unable to record HTTP activity:", error);
@@ -586,6 +600,7 @@ server = http.createServer(async (req, res) => {
 
 const handleWorkerWebSocket = createWorkerWebSocketHandler({
   subAgentManager,
+  onActivity: entry => uiStateStore.recordSystemActivity(entry),
   getToken: () => uiStateStore.getWorkerToken(),
   getTokenName: () => uiStateStore.getWorkerTokenName(),
 });

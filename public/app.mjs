@@ -94,7 +94,16 @@ shell.addEventListener('file-open', ({ detail: { href } }) => {
   void workspace.openFile(href);
 });
 
-function renderPage(section) {
+function renderPage(section, tabName) {
+  if (["settings", "account"].includes(section)) {
+    const tabs = section === "settings"
+      ? (signedInUser.role === "admin" ? ["appearance", "prompts", "tools", "mcp", "provider", "admin"] : ["appearance"])
+      : (signedInUser.role === "admin" ? ["profile", "appearance", "users"] : ["profile", "appearance"]);
+    const selected = tabs.includes(tabName) ? tabName : tabs[0];
+    const canonical = `/${section}/${selected}`;
+    if (location.pathname !== canonical) { router.navigate(canonical, { replace: true }); return; }
+    component(section).data = section === "settings" ? { settingsTab: selected } : { tab: selected };
+  }
   if (!state.projectId && (PROJECT_PAGES.has(section) || section === 'search')) { router.navigate('/account', { replace: true }); return; }
   if (section === 'knowledge' && signedInUser.role !== 'admin') {
     router.navigate(projectPagePath('dashboard', state.projectId), { replace: true });
@@ -221,6 +230,7 @@ async function loadSystemLogs() {
   try {
     const data = await fetchJson("/api/system-logs?limit=500");
     state.logs = (data.logs || []).map((entry) => ({
+      id: entry.id, category: entry.category, metadata: entry.metadata,
       at: entry.createdAt,
       source: entry.source,
       text: entry.message,

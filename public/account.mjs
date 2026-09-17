@@ -1,12 +1,13 @@
 import { USER_AVATARS, renderUserAvatar } from './lib/user-avatars.mjs';
 
-export async function renderAccount(root, { onAuthenticated = () => {}, onSignedOut = () => location.replace("/login"), onUserChanged = () => {}, mode = "account" } = {}) {
+export async function renderAccount(root, { onAuthenticated = () => {}, onSignedOut = () => location.replace("/login"), onUserChanged = () => {}, mode = "account", onTabChange = () => {} } = {}) {
   root.innerHTML = `<div class="account-body"><div class="account-heading"><span class="account-eyebrow">YOUR WORKSPACE, CONNECTED</span><h1 id="account-title">Welcome back</h1><p id="account-description">Checking your session…</p></div><p id="account-message" role="status" aria-live="polite" hidden></p><div id="account-content"></div></div>`;
   const content = root.querySelector("#account-content");
   const message = root.querySelector("#account-message");
   const title = root.querySelector("#account-title");
   const description = root.querySelector("#account-description");
   function notify(text) { message.textContent = text; message.hidden = !text; }
+  let selectAccountTab = () => {};
   let session;
   const invitationCode = mode === 'account' ? null : new URLSearchParams(location.search).get('invite');
   let invitationInfo, invitationAccepted = false;
@@ -109,6 +110,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
           if (selected && focus) button.focus();
         });
       };
+      selectAccountTab = id => selectTab(sections.some(([key]) => key === id) ? id : 'profile');
       content.append(tabs);
       for (const [id, label] of sections) {
         const tab = document.createElement('button');
@@ -118,12 +120,12 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
         panel.id = `account-panel-${id}`; panel.className = 'account-tab-panel'; panel.tabIndex = 0;
         panel.setAttribute('role', 'tabpanel'); panel.setAttribute('aria-labelledby', tab.id);
         panels[id] = panel; buttons.push(tab); tabs.append(tab); content.append(panel);
-        tab.addEventListener('click', () => selectTab(id));
+        tab.addEventListener('click', () => { selectTab(id); onTabChange(id); });
         tab.addEventListener('keydown', event => {
           const index = buttons.indexOf(tab);
           const target = { ArrowRight: (index + 1) % buttons.length, ArrowLeft: (index + buttons.length - 1) % buttons.length, Home: 0, End: buttons.length - 1 }[event.key];
           if (target === undefined) return;
-          event.preventDefault(); selectTab(buttons[target].dataset.tab, true);
+          event.preventDefault(); selectTab(buttons[target].dataset.tab, true); onTabChange(buttons[target].dataset.tab);
         });
       }
       selectTab(sections.some(([id]) => id === root.dataset.accountTab) ? root.dataset.accountTab : 'profile');
@@ -279,4 +281,5 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     notify(error.message);
   }
 
+  return { selectTab: id => selectAccountTab(id) };
 }
