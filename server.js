@@ -308,6 +308,8 @@ async function createAgentSession({
       approve: approveMcp,
       onInfo,
       autoApprove: true,
+      discoverRemoteTools: true,
+      supportsNativeMcp: provider === "openai",
     });
   return new CodingAgent({
     client,
