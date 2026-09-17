@@ -549,8 +549,10 @@ server = http.createServer(async (req, res) => {
   if (discardDisabledLogPost(req, res, url, uiStateStore)) return;
   if (url.pathname === "/account.html") { res.writeHead(302, { location: "/account" }); res.end(); return; }
   const requestStartedAt = Date.now();
+  let staticAssetRequest = false;
   res.once("finish", () => {
     try {
+      if (staticAssetRequest) return;
       if (req.method === 'GET' && res.statusCode < 400 && url.pathname.startsWith('/api/') && !req.workerAuthenticated) return;
       uiStateStore.recordSystemActivity({
         category: req.workerAuthenticated ? 'mcp' : "network", source: req.workerAuthenticated ? 'Worker context API' : "HTTP",
@@ -600,6 +602,11 @@ server = http.createServer(async (req, res) => {
   });
 
   if (await handleApiRequest(req, res, url)) return;
+  // Classify only after API/file routing so downloads and workspace files
+  // retain their activity records, even when they have asset extensions.
+  const extension = path.extname(url.pathname).toLowerCase();
+  staticAssetRequest = ['GET', 'HEAD'].includes(req.method)
+    && (url.pathname.startsWith('/assets/') || (extension !== '' && extension !== '.html'));
   await serveStatic(req, res, publicDir);
 });
 
