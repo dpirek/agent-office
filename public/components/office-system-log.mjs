@@ -1,9 +1,10 @@
+import './office-observability.mjs';
 import OfficeComponent from "./office-component.mjs";
 import { escapeHtml, clock } from "./office-format.mjs";
 
 class OfficeSystemLog extends OfficeComponent {
   static hostAttributes = {"class": "panel logs-panel"};
-  model = { logs: [] };
+  model = { logs: [], userRole: '' };
 
   render() {
     this.appendChildren(this, [
@@ -13,17 +14,23 @@ class OfficeSystemLog extends OfficeComponent {
             this.createElement("use", { "href": "/assets/bootstrap-icons/bootstrap-icons.svg#terminal" })
           ] }),
           this.createElement("h2", { textContent: "SYSTEM LOGS" })
+        ] }),
+        this.createElement('button', { type: 'button', class: 'observability-add', 'aria-label': 'Add observability provider', title: 'Add observability provider', hidden: '', children: [
+          this.createElement('svg', { width: '16', height: '16', viewBox: '0 0 16 16', fill: 'currentColor', 'aria-hidden': 'true', children: [this.createElement('use', { href: '/assets/bootstrap-icons/bootstrap-icons.svg#plus-lg' })] })
         ] })
       ] }),
-      this.createElement("div", { "class": "system-log panel-body", "id": "system-log" })
+      this.createElement("div", { "class": "system-log panel-body", "id": "system-log" }),
+      this.createElement("office-observability")
     ]);
   }
 
   initialize() {
     const state = this.model;
     const $ = (selector, root = this) => root.querySelector(selector);
+    $('.observability-add').addEventListener('click', () => { if (state.userRole === 'admin') $('office-observability').open(); });
     let previous = '';
     function renderLogs() {
+      $(".observability-add").hidden = state.userRole !== "admin";
       const node = $("#system-log");
       const entries = state.logs.slice(-500);
       const signature = JSON.stringify(entries);

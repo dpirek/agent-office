@@ -1,3 +1,4 @@
+import { createObservabilityApiHandlers } from './observability.js';
 import { createTaskDeliveryHandlers } from "./task-delivery.js";
 import { createProjectMcpHandlers } from "./project-mcp.js";
 import { createProjectApiHandlers } from "./projects.js";
@@ -27,6 +28,7 @@ export function createApiRouter(options) {
     ...createChatApiHandlers(options),
     ...createSharedWorkspaceApiHandlers(options),
     ...createSystemLogApiHandlers(options),
+    ...createObservabilityApiHandlers(options),
     ...createWorkerArtifactApiHandlers(options),
   }));
 

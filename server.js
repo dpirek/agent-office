@@ -1,3 +1,4 @@
+import { createObservabilityExporter } from './lib/observability.js';
 import { instrumentModelClient } from './lib/system-activity.js';
 import { workerMessageContext } from './lib/worker-message-context.js';
 import { formatThreadRequest, threadReplyText } from './lib/chat-thread.js';
@@ -348,6 +349,8 @@ const handleWebSocket = createWebSocketHandler({
 });
 
 const uiStateStore = await initializeUiStateStore(uiStateDatabasePath, configPath);
+const observabilityExporter = createObservabilityExporter({ store: uiStateStore });
+observabilityExporter.start();
 uiStateStore.recordSystemActivity({
   category: "system", source: "System",
   message: "Agent Office server initialized", tone: "success",

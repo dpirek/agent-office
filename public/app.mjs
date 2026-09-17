@@ -224,7 +224,7 @@ function renderSelectedAgent() {
   component('selected-agent').data = { agent: currentAgent(), agents: officeAgents(), tasks: allTasks(), activity: state.activity, health: state.health, orchestrator: state.orchestrator, chatRunning: state.chatRunning, uptime: formatUptime(), sessionId };
 }
 
-function renderLogs() { component('system-log').data = { logs: state.logs }; }
+function renderLogs() { component('system-log').data = { logs: state.logs, userRole: signedInUser.role }; }
 
 async function loadSystemLogs() {
   try {
