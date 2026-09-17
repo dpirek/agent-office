@@ -382,17 +382,21 @@ async function refreshDashboard({ quiet = false } = {}) {
   if (!state.projects.some(project => project.id === state.projectId)) return;
   try {
     const projectId = state.projectId;
-    const [health, subAgents, operations, officeTasks] = await Promise.all([
+    const [health, subAgents, operations] = await Promise.all([
       fetchJson("/api/health"),
       fetchJson("/api/sub-agents"),
       fetchJson(`/api/operations?projectId=${encodeURIComponent(projectId)}`),
-      fetchJson(`/api/tasks?projectId=${encodeURIComponent(projectId)}`),
+      fetchJson(`/api/tasks?projectId=${encodeURIComponent(projectId)}`).then(data => {
+        if (projectId === state.projectId) {
+          state.officeTasks = data.tasks || [];
+          renderTasks();
+        }
+      }),
     ]);
     if (projectId !== state.projectId) return;
     state.health = health;
     navigation.data = { context: `v${health.version || "0.0.0"} · Workspace ${health.workspace || "—"}`, online: true };
     state.orchestrator = subAgents.orchestrator;
-    state.officeTasks = officeTasks.tasks || [];
     state.workers = subAgents.workers || [];
     state.workerTokenConfigured = subAgents.workerTokenConfigured === true;
     state.workerTokenName = subAgents.workerTokenName || "";
