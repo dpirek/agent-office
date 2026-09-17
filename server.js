@@ -1,4 +1,5 @@
 import { requestClientIp } from './lib/request-client-ip.mjs';
+import { startOfficeTui, tuiRequested } from './lib/office-tui.js';
 import { createObservabilityExporter } from './lib/observability.js';
 import { discardDisabledLogPost } from './api/system-logs.js';
 import { instrumentModelClient } from './lib/system-activity.js';
@@ -649,4 +650,17 @@ server.on("connection", (socket) => {
   socket.on("close", () => connections.delete(socket));
 });
 
-await startServer({ host: process.env.HOST || "127.0.0.1" });
+const runningServer = await startServer({ host: process.env.HOST || "127.0.0.1" });
+if (tuiRequested()) {
+  const startedAt = Date.now();
+  startOfficeTui({ getSnapshot: () => ({
+    url: runningServer.url,
+    startedAt,
+    managerBusy: officeManagerBoardRunning,
+    projectCount: uiStateStore.getProjects().length,
+    peopleCount: new Set([...userSockets.values()].map(session => session.userId)).size,
+    workers: uiStateStore.getRegisteredWorkers(),
+    tasks: uiStateStore.getOfficeTasks({ limit: 500 }),
+    logs: uiStateStore.getSystemActivity({ limit: 100 }),
+  }) });
+}

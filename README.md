@@ -49,6 +49,28 @@ The project has no third-party runtime dependencies, so an install step is not r
 
 Provider settings can also be saved later under **Settings → Provider**. Values in `.env` seed or override the active configuration when the server starts.
 
+### Terminal monitor
+
+Start the web server with a live terminal dashboard:
+
+```sh
+npm start -- --tui
+```
+
+`node server.js --tui` also works. The `npm start --tui` shorthand is supported
+when npm forwards the option as `npm_config_tui`; the `-- --tui` form works across npm versions.
+The monitor reads office state locally and refreshes every second, without a browser login.
+
+- **1–4:** Overview, Workers, Tasks, and Logs.
+- **Up/Down, Page Up/Page Down, Home/End:** scroll the selected view.
+- **Space:** pause or resume state updates.
+- **q / Escape:** close the monitor and leave the web server running.
+- **Ctrl+C:** stop the server.
+
+The task view shows up to 500 recent tasks; Logs shows the latest 100 stored events
+plus recent console messages. Resizing the terminal redraws the display. Output
+redirected to a file or pipe stays in normal server mode without terminal control codes.
+
 ## Configuration
 
 See [`.env.example`](.env.example) for every supported option. The most useful settings are:
