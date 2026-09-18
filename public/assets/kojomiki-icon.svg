@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <title>Kojomiki</title>
+  <rect x="1" y="1" width="46" height="46" rx="12" fill="#fff1ec"/>
+  <circle cx="30" cy="17" r="10" fill="#f07998"/>
+  <path d="m28 21 7-12 7 12Z" fill="#17344b"/>
+  <path d="m32 14 3-5 3 5-3-2Z" fill="#fffaf3"/>
+  <path d="M23 11v5M12 26v12m11-13v13m12-12v12" stroke="#17344b" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M7 24q11-3 16-10 5 7 16 10l-2 4q-4 3-7-1-4 4-7 0-4 4-7 0-4 4-7 0Z" fill="#17344b"/>
+  <path d="m23 16-7 9m7-9 7 9" stroke="#f6afc4" stroke-width="2" stroke-linecap="round"/>
+  <path d="M9 39h28" stroke="#17344b" stroke-width="3" stroke-linecap="round"/>
+  <path d="m18 33 4 1 4-6 3 3-3 1-1 3h-5l-2 2m6-2 2 2" stroke="#b74769" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

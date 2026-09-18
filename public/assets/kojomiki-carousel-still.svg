@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 430" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Kojomiki carousel</title>
+  <desc id="desc">Three carousel horses circling the platform and gently rising beneath a navy canopy, with Mount Fuji, a pink sun, and drifting cherry blossoms.</desc>
+  <defs>
+    <linearGradient id="sun" x1="270" y1="30" x2="270" y2="250" gradientUnits="userSpaceOnUse"><stop stop-color="#ff8297"/><stop offset="1" stop-color="#f4b0b9"/></linearGradient>
+    <linearGradient id="roof" x1="240" y1="135" x2="240" y2="240" gradientUnits="userSpaceOnUse"><stop stop-color="#264e68"/><stop offset="1" stop-color="#102d45"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#bf8b56"/><stop offset=".5" stop-color="#f4d7a0"/><stop offset="1" stop-color="#bd8858"/></linearGradient>
+    <g id="blossom" fill="currentColor">
+      <path d="M0-2C-16-10-12-23-4-20L0-16 4-20C12-23 16-10 0-2Z"/>
+      <path d="M0-2C-16-10-12-23-4-20L0-16 4-20C12-23 16-10 0-2Z" transform="rotate(72)"/>
+      <path d="M0-2C-16-10-12-23-4-20L0-16 4-20C12-23 16-10 0-2Z" transform="rotate(144)"/>
+      <path d="M0-2C-16-10-12-23-4-20L0-16 4-20C12-23 16-10 0-2Z" transform="rotate(216)"/>
+      <path d="M0-2C-16-10-12-23-4-20L0-16 4-20C12-23 16-10 0-2Z" transform="rotate(288)"/>
+      <circle r="3.5" fill="#fff9ee"/>
+    </g>
+    <g id="horse" stroke-linejoin="round" stroke-linecap="round">
+      <!-- A single continuous silhouette keeps the horse crisp at small sizes. -->
+      <path d="M-30 9C-54-8-61 10-59 27C-56 43-70 43-72 35C-72 56-48 51-48 29C-48 20-40 19-32 24" fill="var(--mane)"/>
+      <path d="M-35 5C-23 0-10 8 0 1L10-25 15-43 23-53 23-66 31-57 39-61 38-48 51-32C57-25 51-16 44-19L31-25 24-5C23 6 27 14 38 19L47 36 41 42 27 28 14 26 22 47 14 51-1 28-10 25-21 43-35 49-40 43-29 31-24 21C-36 20-44 16-35 5Z" fill="var(--coat)" stroke="var(--outline)" stroke-width="2.5"/>
+      <path d="M24-54C13-51 6-37 7-28L0-9 11-13 16-28 18-41 28-50" fill="var(--mane)"/>
+      <path d="M-27 6Q-13 13 0 7L-1 20Q-16 25-28 14Z" fill="var(--saddle)" stroke="#e7bb80" stroke-width="2"/>
+      <path d="M32-44L41-31 51-28M31-25Q24-8 4 1" stroke="var(--saddle)" stroke-width="2.5"/>
+      <circle cx="34" cy="-44" r="2.2" fill="var(--outline)"/>
+      <path d="M14 51L22 47M41 42L47 36M-40 43L-35 49" stroke="var(--outline)" stroke-width="4"/>
+    </g>
+  </defs>
+  <!-- Soft sunrise and Fuji, behind the carousel. -->
+  <circle cx="280" cy="134" r="106" fill="url(#sun)"/>
+  <path d="M238 185L318 73 330 77 343 73 407 179Z" fill="#254b65"/>
+  <path d="M289 113L318 73 330 77 343 73 369 117 346 102 344 124 330 103 318 124 316 102Z" fill="#fffaf3"/>
+  <path d="M330 128L306 185H279Z" fill="#17384e" opacity=".65"/>
+  <ellipse cx="240" cy="397" rx="164" ry="10" fill="#17344b" opacity=".07"/>
+  <!-- Blossom branch. -->
+  <path d="M389 205Q402 167 439 143M405 176L426 183M421 156L419 135" stroke="#8f6873" stroke-width="3" stroke-linecap="round"/>
+  <use href="#blossom" transform="translate(432 150) scale(.85)" color="#f7a7b8"/>
+  <use href="#blossom" transform="translate(417 132) scale(.55)" color="#ffd4dc"/>
+  <use href="#blossom" transform="translate(425 187) scale(.64)" color="#ffbdcc"/>
+  <!-- Poles and the far edge of the platform. -->
+  <path d="M100 215V374M240 157V374M380 215V374" stroke="#1b3c53" stroke-width="6"/>
+  <ellipse cx="240" cy="371" rx="166" ry="12" fill="#bd7388"/>
+  <!-- Each horse travels around the platform while bobbing on its own pole. -->
+  <g transform="translate(240 310)">
+    <g class="orbit-one" transform="translate(122 0) scale(.8)" style="--coat:#224d67;--outline:#12344b;--mane:#658fa3;--saddle:#ed93ad"><path d="M0-91V62" stroke="#d5ae78" stroke-width="3"/><g class="horse-one"><use href="#horse"/></g></g>
+    <g class="orbit-two" transform="translate(-61 14) scale(.9)" style="--coat:#fff9ef;--outline:#a94766;--mane:#ee8ea8;--saddle:#d55e85"><path d="M0-91V62" stroke="#d5ae78" stroke-width="3"/><g class="horse-two"><use href="#horse"/></g></g>
+    <g class="orbit-three" transform="translate(-61 -14) scale(.7)" style="--coat:#173b55;--outline:#102e45;--mane:#577487;--saddle:#ed93ad"><path d="M0-91V62" stroke="#d5ae78" stroke-width="3"/><g class="horse-three"><use href="#horse"/></g></g>
+  </g>
+  <!-- Sweeping canopy, scalloped valance, and pearl lights. -->
+  <path d="M240 129Q204 184 74 204L80 222Q143 247 240 238Q337 247 400 222L406 204Q276 184 240 129Z" fill="url(#roof)"/>
+  <path d="M240 130Q222 193 153 221M240 130V236M240 130Q258 193 327 221" stroke="#ef9fb6" stroke-width="6"/>
+  <path d="M240 132Q206 189 76 205M240 132Q274 189 404 205" stroke="#fff3dc" stroke-width="3"/>
+  <path d="M80 222Q99 251 128 229Q157 261 190 237Q215 265 240 239Q265 265 290 237Q323 261 352 229Q381 251 400 222" fill="#17344b" stroke="#f1adc1" stroke-width="4"/>
+  <path d="M78 207Q116 231 155 214Q196 242 240 225Q284 242 325 214Q364 231 402 207" stroke="#fff1dd" stroke-width="3"/>
+  <g fill="#fff4df"><circle cx="78" cy="207" r="4"/><circle cx="155" cy="214" r="4"/><circle cx="240" cy="225" r="4"/><circle cx="325" cy="214" r="4"/><circle cx="402" cy="207" r="4"/></g>
+  <path d="M240 130V99" stroke="#17344b" stroke-width="4"/>
+  <path class="flag" d="M242 102Q257 95 272 105L265 113Q254 106 242 114Z" fill="#e885a0"/>
+  <circle cx="240" cy="127" r="8" fill="#17344b"/>
+  <circle cx="240" cy="97" r="4" fill="#d6ae70"/>
+  <path d="M74 371Q240 390 406 371L401 383Q240 402 79 383Z" fill="#17344b"/>
+  <path d="M81 374Q240 391 399 374" stroke="#e3b578" stroke-width="2"/>
+  <path class="platform-trim" d="M81 380Q240 397 399 380" stroke="#f0c894" stroke-width="3"/>
+  <!-- Petals move gently without opacity flashes. -->
+  <g class="petal"><use href="#blossom" transform="translate(59 249) scale(.6)" color="#ef98b0"/></g>
+  <g class="petal petal-two"><use href="#blossom" transform="translate(423 322) scale(.5)" color="#f4afc1"/></g>
+  <g class="petal petal-three" fill="#f0a6bb"><path d="M57 327Q40 309 52 303Q67 305 57 327Z"/><path d="M409 271Q398 250 413 249Q425 256 409 271Z"/></g>
+  <use href="#blossom" transform="translate(79 175) scale(.42)" color="#f8b8c6"/>
+</svg>

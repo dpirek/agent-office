@@ -127,7 +127,7 @@ class OfficeSettings extends OfficeComponent {
             ] }),
             this.createElement("span", { "class": "theme-option-copy", children: [
               this.createElement("strong", { children: [
-                document.createTextNode("Sakura "),
+                document.createTextNode("Japanese · Sakura "),
                 this.createElement("span", { "class": "theme-selected", textContent: "Selected" })
               ] }),
               this.createElement("small", { textContent: "Cherry blossoms, a sunset cityscape, and soft violet panels." })

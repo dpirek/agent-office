@@ -248,3 +248,10 @@ Registration accepts `{name,email,password}` and always assigns the role on the
 server. Login accepts `{email,password}`.
 
 Password reset is deferred.
+
+To reduce logging overhead on slower computers, set `AI_HARNESS_LIVE_LOGGING=false`
+in the Office server's `.env` and restart. This disables live activity recording
+(including HTTP and socket events), browser log polling/posts, external log
+forwarding, and the dashboard System Log panel. Existing saved logs remain on
+disk. Chat, task processing, and worker connections continue to work. The default
+is `true`. Reload open browser tabs after restarting.

@@ -1,4 +1,4 @@
-:root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #262738; background: #faf9f6; font-synthesis: none; --accent: #5b52cf; --muted: #656574; --line: #e3e1e9; }
+:root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #17344b; background: #fffaf5; font-synthesis: none; --accent: #b74560; --muted: #726670; --line: #ebd9d5; }
 * { box-sizing: border-box; }
 body { margin: 0; }
 a { color: inherit; text-decoration: none; }
@@ -31,3 +31,22 @@ figcaption { padding: 13px 22px; background: #f7f6fb; border-top: 1px solid #e9e
 @media (max-width: 1050px) { .wrap { width: calc(100% - 48px); }.hero { gap: 30px; }h1 { letter-spacing: -2.8px; }.section-intro { flex-direction: column; gap: 14px; }.preview-heading h2 { font-size: 16px; }.team-badge { display: none; }.preview-conversation strong span { display: none; }.how-it-works { padding: 36px; gap: 36px; } }
 @media (max-width: 760px) { .site-header { height: 80px; }.site-header nav { gap: 18px; }.feature-link { display: none; }.hero { grid-template-columns: 1fr; padding-block: 50px; gap: 42px; }.hero-description { max-width: 520px; }h1 { font-size: clamp(46px, 9vw, 65px); letter-spacing: -2.7px; }.office-preview { max-width: 560px; width: 100%; margin: auto; transform: none; }.preview-heading h2 { font-size: 20px; }.team-badge { display: inline-block; }.feature-grid { gap: 24px; }.feature-grid article + article { padding-left: 20px; }.how-it-works { grid-template-columns: 1fr; }.closing h2 { font-size: 27px; }.site-footer { flex-wrap: wrap; gap: 14px; }.site-footer p { display: none; } }
 @media (max-width: 480px) { .wrap { width: calc(100% - 36px); }.site-header .brand { font-size: 17px; gap: 7px; }.brand-dot { display: none; }.site-header nav > .button { display: none; }.hero-actions { gap: 20px; }.hero-actions .button { padding: 17px 20px; }.hero-actions .text-link { font-size: 12px; gap: 9px; }.preview-body { padding: 15px; }.preview-heading h2 { font-size: 17px; }.team-badge { font-size: 8px; }.preview-conversation p { font-size: 11px; }.preview-top { padding-inline: 12px; }.feature-grid { grid-template-columns: 1fr; gap: 28px; }.feature-grid article + article { border-left: 0; border-top: 1px solid var(--line); padding: 24px 0 0; }.feature-icon { margin-bottom: 9px; }.possibilities { padding-block: 35px; }.how-it-works { padding: 28px; }.how-it-works h2 { font-size: 31px; }.steps li { gap: 16px; }.closing { flex-direction: column; align-items: flex-start; padding-block: 48px; }.site-footer > a:last-child { margin-left: 0; } }
+
+/* Kojomiki: warm paper, indigo ink, and sakura pink. */
+body { background: radial-gradient(ellipse at 90% 15%, #ffe4e580, transparent 48%); }
+a:focus-visible { outline-color: var(--accent); }
+.brand { color: #17344b; }
+.brand img { width: 52px; height: 52px; object-fit: contain; }
+h1, .closing h2, .how-it-works h2 { font-family: Georgia, 'Yu Mincho', serif; font-weight: 400; letter-spacing: -.055em; }
+.button { background: #17344b; border-color: #17344b; }
+.button:hover { background: #294f68; }
+.status-dot { background: #ce607b; }
+.kojomiki-hero { position: relative; display: grid; justify-items: center; padding: 26px 16px; border-block: 1px solid var(--line); background: radial-gradient(ellipse, #fffefd 25%, #fff6f000 72%); }
+.kojomiki-hero > picture { width: min(100%, 450px); height: auto; }
+.hero-seal { color: #985665; font: 9px ui-monospace, monospace; letter-spacing: 2px; text-align: center; }
+.kojomiki-hero picture img { width: 100%; height: auto; }
+.kojomiki-hero figcaption { display: grid; justify-items: center; gap: 12px; background: transparent; border: 0; padding: 0 0 16px; }
+.kojomiki-hero figcaption strong { font: 400 clamp(36px, 4vw, 54px) Georgia, serif; letter-spacing: .04em; color: #17344b; }
+.kojomiki-hero figcaption span { font-size: 9px; letter-spacing: 2.2px; color: #985665; }
+.how-it-works { background: #f8e9e5; border: 1px solid var(--line); }
+@media (max-width: 480px) { .site-header .brand img { width: 42px; height: 42px; }.hero { padding-top: 34px; }.kojomiki-hero > picture { max-width: 320px; } }

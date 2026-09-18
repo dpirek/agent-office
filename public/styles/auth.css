@@ -85,3 +85,51 @@ body > .account-layout { width: calc(100% - 64px); margin: 0 auto; flex-shrink: 
 .account-panel .invitation-actions .invitation-primary:hover:not(:disabled) { background: #4940b5; border-color: #4940b5; }
 .invitation-actions button:focus-visible { outline: 3px solid #aaa2ff; outline-offset: 3px; }
 @media (max-width: 480px) { .invitation-actions { flex-direction: column; }.invitation-actions button { width: 100%; } }
+
+/* Shared Japanese identity for sign-in and registration. */
+:root { --green: #b74560; --text: #17344b; --muted: #786772; --line-dim: #ebd9d5; --panel-hi: #faeeea; background: #fffaf5; }
+body { background: radial-gradient(ellipse at 0 30%, #ffe5e7, transparent 70%); padding: 28px 0; }
+.account-layout { width: min(1100px, calc(100% - 48px)); border-radius: 16px; box-shadow: 0 20px 80px #632c3b0b; }
+.account-intro { --green: #b74560; color: #17344b; padding: 38px; background: linear-gradient(160deg, #fff4ee, #fce7e8); }
+.intro-label, .intro-footer { color: #955568; }
+.account-intro h2 { font-family: Georgia, 'Yu Mincho', serif; font-weight: 400; letter-spacing: -1px; }
+.account-intro > p { color: #786772; margin-top: 14px; }
+.intro-footer { border-color: #dfbfc4; }
+.kojomiki-identity { display: grid; justify-items: center; gap: 10px; text-decoration: none; margin: 18px 0 28px; }
+.kojomiki-identity img { display: block; width: min(100%, 310px); height: auto; object-fit: contain; }
+.kojomiki-identity > span { font: 38px Georgia, serif; letter-spacing: .035em; }
+.kojomiki-identity > small { color: #955568; font-size: 8px; letter-spacing: 2px; }
+.account-panel label { color: var(--text); }
+.account-panel input { background: #fffdfb; border-color: #e5d4d2; }
+.account-panel button[type="submit"], .account-panel .invitation-actions .invitation-primary { background: #17344b; border-color: #17344b; }
+.account-panel button[type="submit"]:hover:not(:disabled), .account-panel .invitation-actions .invitation-primary:hover:not(:disabled) { background: #294f68; border-color: #294f68; }
+.account-panel :focus-visible { outline: 2px solid #b74560; outline-offset: 3px; }
+@media (max-width: 760px) {
+  body { padding: 14px 0; }
+  .account-layout { width: calc(100% - 28px); grid-template-columns: 1fr; }
+  .account-intro { display: block; padding: 20px; }
+  .account-intro > :not(.kojomiki-identity) { display: none; }
+  .kojomiki-identity { display: flex; justify-content: center; gap: 14px; margin: 0; }
+  .kojomiki-identity img { width: 76px; }
+  .kojomiki-identity > span { font-size: 32px; }
+  .kojomiki-identity > small { display: none; }
+}
+
+/* A compact illustrated welcome beside the form. */
+.account-layout { width: min(980px, calc(100% - 48px)); grid-template-columns: 1fr 1fr; }
+.account-intro { padding: 28px; justify-content: center; }
+.intro-label { justify-content: center; font-size: 9px; }
+.kojomiki-identity { margin: 10px 0 0; gap: 8px; }
+.kojomiki-identity picture { display: block; width: min(100%, 350px); }
+.kojomiki-identity img { width: 100%; }
+.kojomiki-identity > span { font-size: 36px; }
+.kojomiki-identity > small { font: 13px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; letter-spacing: 0; text-align: center; }
+.account-body { padding: 34px; }
+@media (max-width: 760px) {
+  .account-layout { width: calc(100% - 28px); grid-template-columns: 1fr; }
+  .account-intro { padding: 14px 20px; }
+  .kojomiki-identity { margin: 0; }
+  .kojomiki-identity picture { width: 76px; flex: 0 0 76px; }
+  .kojomiki-identity > span { font-size: 32px; }
+  .account-body { padding: 24px; }
+}

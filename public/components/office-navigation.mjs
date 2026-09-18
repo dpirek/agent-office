@@ -9,19 +9,19 @@ class OfficeNavigation extends OfficeComponent {
     this.appendChildren(this, [
       this.createElement("div", { "class": "sidebar-topbar", children: [
         this.createElement("a", { "class": "sidebar-logo", "href": "/central-office/dashboard", "aria-label": "Office home", children: [
-          this.createElement("img", { "src": "/assets/logo.svg", "alt": "", "width": "30", "height": "30" })
+          this.createElement("img", { "src": "/assets/kojomiki-icon.svg", "alt": "", "width": "30", "height": "30" })
         ] }),
         this.createElement("button", { "class": "sidebar-toggle", "id": "sidebar-toggle", "type": "button", "aria-controls": "primary-navigation", "aria-expanded": "true", "aria-label": "Collapse navigation", "title": "Collapse navigation", children: [
           this.createElement("svg", { "class": "sidebar-toggle-icon bi", "width": "20", "height": "20", "viewBox": "0 0 16 16", "fill": "currentColor", "aria-hidden": "true", "focusable": "false", children: [
             this.createElement("use", { "href": "/assets/bootstrap-icons/bootstrap-icons.svg#layout-sidebar-inset" })
           ] }),
-          this.createElement("img", { "class": "sidebar-toggle-logo", "src": "/assets/logo.svg", "alt": "", "width": "28", "height": "28" }),
+          this.createElement("img", { "class": "sidebar-toggle-logo", "src": "/assets/kojomiki-icon.svg", "alt": "", "width": "28", "height": "28" }),
           this.createElement("span", { "class": "nav-label", textContent: "COLLAPSE" })
         ] })
       ] }),
       this.createElement("header", { "class": "sidebar-brand", children: [
         this.createElement("div", { "class": "sidebar-brand-row", children: [
-          this.createElement("h1", { textContent: "Office" }),
+          this.createElement("h1", { textContent: "Kojomiki" }),
           this.createElement("div", { "class": "sidebar-health", children: [
             this.createElement("span", { "class": "status-dot", "id": "health-dot" }),
             this.createElement("span", { "id": "health-text", textContent: "CONNECTING" })

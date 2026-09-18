@@ -39,7 +39,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     if (invitationInfo) description.textContent = registration
       ? `Create your account to join ${invitationInfo.projectName}. You will get access automatically.`
       : `Sign in to join ${invitationInfo.projectName}.`;
-    document.title = `${registration ? "Create account" : "Sign in"} · Agent Office`;
+    document.title = `${registration ? "Create account" : "Sign in"} · Kojomiki`;
     const element = document.createElement("form");
     function field(label, name, type, autocomplete) {
       const wrapper = document.createElement("label"); wrapper.textContent = label;
@@ -80,7 +80,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
     });
     content.append(element);
     const actions = document.createElement("div"); actions.className = "account-actions";
-    actions.append(document.createTextNode(registration ? "Already have an account?" : "New to Agent Office?"));
+    actions.append(document.createTextNode(registration ? "Already have an account?" : "New to Kojomiki?"));
     const link = document.createElement("a");
     link.href = registration ? "/login" : "/register";
     if (invitationCode) link.href += `?invite=${encodeURIComponent(invitationCode)}`;
@@ -90,7 +90,7 @@ export async function renderAccount(root, { onAuthenticated = () => {}, onSigned
   }
   async function account() {
     root.classList.add("is-profile");
-    if (mode !== "account") document.title = "Your account · Agent Office";
+    if (mode !== "account") document.title = "Your account · Kojomiki";
     const user = session.user;
     title.textContent = "Your account";
     description.textContent = "Manage your identity and access to the shared office.";

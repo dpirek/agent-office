@@ -1,6 +1,8 @@
 import "./components/office-shell.mjs";
 import { requireSession } from "./lib/auth.mjs";
 const signedInUser = await requireSession();
+const runtimeHealth = await fetchJson("/api/health");
+const liveLoggingEnabled = runtimeHealth.liveLoggingEnabled !== false;
 import { PROJECT_PAGES, projectPagePath, projectIdFromPath, registerProjectRoutes } from "./lib/project-routes.mjs";
 import Router from "./lib/router.mjs";
 import { createClientId } from "./lib/client-id.mjs";
@@ -11,6 +13,7 @@ const startedAt = Date.now();
 const sessionId = createClientId();
 const shell = document.querySelector('office-shell');
 const component = name => shell.querySelector(`office-${name}`);
+if (!liveLoggingEnabled) component('system-log')?.remove();
 const navigation = component('navigation');
 navigation.data = { userRole: signedInUser.role };
 const topbar = component('topbar');
@@ -118,7 +121,7 @@ function renderPage(section, tabName) {
   }
   const page = PAGES[section] || PAGES.dashboard;
   document.body.dataset.page = section;
-  document.title = `${page.title} · AI Agent Office`;
+  document.title = `${page.title} · Kojomiki`;
   navigation.data = { page: section };
   shell.showPage(section);
   if (section === 'search') runSearch();
@@ -143,6 +146,7 @@ function addActivity(text, tone = "") {
 }
 
 function addLog(source, text, tone = "") {
+  if (!liveLoggingEnabled) return;
   state.logs.push({ at: Date.now(), source, text, tone });
   state.logs = state.logs.slice(-500);
   renderLogs();
@@ -229,9 +233,10 @@ function renderSelectedAgent() {
   component('selected-agent').data = { agent: currentAgent(), agents: officeAgents(), tasks: allTasks(), activity: state.activity, health: state.health, orchestrator: state.orchestrator, chatRunning: state.chatRunning, uptime: formatUptime(), sessionId };
 }
 
-function renderLogs() { component('system-log').data = { logs: state.logs, userRole: signedInUser.role }; }
+function renderLogs() { if (!liveLoggingEnabled) return; component('system-log').data = { logs: state.logs, userRole: signedInUser.role }; }
 
 async function loadSystemLogs() {
+  if (!liveLoggingEnabled) return;
   try {
     const data = await fetchJson("/api/system-logs?limit=500");
     state.logForwardingEnabled = data.forwardingEnabled === true;
@@ -657,7 +662,7 @@ setInterval(() => void loadMemory({ quiet: true }), 5000);
 setInterval(() => {
   if (["chat", "dashboard"].includes(document.body.dataset.page)) void loadOfficeChat({ quiet: true });
   if (document.body.dataset.page === "workspace") void loadSharedWorkspace({ quiet: true });
-  if (document.body.dataset.page === "dashboard") void loadSystemLogs();
+  if (liveLoggingEnabled && document.body.dataset.page === "dashboard") void loadSystemLogs();
 }, 2000);
 
 renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat();
@@ -665,7 +670,7 @@ void settings.load();
 if (signedInUser.role === 'admin') void component("knowledge").load();
 void loadMemory();
 
-void loadSystemLogs();
+if (liveLoggingEnabled) void loadSystemLogs();
 
 function renderProjects() {
   navigation.data = { projects: state.projects, projectId: state.projectId };

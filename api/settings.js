@@ -31,6 +31,7 @@ export function createSettingsApiHandlers({
       ok: true,
       version: appVersion,
       webSocketUrl,
+      liveLoggingEnabled: uiStateStore.liveLoggingEnabled !== false,
       provider: envProvider,
       model: process.env.AI_MODEL || defaultModelForProvider(envProvider),
       ollamaModel: process.env.OLLAMA_MODEL || "llama3.1",

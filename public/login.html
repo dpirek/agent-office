@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="sakura">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#5b52cf">
-  <title>Sign in · Agent Office</title>
-  <link rel="icon" href="/assets/logo.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#17344b">
+  <title>Sign in · Kojomiki</title>
+  <link rel="icon" href="/assets/kojomiki-logo.png" type="image/png">
   <link rel="stylesheet" href="/styles/account.css">
   <link rel="stylesheet" href="/styles/auth.css">
   <script type="module" src="/auth-page.mjs"></script>
@@ -15,11 +15,7 @@
 <body>
   <main class="account-layout">
     <aside class="account-intro">
-      <span class="intro-label"><i></i> A SPACE FOR YOUR NEXT BIG IDEA</span>
-      <h2>Great work starts<br>with a <em>shared space.</em></h2>
-      <p>Agents, projects, and conversations in one place.</p>
-      <div class="office-illustration" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="office-core">ao<span>AGENT OFFICE</span></div><span class="orbit-node node-one">✳</span><span class="orbit-node node-two">⌘</span><span class="orbit-node node-three">↗</span><span class="orbit-caption">IDEAS → ACTION → PROGRESS</span></div>
-      <div class="intro-footer"><span>01 / CONNECT</span><span>Built for collaboration.</span></div>
+      <a class="kojomiki-identity" href="/" aria-label="Kojomiki home"><picture><source media="(prefers-reduced-motion: reduce)" srcset="/assets/kojomiki-carousel-still.svg"><img src="/assets/kojomiki-carousel.svg" width="480" height="430" alt="Animated carousel beneath Mount Fuji and cherry blossoms"></picture><span>Kojomiki</span><small>Your people. Your agents. Your next idea.</small></a>
     </aside>
     <section id="account-view" class="account-panel" aria-label="Account"><p class="loading-message" role="status">Loading your account…</p></section>
   </main>

@@ -4,7 +4,7 @@ import { json, methodNotAllowed, readRequestBody } from "./http.js";
 // before authentication and HTTP activity recording; never ingest the body.
 export function discardDisabledLogPost(req, res, url, store) {
   if (req.method !== 'POST' || url.pathname !== '/api/system-logs') return false;
-  if (store.getObservabilityProviders().some(provider => provider.enabled)) return false;
+  if (store.liveLoggingEnabled !== false && store.getObservabilityProviders().some(provider => provider.enabled)) return false;
   req.resume();
   res.writeHead(204, { 'cache-control': 'no-store' });
   res.end();
@@ -13,6 +13,12 @@ export function discardDisabledLogPost(req, res, url, store) {
 
 export function createSystemLogApiHandlers({ uiStateStore }) {
   async function handleSystemLogsApi(req, res, url) {
+    if (uiStateStore.liveLoggingEnabled === false) {
+      if (req.method === "GET") json(res, 200, { ok: true, logs: [], liveLoggingEnabled: false, forwardingEnabled: false });
+      else if (req.method === "POST") { req.resume(); res.writeHead(204); res.end(); }
+      else methodNotAllowed(res, "GET, POST");
+      return;
+    }
     if (req.method === "GET") {
       const limit = Number(url.searchParams.get("limit") || 200);
       json(res, 200, {

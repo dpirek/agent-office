@@ -16,7 +16,7 @@ class OfficeTopbar extends OfficeComponent {
       this.createElement('button', { type: 'button', class: 'topbar-brand', 'aria-controls': 'primary-navigation', 'aria-label': 'Collapse navigation', addEventListener: { name: 'click', handler: () => this.emit('navigation-toggle') }, children: [
         this.createElement('img', { src: '/assets/logo-teams.svg', width: '28', height: '28', alt: '' }),
         this.icon('chevron-bar-left'),
-        this.createElement('span', { textContent: 'Agent Office' }),
+        this.createElement('span', { textContent: 'Kojomiki' }),
       ] }),
       this.createElement('div', { class: 'topbar-search-area', children: [
         this.createElement('div', { class: 'topbar-history', children: [

@@ -44,6 +44,7 @@ import {
   applyEnvironmentSettings,
   environmentDisablesFileAccess,
   loadEnvironmentFile,
+  liveLoggingEnabled,
 } from "./lib/env-config.js";
 import {
   isPathWithin,
@@ -58,6 +59,7 @@ const packageMetadata = JSON.parse(await fs.readFile(path.join(__dirname, "packa
 const appVersion = String(packageMetadata.version || "0.0.0");
 const environmentFilePath = path.join(__dirname, ".env");
 const environmentFileDetected = loadEnvironmentFile(environmentFilePath);
+const loggingEnabled = liveLoggingEnabled();
 const webSocketUrl = normalizeOfficeWebSocketUrl(process.env.AI_HARNESS_WEBSOCKET_URL);
 const fileAccessDisabledByEnvironment = environmentFileDetected
   && environmentDisablesFileAccess(process.env);
@@ -201,7 +203,7 @@ const subAgentManager = new SubAgentManager({
 });
 
 async function initializeUiStateStore(databasePath, initialMcpConfigPath) {
-  const store = createUiStateStore(databasePath);
+  const store = createUiStateStore(databasePath, { liveLoggingEnabled: loggingEnabled });
   if (store.getMcpConfig() === undefined) {
     try {
       store.setMcpConfig(await fs.readFile(initialMcpConfigPath, "utf8"));
@@ -271,7 +273,7 @@ async function createAgentSession({
     apiKey,
     baseUrl: settings.baseUrl || defaultBaseUrlForProvider(provider),
   });
-  instrumentModelClient(client, entry => uiStateStore.recordSystemActivity(entry), { projectId: projectId || DEFAULT_PROJECT_ID, provider, agent: 'Office Manager' });
+  if (loggingEnabled) instrumentModelClient(client, entry => uiStateStore.recordSystemActivity(entry), { projectId: projectId || DEFAULT_PROJECT_ID, provider, agent: 'Office Manager' });
   // Enabling a built-in tool in the web Tools settings is the user's
   // authorization to execute it. Disabled tools are not exposed to the model.
   const disabled = new Set(disabledSteps);
@@ -355,7 +357,7 @@ const handleWebSocket = createWebSocketHandler({
 
 const uiStateStore = await initializeUiStateStore(uiStateDatabasePath, configPath);
 const observabilityExporter = createObservabilityExporter({ store: uiStateStore });
-observabilityExporter.start();
+if (loggingEnabled) observabilityExporter.start();
 uiStateStore.recordSystemActivity({
   category: "system", source: "System",
   message: "Agent Office server initialized", tone: "success",
@@ -555,7 +557,7 @@ server = http.createServer(async (req, res) => {
   const requestStartedAt = Date.now();
   const clientIp = requestClientIp(req);
   let staticAssetRequest = false;
-  res.once("finish", () => {
+  if (loggingEnabled) res.once("finish", () => {
     try {
       if (staticAssetRequest) return;
       if (req.method === 'GET' && res.statusCode < 400 && url.pathname.startsWith('/api/') && !req.workerAuthenticated) return;

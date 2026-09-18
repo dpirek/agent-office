@@ -88,3 +88,33 @@ test('browser log forwarding is enabled only while an enabled provider exists', 
     assert.equal(await enabled(), false);
   } finally { store.close(); }
 });
+
+test('live logging switch suppresses activity storage, ingestion, and forwarding even with a provider', async () => {
+  const store = createUiStateStore(':memory:', { liveLoggingEnabled: false });
+  try {
+    assert.equal(store.liveLoggingEnabled, false);
+    store.addObservabilityProvider({ type: 'loki', name: 'Logs', url: 'https://logs.example.test/loki/api/v1/push', enabled: true });
+    assert.equal(store.recordSystemActivity({ category: 'network', message: 'HTTP/socket event' }), null);
+    assert.deepEqual(store.getSystemActivity(), []);
+    let drained = 0;
+    const request = { method: 'POST', resume() { drained++; } };
+    const url = new URL('http://localhost/api/system-logs');
+    assert.equal(discardDisabledLogPost(request, responseRecorder(), url, store), true);
+    const handler = createSystemLogApiHandlers({ uiStateStore: store })['/api/system-logs'];
+    const posted = responseRecorder();
+    await handler(request, posted, url);
+    assert.equal(posted.status, 204);
+    assert.equal(drained, 2);
+    const fetched = responseRecorder();
+    await handler({ method: 'GET' }, fetched, url);
+    assert.deepEqual(JSON.parse(fetched.body), { ok: true, logs: [], liveLoggingEnabled: false, forwardingEnabled: false });
+  } finally { store.close(); }
+});
+
+test('live logging environment option defaults on and validates boolean values', async () => {
+  const { liveLoggingEnabled } = await import('../lib/env-config.js');
+  assert.equal(liveLoggingEnabled({}), true);
+  for (const value of ['false', '0', 'off', 'no']) assert.equal(liveLoggingEnabled({ AI_HARNESS_LIVE_LOGGING: value }), false);
+  for (const value of ['true', '1', 'on', 'yes']) assert.equal(liveLoggingEnabled({ AI_HARNESS_LIVE_LOGGING: value }), true);
+  assert.throws(() => liveLoggingEnabled({ AI_HARNESS_LIVE_LOGGING: 'typo' }), /must be true or false/);
+});
