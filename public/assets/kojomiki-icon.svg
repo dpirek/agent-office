@@ -1,12 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
-  <title>Kojomiki</title>
-  <rect x="1" y="1" width="46" height="46" rx="12" fill="#fff1ec"/>
-  <circle cx="30" cy="17" r="10" fill="#f07998"/>
-  <path d="m28 21 7-12 7 12Z" fill="#17344b"/>
-  <path d="m32 14 3-5 3 5-3-2Z" fill="#fffaf3"/>
-  <path d="M23 11v5M12 26v12m11-13v13m12-12v12" stroke="#17344b" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M7 24q11-3 16-10 5 7 16 10l-2 4q-4 3-7-1-4 4-7 0-4 4-7 0-4 4-7 0Z" fill="#17344b"/>
-  <path d="m23 16-7 9m7-9 7 9" stroke="#f6afc4" stroke-width="2" stroke-linecap="round"/>
-  <path d="M9 39h28" stroke="#17344b" stroke-width="3" stroke-linecap="round"/>
-  <path d="m18 33 4 1 4-6 3 3-3 1-1 3h-5l-2 2m6-2 2 2" stroke="#b74769" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <title>Kojomiki horse</title>
+  <path d="M13 25C7 20 3 24 4 30C5 35 3 36 2 34C2 40 9 38 9 31C9 28 11 28 13 29Z" fill="#c56386"/>
+  <path d="M12 24C17 21 21 25 25 22L29 13L31 8L35 5L35 1L38 5L41 4L40 9L46 16C48 19 45 22 42 20L37 17L34 25C34 28 37 29 40 31L45 38L42 41L35 34L30 33L34 42L30 44L24 34L20 33L15 41L9 44L7 41L12 36L14 30C10 29 9 26 12 24Z" fill="#ed9fb8"/>
+  <path d="M35 6C30 7 27 12 27 17L24 23L29 21L32 12L37 8Z" fill="#c56386"/>
+  <circle cx="39" cy="12" r="1.4" fill="#17344b"/>
 </svg>
