@@ -433,16 +433,24 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .workspace-tree-empty { padding: 12px; color: var(--muted); font-size: 11px; }
 .workspace-preview { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .workspace-preview-header { flex: none; min-height: 43px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line-dim); }
+.workspace-preview-back { display: none; }
 .workspace-preview-header h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 400; }
 .workspace-preview-empty { height: 100%; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--muted); font-size: 12px; text-align: center; }
 .workspace-preview-empty > span { font-size: 38px; color: var(--green); opacity: .6; }
 .workspace-preview-empty strong { color: var(--text); font-weight: 400; }
 @media (max-width: 700px) {
   .workspace-tree-resizer { display: none; }
+  body[data-page="workspace"] .shared-workspace-panel { height: calc(100dvh - 108px - env(safe-area-inset-bottom)); min-height: 0; }
   .workspace-explorer { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(130px, 28vh) minmax(350px, 1fr); overflow: auto; }
+  body[data-page="workspace"] .workspace-explorer { grid-template-rows: minmax(0, 1fr); overflow: hidden; }
+  body[data-page="workspace"] .workspace-explorer .workspace-preview { display: none; }
+  body[data-page="workspace"] .workspace-explorer.is-previewing-file .workspace-tree-pane { display: none; }
+  body[data-page="workspace"] .workspace-explorer.is-previewing-file .workspace-preview { display: flex; }
   .workspace-tree-pane { border-right: 0; border-bottom: 1px solid var(--line); }
   .shared-workspace-summary code { display: none; }
   .workspace-preview-header { gap: 8px; padding: 10px; }
+  body[data-page="workspace"] .workspace-preview-back { display: inline-flex; flex: 0 0 auto; align-items: center; padding: 5px 7px; border: 1px solid var(--line-dim); background: transparent; color: var(--green); font-size: 10px; white-space: nowrap; }
+  .workspace-preview-header h3 { flex: 1; }
 }
 .file-preview-actions { display: flex; align-items: center; gap: 14px; }
 .file-preview-actions a { color: var(--green); font-size: 10px; text-decoration: none; white-space: nowrap; }
@@ -523,7 +531,7 @@ select {
   .nav-items { height: 100%; display: flex; padding: 4px; overflow: hidden; }
   .nav-items::-webkit-scrollbar { display: none; }
   .nav-item:not([data-section="dashboard"]):not([data-section="chat"]):not([data-section="tasks"]):not([data-section="workspace"]):not([data-section="settings"]) { display: none; }
-  .nav-item { position: relative; width: auto; height: 54px; min-width: 0; flex: 1 1 0; flex-direction: column; justify-content: center; gap: 1px; padding: 0 5px; border: 0; border-right: 1px solid var(--line-dim); font-size: 7px; text-align: center; }
+  .nav-item { position: relative; width: auto; height: 100%; min-width: 0; flex: 1 1 0; flex-direction: column; justify-content: center; gap: 1px; padding: 0 5px; border: 0; border-right: 1px solid var(--line-dim); font-size: 7px; text-align: center; }
   .nav-item:first-child { border-top: 0; }
   .nav-item:last-child { border-right: 0; }
   .nav-icon { width: 28px; height: 28px; display: grid; place-items: center; font-size: 18px; line-height: 1; }
@@ -627,7 +635,15 @@ select {
 .project-room.active strong { font-weight: 600; }
 .project-room strong { font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .office-board-empty { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
-@media (max-width: 1100px) { #project-chat-rooms { flex-direction: row; max-height: none; } .project-room { width: auto; max-width: 240px; } }
+@media (max-width: 1100px) {
+  body[data-page="chat"] .office-chat-sidebar { position: relative; display: flex; align-items: center; gap: 6px; min-height: 52px; padding: 6px 8px; }
+  body[data-page="chat"] .office-chat-sidebar h3:not(.project-list-heading), body[data-page="chat"] .office-chat-members { display: none; }
+  body[data-page="chat"] .office-chat-sidebar .project-list-heading { flex: 0 0 auto; margin: 0 4px 0 0; white-space: nowrap; }
+  #project-chat-rooms { min-width: 0; flex: 1 1 auto; flex-direction: row; max-height: none; overflow-x: auto; overflow-y: hidden; white-space: nowrap; }
+  .project-room { width: auto; max-width: 240px; }
+  body[data-page="chat"] .chat-add-member { flex: 0 0 36px; justify-content: center; width: 36px; height: 36px; margin: 0; padding: 0; overflow: hidden; font-size: 0; }
+  body[data-page="chat"] office-add-member { position: absolute; width: 0; height: 0; }
+}
 
 .project-context-header { display: flex; flex: 0 0 auto; flex-direction: column; align-items: stretch; gap: 7px; min-width: 0; margin-top: 10px; }
 .workspace-context { max-width: 100%; color: var(--muted); font-size: 7px; line-height: 1.45; text-align: left; overflow-wrap: anywhere; }
@@ -675,6 +691,7 @@ svg.header-icon { height: 18px; }
 }
 @media (max-width: 1100px) {
   .dashboard-tasks-panel:not(.is-minimized) { min-height: 200px; }
+  .dashboard-tasks-panel.is-minimized { align-self: stretch; width: 100%; }
   .dashboard-tasks-panel { order: 1; }
 }
 

@@ -34,6 +34,7 @@ class OfficeWorkspace extends OfficeComponent {
         this.createElement("div", { "id": "workspace-tree-resizer", "class": "workspace-tree-resizer", "role": "separator", "tabindex": "0", "aria-label": "Resize file tree", "aria-orientation": "vertical", "aria-controls": "workspace-tree-pane", "title": "Drag to resize · Arrow keys to adjust · Double-click to reset" }),
         this.createElement("section", { "class": "workspace-preview", "aria-labelledby": "file-preview-title", children: [
           this.createElement("header", { "class": "workspace-preview-header", children: [
+            this.createElement("button", { "class": "workspace-preview-back", "id": "workspace-preview-back", "type": "button", "textContent": "← Back to files" }),
             this.createElement("h3", { "id": "file-preview-title", textContent: "FILE PREVIEW" }),
             this.createElement("div", { "class": "file-preview-actions", "id": "file-preview-actions", "hidden": "", children: [
               this.createElement("a", { "id": "file-preview-open", "target": "_blank", "rel": "noopener noreferrer", textContent: "OPEN ↗" }),
@@ -102,6 +103,7 @@ class OfficeWorkspace extends OfficeComponent {
       previewRequest += 1;
       previewController?.abort();
       selectedWorkspaceFile = null;
+      $(".workspace-explorer").classList.remove("is-previewing-file");
       $("#file-preview-title").textContent = "FILE PREVIEW";
       $("#file-preview-actions").hidden = true;
       $("#file-preview-content").innerHTML = '<div class="workspace-preview-empty"><span aria-hidden="true">▱</span><strong>Select a file to preview</strong><p>Browse your project files on the left.</p></div>';
@@ -129,6 +131,8 @@ class OfficeWorkspace extends OfficeComponent {
       previewController?.abort();
       previewController = new AbortController();
       selectedWorkspaceFile = decodeURIComponent(pathname.slice("/files/".length));
+      $(".workspace-explorer").classList.add("is-previewing-file");
+      if (matchMedia('(max-width: 700px)').matches) $('#workspace-preview-back').focus();
       for (const folder of [...collapsedWorkspaceFolders]) {
         if (selectedWorkspaceFile.startsWith(folder + "/")) collapsedWorkspaceFolders.delete(folder);
       }
@@ -177,6 +181,10 @@ class OfficeWorkspace extends OfficeComponent {
     }
 
     $('#refresh-workspace-button').addEventListener('click', () => void loadSharedWorkspace());
+    $('#workspace-preview-back').addEventListener('click', () => {
+      $('.workspace-explorer').classList.remove('is-previewing-file');
+      $('#shared-workspace-browser .workspace-tree-file.selected')?.focus();
+    });
     this.addEventListener('click', event => {
       const link = event.target.closest('#shared-workspace-browser a[href]');
       if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

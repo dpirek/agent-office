@@ -207,6 +207,11 @@ html[data-theme="matrix"] * { scrollbar-color: #236c3d #000b05; }
 html[data-theme="sakura"] body { background: radial-gradient(ellipse at 100% 0, #edc2e0 0, transparent 50%), linear-gradient(145deg, #e8e4f4, #fff4fa 65%, #f7dbe9); }
 html[data-theme="sakura"] .sidebar { background: linear-gradient(155deg, #272a44, #212436 65%, #42324b); }
 html[data-theme="sakura"] .nav-item.active { background: linear-gradient(90deg, #6654b5bb, #725bb755); box-shadow: inset 3px 0 #e9a4d1; }
+@media (max-width: 1100px) {
+  html[data-theme="sakura"] .nav-item.active { background: #ffffff12; border-radius: 10px; box-shadow: none; color: #fff8ff; }
+  html[data-theme="sakura"] .nav-item:not(.active):hover { background: transparent; border-radius: 10px; }
+  html[data-theme="sakura"] .nav-item.active .nav-icon { color: #f4c6e5; text-shadow: none; }
+}
 html[data-theme="sakura"] .sidebar-brand h1 { color: #fff0fa; }
 html[data-theme="sakura"] .theme-banner { color: #fff8ff; background: linear-gradient(90deg, #25254770, transparent 80%), url('/assets/themes/sakura-city.png') center 48% / cover; text-shadow: 0 2px 10px #15132f; }
 html[data-theme="sakura"] :is(.panel, .panel-header, .panel-body) { background-color: #fffdfef5; }
