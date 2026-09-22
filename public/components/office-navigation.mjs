@@ -242,10 +242,8 @@ class OfficeNavigation extends OfficeComponent {
         link.hidden = (link.dataset.section === 'knowledge' && state.userRole !== 'admin') || (PROJECT_PAGES.has(link.dataset.section) && !state.projects.length);
         link.href = projectPagePath(link.dataset.section, state.projectId);
         const active = link.dataset.section === state.page;
-        const changed = active && !link.classList.contains('active');
         link.classList.toggle('active', active);
         if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
-        if (changed && matchMedia('(max-width: 1100px)').matches) queueMicrotask(() => link.scrollIntoView({ block: 'nearest', inline: 'center' }));
       });
       $('.sidebar-logo').href = projectPagePath('dashboard', state.projectId);
       $('#project-select').replaceChildren(...state.projects.map(project => this.createElement('option', { value: project.id, textContent: project.name })));

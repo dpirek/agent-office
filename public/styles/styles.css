@@ -520,9 +520,10 @@ select {
   .sidebar { position: fixed; z-index: 90; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); left: 10px; height: 64px; min-height: 64px; display: block; overflow: hidden; background: #080d0ff2; box-shadow: inset 0 0 0 3px #070b0d, inset 0 0 0 4px var(--line-dim), 0 -8px 25px #000a; backdrop-filter: blur(8px); }
   .sidebar-brand { display: none; }
   .sidebar-toggle { display: none; }
-  .nav-items { height: 100%; display: flex; padding: 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .nav-items { height: 100%; display: flex; padding: 4px; overflow: hidden; }
   .nav-items::-webkit-scrollbar { display: none; }
-  .nav-item { position: relative; width: auto; height: 54px; min-width: 72px; flex: 1 0 72px; flex-direction: column; justify-content: center; gap: 1px; padding: 0 5px; border: 0; border-right: 1px solid var(--line-dim); font-size: 7px; text-align: center; }
+  .nav-item:not([data-section="dashboard"]):not([data-section="chat"]):not([data-section="tasks"]):not([data-section="workspace"]):not([data-section="settings"]) { display: none; }
+  .nav-item { position: relative; width: auto; height: 54px; min-width: 0; flex: 1 1 0; flex-direction: column; justify-content: center; gap: 1px; padding: 0 5px; border: 0; border-right: 1px solid var(--line-dim); font-size: 7px; text-align: center; }
   .nav-item:first-child { border-top: 0; }
   .nav-item:last-child { border-right: 0; }
   .nav-icon { width: 28px; height: 28px; display: grid; place-items: center; font-size: 18px; line-height: 1; }
@@ -565,7 +566,7 @@ select {
 @media (max-width: 600px) {
   .app-frame { padding: 8px 8px calc(78px + env(safe-area-inset-bottom)); }
   .sidebar { right: 6px; bottom: max(6px, env(safe-area-inset-bottom)); left: 6px; height: 62px; min-height: 62px; }
-  .nav-item { min-width: 64px; flex-basis: 64px; }
+  .nav-item { min-width: 0; flex-basis: 0; }
   .panel-header h2 { overflow: hidden; font-size: 11px; text-overflow: ellipsis; }
   .panel-meta, .streaming { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .agent-registry-panel .panel-meta { display: none; }
