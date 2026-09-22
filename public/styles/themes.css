@@ -208,7 +208,7 @@ html[data-theme="sakura"] body { background: radial-gradient(ellipse at 100% 0, 
 html[data-theme="sakura"] .sidebar { background: linear-gradient(155deg, #272a44, #212436 65%, #42324b); }
 html[data-theme="sakura"] .nav-item.active { background: linear-gradient(90deg, #6654b5bb, #725bb755); box-shadow: inset 3px 0 #e9a4d1; }
 @media (max-width: 1100px) {
-  html[data-theme="sakura"] .nav-item.active { background: #ffffff12; border-radius: 10px; box-shadow: none; color: #fff8ff; }
+  html[data-theme="sakura"] .nav-item.active { background: #ffffff12; box-shadow: none; color: #fff8ff; }
   html[data-theme="sakura"] .nav-item:not(.active):hover { background: transparent; border-radius: 10px; }
   html[data-theme="sakura"] .nav-item.active .nav-icon { color: #f4c6e5; text-shadow: none; }
 }

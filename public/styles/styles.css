@@ -535,7 +535,7 @@ select {
   .nav-item:first-child { border-top: 0; }
   .nav-item:last-child { border-right: 0; }
   .nav-icon { width: 28px; height: 28px; display: grid; place-items: center; font-size: 18px; line-height: 1; }
-  .nav-item.active { background: #1e292d; box-shadow: inset 0 -3px var(--green); }
+  .nav-item.active { background: #1e292d; border-radius: 10px; box-shadow: inset 0 -3px var(--green); }
   .nav-item.active .nav-icon { color: var(--green); text-shadow: 0 0 9px #43ec8d66; }
   .main-content { display: flex; flex-direction: column; gap: 10px; }
   .panel-width-resizer { display: none !important; }
