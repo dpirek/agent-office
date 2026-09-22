@@ -1,9 +1,16 @@
-
-/db
-.office-workspace/
-.workspace/
-.ui-verification/
+# State files and directories
 .office-artifacts/
+.office-workspace/
+.ui-verification/
+.workspace/
+
+# Database and environment files
+/db
 *.sqlite
+
+# Environment files
 .env
 !.env.example
+
+# macOS files
+.DS_Store
