@@ -1,3 +1,4 @@
+import { initChatImages } from '../lib/chat-images.mjs';
 import './office-add-member.mjs';
 import { renderUserAvatar } from '../lib/user-avatars.mjs';
 import OfficeComponent from "./office-component.mjs";
@@ -210,6 +211,7 @@ class OfficeChat extends OfficeComponent {
       if (document.body.dataset.page === "chat" && window.matchMedia("(max-width: 1100px)").matches) scrollOfficeChatToLatest();
     }
 
+    const attachments = initChatImages({ form: $('#office-board-form'), input: $('#office-board-input'), tools: $('.composer-toolbar'), onError: message => showToast(message, true), onChange: syncOfficeBoardComposerHeight });
     let officeBoardMarkup = null;
     let posting = false;
     const postOfficeChat = payload => this.request('chat-send', payload);
@@ -218,17 +220,22 @@ class OfficeChat extends OfficeComponent {
       event.preventDefault();
       const input = $("#office-board-input");
       const prompt = input.value.trim();
-      if (!prompt || posting) return;
+      if ((!prompt && !attachments.count) || posting) return;
+      const projectId = state.projectId;
+      const reply = replyToId;
       if (state.chatRunning) {
         showToast("Wait for the office manager's current response to finish.");
         return;
       }
       const sendButton = $("#office-board-send");
       posting = true;
-      sendButton.disabled = true;
+      sendButton.disabled = input.disabled = true;
+      attachments.setDisabled(true);
       try {
-        const result = await postOfficeChat({ text: prompt, replyToId });
-        if (state.projectId === result.message.projectId) { input.value = ""; setReply(null); }
+        const images = await attachments.read();
+        if (projectId !== state.projectId) return;
+        const result = await postOfficeChat({ text: prompt, replyToId: reply, images, projectId });
+        if (state.projectId === result.message.projectId) { input.value = ""; setReply(null); attachments.clear(); }
         resizeOfficeBoardInput();
         await loadOfficeChat({ quiet: true });
         const failed = result.dispatches?.filter((dispatch) => !dispatch.ok) || [];
@@ -238,7 +245,8 @@ class OfficeChat extends OfficeComponent {
         showToast(error.message, true);
       } finally {
         posting = false;
-        sendButton.disabled = false;
+        sendButton.disabled = input.disabled = false;
+        attachments.setDisabled(false);
       }
     });
     $("#office-board-input").addEventListener("keydown", (event) => {
@@ -292,7 +300,7 @@ class OfficeChat extends OfficeComponent {
       }
       renderOfficeChat({ preserveScroll: true });
     };
-    this.clearDraft = () => { setReply(null); $('#office-board-input').value = ''; resizeOfficeBoardInput(); };
+    this.clearDraft = () => { attachments.clear(); setReply(null); $('#office-board-input').value = ''; resizeOfficeBoardInput(); };
     this.syncComposer = () => { syncOfficeBoardComposerHeight(); revealSelectedProject(); };
     this.onConnect = () => {
       initChatComposer({ root: this, signal: this.connectionSignal });

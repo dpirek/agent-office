@@ -1,3 +1,4 @@
+import { initChatImages } from '../lib/chat-images.mjs';
 import OfficeComponent from "./office-component.mjs";
 import { renderDashboardOfficeChatMessages } from "../lib/dashboard-office-chat.mjs";
 
@@ -42,27 +43,31 @@ class OfficeDashboardChat extends OfficeComponent {
       input.style.height = `${Math.min(96, Math.max(34, input.scrollHeight))}px`;
       input.style.overflowY = input.scrollHeight > 96 ? 'auto' : 'hidden';
     };
+    const attachments = initChatImages({ form, input, tools: form, onError: message => showToast(message, true) });
     form.addEventListener('submit', async event => {
       event.preventDefault();
       const text = input.value.trim(), projectId = state.projectId;
-      if (!text || posting) return;
+      if ((!text && !attachments.count) || posting) return;
       posting = true;
       send.disabled = input.disabled = true;
+      attachments.setDisabled(true);
       status.textContent = 'SENDING…';
       try {
-        await this.request('chat-send', { text });
-        if (state.projectId === projectId) input.value = '';
+        const images = await attachments.read();
+        if (projectId !== state.projectId) return;
+        await this.request('chat-send', { text, images, projectId });
+        if (state.projectId === projectId) { input.value = ''; attachments.clear(); }
         resize();
         await this.request('chat-refresh');
         status.textContent = 'LIVE FEED';
       } catch (error) { status.textContent = 'SEND FAILED'; showToast(error.message, true); }
-      finally { posting = false; send.disabled = input.disabled = false; input.focus(); }
+      finally { posting = false; attachments.setDisabled(false); send.disabled = input.disabled = false; input.focus(); }
     });
     input.addEventListener('input', resize);
     input.addEventListener('keydown', event => {
       if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); form.requestSubmit(); }
     });
-    this.clearDraft = () => { input.value = ''; resize(); };
+    this.clearDraft = () => { attachments.clear(); input.value = ''; resize(); };
     this.update = () => {
       input.placeholder = `Message #${state.projectName} · use @name`;
       const next = renderDashboardOfficeChatMessages(state.messages);

@@ -1,3 +1,4 @@
+import { MAX_CHAT_BODY_BYTES } from '../public/lib/chat-image-limits.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { json, readRequestBody } from './http.js';
@@ -21,7 +22,7 @@ export async function guardProjectRequest(req, res, url, { uiStateStore, sharedW
     if (['/api/tasks', '/api/chat', '/api/operations', '/api/memory', '/api/shared-workspace', '/api/project-invitations'].includes(route)) {
       let projectId = url.searchParams.get('projectId') || 'central-office';
       if (!['GET', 'HEAD'].includes(req.method)) {
-        const body = JSON.parse(await readRequestBody(req, 120_000) || '{}');
+        const body = JSON.parse(await readRequestBody(req, route === '/api/chat' ? MAX_CHAT_BODY_BYTES : 120_000) || '{}');
         projectId = body.projectId || 'central-office';
         if (route === '/api/tasks' && req.method !== 'POST') {
           const task = uiStateStore.getOfficeTasks({ id: String(body.id), limit: 1 })[0];

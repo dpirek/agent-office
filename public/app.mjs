@@ -281,7 +281,7 @@ async function loadOfficeChat({ quiet = false } = {}) {
 }
 
 async function postOfficeChat(payload) {
-  payload = { ...payload, projectId: state.projectId };
+  payload = { ...payload, projectId: payload.projectId || state.projectId };
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -658,7 +658,11 @@ handleRequest('task-create', async ({ title, priority }) => {
 handleRequest('task-stop', ({ id }) => stopTask(id));
 handleRequest('task-delete', ({ id }) => deleteTask(id));
 handleRequest('dashboard-refresh', () => refreshDashboard({ quiet: true }));
-handleRequest('chat-send', ({ text, replyToId }) => postOfficeChat({ text, replyToId }));
+handleRequest('chat-send', async ({ text, replyToId, images, projectId }) => {
+  const result = await postOfficeChat({ text, replyToId, images, projectId });
+  if (images?.length && result.message.projectId === state.projectId) void loadSharedWorkspace({ quiet: true });
+  return result;
+});
 handleRequest('chat-refresh', () => loadOfficeChat());
 handleRequest('project-create', async ({ name, description, isPublic, memberIds, inviteEmails }) => {
   const result = await saveProject({ name, description, isPublic, memberIds, inviteEmails });

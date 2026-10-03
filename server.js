@@ -364,7 +364,7 @@ uiStateStore.recordSystemActivity({
 });
 for (const project of uiStateStore.getProjects()) await projectWorkspace(sharedWorkspaceRoot, project.id);
 let officeManagerProjectId = null;
-async function runOfficeManager(request, { refine = true, projectId = DEFAULT_PROJECT_ID, replyToId = null } = {}) {
+async function runOfficeManager(request, { refine = true, projectId = DEFAULT_PROJECT_ID, replyToId = null, images = [] } = {}) {
     officeManagerProjectId = projectId;
     const context = await prepareProjectContext(uiStateStore, sharedWorkspaceRoot, projectId, request);
     const { root } = context;
@@ -385,7 +385,7 @@ async function runOfficeManager(request, { refine = true, projectId = DEFAULT_PR
     const prompt = !refine || disabledSteps.includes("composer")
       ? request
       : await agent.refinePrompt(request, { disabledSteps });
-    const output = await agent.run({ text: prompt }, { disabledSteps });
+    const output = await agent.run({ text: prompt, images }, { disabledSteps });
     const reply = replyToId ? threadReplyText(output) : output || "Done.";
     if (reply) officeChatService.postMessage({
       replyToId,
@@ -408,20 +408,20 @@ function enqueueOfficeManager(run) {
   return result;
 }
 
-function handleOfficeManagerMention({ message, text }) {
+function handleOfficeManagerMention({ message, text, images = [] }) {
   return enqueueOfficeManager(async () => {
     if (message.replyToId) {
       const parent = uiStateStore.getOfficeChatMessage(message.replyToId, message.projectId);
       const thread = uiStateStore.getOfficeChatThread(message.id, message.projectId);
       const request = `${formatThreadRequest({ message, parent, thread })}\n\n${SEQUENTIAL_ORCHESTRATION_POLICY}`;
-      return runOfficeManager(request, { projectId: message.projectId, replyToId: message.id, refine: false });
+      return runOfficeManager(request, { projectId: message.projectId, replyToId: message.id, refine: false, images });
     }
     const recent = officeChatService.list({ limit: 40, projectId: message.projectId }).messages
       .filter((entry) => entry.id !== message.id)
       .map((entry) => ({ label: entry.author, text: entry.text, isUser: entry.kind === "user" }));
     const conversation = formatConversationContext(recent, text);
     const request = `You were addressed as @office-manager in this project’s chat room. Respond to the current request and coordinate work through the office task tools when delegation is needed. Any task assignment you make will be announced on the board automatically.\n\n${SEQUENTIAL_ORCHESTRATION_POLICY}\n\n${conversation}`;
-    return runOfficeManager(request, { projectId: message.projectId });
+    return runOfficeManager(request, { projectId: message.projectId, images, refine: !images.length });
   });
 }
 

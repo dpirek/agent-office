@@ -794,3 +794,14 @@ office-mcp-settings { display: block; flex: 1; min-height: 0; overflow-y: auto; 
 .project-clear-row p { margin: 5px 0 0; }
 .project-clear-row button { flex-shrink: 0; }
 @media (max-width: 480px) { .project-clear-row { align-items: stretch; flex-direction: column; gap: 10px; } }
+
+.chat-image-previews { display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; max-height: 150px; overflow-y: auto; order: -1; }
+.chat-image-previews figure { position: relative; width: 100px; margin: 0; padding: 4px; border: 1px solid var(--line-dim); }
+.chat-image-previews img { display: block; width: 90px; height: 70px; object-fit: contain; }
+.chat-image-previews figcaption { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-image-previews button { position: absolute; top: 0; right: 0; width: 24px; height: 24px; background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+.chat-attach-button { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; padding: 6px; background: transparent; border: 1px solid var(--line-dim); color: var(--muted); }
+.chat-attach-button:hover { color: var(--text); border-color: var(--green); }
+.composer-toolbar { gap: 8px; }
+.dashboard-office-chat-composer { grid-template-columns: auto minmax(0, 1fr) auto; }
+.dashboard-office-chat-composer .chat-image-previews { grid-row: 1; }
