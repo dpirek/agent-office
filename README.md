@@ -92,6 +92,7 @@ See [`.env.example`](.env.example) for every supported option. The most useful s
 | `AI_API_KEY` | Provider credential | Empty |
 | `AI_HARNESS_WORKER_TOKEN` | Shared credential used for worker registration | Not set |
 | `AI_HARNESS_TASK_PROGRESS_CHECK_INTERVAL_MS` | Interval for checking long-running tasks | `300000` (5 minutes) |
+| `AI_HARNESS_MAX_TURNS` | Maximum model/tool-loop iterations per Office Manager request; positive integer, restart after changes | `60` |
 | `AI_HARNESS_ALLOW_INSECURE_WEBSOCKET` | Force the dashboard connection to use `ws://`, including from an HTTPS page | `false` |
 | `AI_HARNESS_WEBSOCKET_URL` | Separate public dashboard WebSocket endpoint, accepting HTTP(S) or WS(S) URLs | Page host with `/ws` |
 

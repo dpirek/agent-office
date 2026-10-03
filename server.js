@@ -15,7 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApiRouter } from "./api/index.js";
 import { createModelClient } from "./lib/openai.js";
-import { CodingAgent, resolveDisabledSteps } from "./lib/agent.js";
+import { CodingAgent, resolveDisabledSteps, resolveAgentMaxTurns } from "./lib/agent.js";
 import { serveStatic } from "./lib/response.js";
 import { createTools } from "./lib/tools/index.js";
 import { loadMcpTools } from "./lib/mcp.js";
@@ -59,6 +59,7 @@ const packageMetadata = JSON.parse(await fs.readFile(path.join(__dirname, "packa
 const appVersion = String(packageMetadata.version || "0.0.0");
 const environmentFilePath = path.join(__dirname, ".env");
 const environmentFileDetected = loadEnvironmentFile(environmentFilePath);
+const agentMaxTurns = resolveAgentMaxTurns();
 const loggingEnabled = liveLoggingEnabled();
 const webSocketUrl = normalizeOfficeWebSocketUrl(process.env.AI_HARNESS_WEBSOCKET_URL);
 const fileAccessDisabledByEnvironment = environmentFileDetected
@@ -303,6 +304,7 @@ async function createAgentSession({
     });
   return new CodingAgent({
     client,
+    maxTurns: agentMaxTurns,
     tools: [...localTools, ...mcpTools],
     model,
     root,
