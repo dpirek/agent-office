@@ -1,9 +1,30 @@
+import { clearManagedDirectory } from "../lib/factory-reset.js";
 import { json, methodNotAllowed, readRequestBody } from "./http.js";
 import { projectWorkspace } from "../lib/projects.js";
 import { canAccessProject, requireProjectAccess } from '../lib/project-access.js';
 
-export function createProjectApiHandlers({ uiStateStore, sharedWorkspaceRoot, userStore }) {
+export function createProjectApiHandlers({ uiStateStore, sharedWorkspaceRoot, userStore, subAgentManager, isProjectManagerBusy = () => false }) {
   return {
+    '/api/projects/clear': async (req, res) => {
+      if (req.method !== 'POST') return methodNotAllowed(res, 'POST');
+      try {
+        const body = JSON.parse(await readRequestBody(req, 20000) || '{}');
+        if (!body.projectId) throw new Error('Choose a project.');
+        const project = uiStateStore.requireProject(body.projectId);
+        requireProjectAccess(req.user, project.id, project);
+        if (req.user.role !== 'admin' && project.ownerId !== req.user.id) return json(res, 403, { ok: false, error: 'Only the project owner or an administrator can clear project data.' });
+        if (!['chats', 'tasks', 'workspace', 'operations', 'memory'].includes(body.section)) throw new Error('Choose a project section to clear.');
+        const belongsHere = task => (task.projectId || 'central-office') === project.id;
+        const activeWorkers = (subAgentManager?.listTasks() || []).some(task => belongsHere(task) && !['completed', 'failed', 'timed_out', 'cancelled'].includes(task.state));
+        const activeMessages = (subAgentManager?.listDirectMessages() || []).some(belongsHere);
+        const activeTasks = uiStateStore.getOfficeTasks({ projectId: project.id, status: 'running', limit: 500 }).length > 0;
+        if (isProjectManagerBusy(project.id) || activeWorkers || activeMessages || activeTasks) return json(res, 409, { ok: false, error: 'Stop active work in this project before clearing its data.' });
+        const removed = body.section === 'workspace'
+          ? await clearManagedDirectory(await projectWorkspace(sharedWorkspaceRoot, project.id), { protectedPaths: [sharedWorkspaceRoot] })
+          : uiStateStore.clearProjectData(project.id, body.section);
+        json(res, 200, { ok: true, projectId: project.id, section: body.section, removed });
+      } catch (error) { json(res, error.statusCode || 400, { ok: false, error: error.message }); }
+    },
     '/api/project-invitations': async (req, res) => {
       if (req.method !== 'POST') return methodNotAllowed(res, 'POST');
       try {

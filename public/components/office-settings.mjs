@@ -1,10 +1,9 @@
-import './office-mcp-settings.mjs';
 import OfficeComponent from "./office-component.mjs";
 import { escapeHtml, fetchJson } from "./office-format.mjs";
 
 class OfficeSettings extends OfficeComponent {
   static hostAttributes = {"class": "panel settings-panel"};
-  model = { systemPrompts: [], selectedPromptKey: null, settingsTab: "prompts", toolPermissions: {}, providerSettings: { provider: "openai", model: "", baseUrl: "", apiKey: "" }, mcpConfig: "", mcpDirty: false, providerDirty: false, promptDirty: false };
+  model = { systemPrompts: [], selectedPromptKey: null, settingsTab: "prompts", toolPermissions: {}, providerSettings: { provider: "openai", model: "", baseUrl: "", apiKey: "" }, providerDirty: false, promptDirty: false };
 
   render() {
     this.appendChildren(this, [
@@ -21,7 +20,6 @@ class OfficeSettings extends OfficeComponent {
         this.createElement("button", { "type": "button", "role": "tab", "aria-selected": "false", "data-settings-tab": "appearance", textContent: "APPEARANCE" }),
         this.createElement("button", { "class": "active", "type": "button", "role": "tab", "aria-selected": "true", "data-settings-tab": "prompts", textContent: "SYS PROMPTS" }),
         this.createElement("button", { "type": "button", "role": "tab", "aria-selected": "false", "data-settings-tab": "tools", textContent: "TOOLS" }),
-        this.createElement("button", { "type": "button", "role": "tab", "aria-selected": "false", "data-settings-tab": "mcp", textContent: "MCP" }),
         this.createElement("button", { "type": "button", "role": "tab", "aria-selected": "false", "data-settings-tab": "provider", textContent: "PROVIDER" }),
         this.createElement("button", { "type": "button", "role": "tab", "aria-selected": "false", "data-settings-tab": "admin", textContent: "SYS ADMIN" })
       ] }),
@@ -158,17 +156,6 @@ class OfficeSettings extends OfficeComponent {
         ] }),
         this.createElement("div", { "class": "tool-permissions", "id": "tool-permissions" })
       ] }),
-      this.createElement("div", { "class": "settings-view editor-settings panel-body", "data-settings-view": "mcp", "hidden": "", children: [
-        this.createElement("div", { "class": "settings-section-intro", children: [
-          this.createElement("strong", { textContent: "MCP CONFIGURATION" }),
-          this.createElement("span", { textContent: "Connect MCP servers with a URL and optional authentication headers. Test to discover available methods." })
-        ] }),
-        this.createElement('office-mcp-settings', { id: 'mcp-config-content' }),
-        this.createElement("footer", { "class": "settings-actions", children: [
-          this.createElement("button", { "id": "reset-mcp-config", "type": "button", textContent: "RESET CHANGES" }),
-          this.createElement("button", { "class": "primary", "id": "save-mcp-config", "type": "button", textContent: "SAVE MCP" })
-        ] })
-      ] }),
       this.createElement("form", { "class": "settings-view provider-settings panel-body", "data-settings-view": "provider", "id": "provider-form", "hidden": "", children: [
         this.createElement("div", { "class": "settings-section-intro", children: [
           this.createElement("strong", { textContent: "MODEL PROVIDER" }),
@@ -247,8 +234,6 @@ class OfficeSettings extends OfficeComponent {
       } else if (state.settingsTab === "tools") {
         const enabled = Object.values(state.toolPermissions).filter(Boolean).length;
         status.textContent = `${enabled} TOOLS ENABLED`;
-      } else if (state.settingsTab === "mcp") {
-        status.textContent = state.mcpDirty ? "UNSAVED CHANGES" : "SAVED";
       } else if (state.settingsTab === "provider") {
         status.textContent = state.providerDirty ? "UNSAVED CHANGES" : "SAVED";
       } else if (state.settingsTab === "admin") {
@@ -259,7 +244,7 @@ class OfficeSettings extends OfficeComponent {
     }
 
     function selectSettingsTab(tab) {
-      if (!['appearance', 'prompts', 'tools', 'mcp', 'provider', 'admin'].includes(tab)) return;
+      if (!['appearance', 'prompts', 'tools', 'provider', 'admin'].includes(tab)) return;
       if (state.userRole !== 'admin') tab = 'appearance';
       state.settingsTab = tab;
       $$('[data-settings-tab]').forEach((button) => {
@@ -381,12 +366,9 @@ class OfficeSettings extends OfficeComponent {
 
     async function loadConfigurationSettings() {
       try {
-        const [uiState, mcp] = await Promise.all([fetchJson("/api/ui-state"), fetchJson("/api/config")]);
+        const uiState = await fetchJson("/api/ui-state");
         state.toolPermissions = uiState.state?.toolPermissions || {};
         state.providerSettings = { ...state.providerSettings, ...(uiState.state?.providerSettings || {}) };
-        state.mcpConfig = mcp.content || "";
-        state.mcpDirty = false;
-        $("#mcp-config-content").value = state.mcpConfig;
         renderToolPermissions();
         populateProviderForm();
       } catch (error) {
@@ -473,40 +455,6 @@ class OfficeSettings extends OfficeComponent {
         showToast(error.message, true);
       } finally {
         checkbox.disabled = false;
-        renderSettingsStatus();
-      }
-    });
-    $("#mcp-config-content").addEventListener("mcp-change", () => {
-      state.mcpDirty = true;
-      renderSettingsStatus();
-    });
-    $("#reset-mcp-config").addEventListener("click", () => {
-      $("#mcp-config-content").value = state.mcpConfig;
-      state.mcpDirty = false;
-      renderSettingsStatus();
-    });
-    $("#save-mcp-config").addEventListener("click", async () => {
-      const button = $("#save-mcp-config");
-      button.disabled = true;
-      try {
-        const content = $("#mcp-config-content").value.trim();
-        if (content) JSON.parse(content);
-        const response = await fetch("/api/config", {
-          method: "PUT",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ content }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-        state.mcpConfig = content;
-        state.mcpDirty = false;
-        refreshOrchestratorConnection();
-        addLog("Settings", "MCP configuration saved", "success");
-        showToast("MCP configuration saved.");
-      } catch (error) {
-        showToast(error instanceof SyntaxError ? `Invalid MCP JSON: ${error.message}` : error.message, true);
-      } finally {
-        button.disabled = false;
         renderSettingsStatus();
       }
     });

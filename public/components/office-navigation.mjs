@@ -85,6 +85,12 @@ class OfficeNavigation extends OfficeComponent {
           ] }),
           this.createElement("span", { "class": "nav-label", textContent: "MEMORY" })
         ] }),
+        this.createElement("a", { class: "nav-item", href: "/central-office/mcp", "data-section": "mcp", "aria-label": "MCP", title: "MCP", children: [
+          this.createElement("svg", { class: "nav-icon bi", width: "20", height: "20", viewBox: "0 0 16 16", fill: "currentColor", "aria-hidden": "true", children: [
+            this.createElement("use", { href: "/assets/bootstrap-icons/bootstrap-icons.svg#plug" })
+          ] }),
+          this.createElement("span", { class: "nav-label", textContent: "MCP" })
+        ] }),
         this.createElement("a", { "class": "nav-item", "href": "/knowledge", "data-section": "knowledge", "aria-label": "Knowledge", "title": "Knowledge", children: [
           this.createElement("svg", { "class": "nav-icon bi", "width": "20", "height": "20", "viewBox": "0 0 16 16", "fill": "currentColor", "aria-hidden": "true", "focusable": "false", children: [
             this.createElement("use", { "href": "/assets/bootstrap-icons/bootstrap-icons.svg#journal-code" })
@@ -239,7 +245,7 @@ class OfficeNavigation extends OfficeComponent {
     };
     this.update = () => {
       $$('.nav-item[data-section]').forEach(link => {
-        link.hidden = (link.dataset.section === 'knowledge' && state.userRole !== 'admin') || (PROJECT_PAGES.has(link.dataset.section) && !state.projects.length);
+        link.hidden = (['knowledge', 'mcp'].includes(link.dataset.section) && state.userRole !== 'admin') || (PROJECT_PAGES.has(link.dataset.section) && !state.projects.length);
         link.href = projectPagePath(link.dataset.section, state.projectId);
         const active = link.dataset.section === state.page;
         link.classList.toggle('active', active);

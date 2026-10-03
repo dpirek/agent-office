@@ -16,6 +16,7 @@ import "./office-operations.mjs";
 import "./office-workspace.mjs";
 import "./office-chat.mjs";
 import "./office-settings.mjs";
+import "./office-mcp.mjs";
 import "./office-knowledge.mjs";
 import "./office-memory.mjs";
 import "./office-toast.mjs";
@@ -59,6 +60,7 @@ class OfficeShell extends OfficeComponent {
         this.createElement("office-operations", { "class": "panel operations-panel", "data-view": "operations", "hidden": "" }),
         this.createElement("office-workspace", { "class": "panel shared-workspace-panel", "data-view": "workspace", "hidden": "" }),
         this.createElement("office-chat", { "class": "panel office-chat-page", "data-view": "chat", "hidden": "" }),
+        this.createElement("office-mcp", { class: "panel settings-panel", "data-view": "mcp", hidden: "" }),
         this.createElement("office-settings", { "class": "panel settings-panel", "data-view": "settings", "hidden": "" }),
         this.createElement("office-knowledge", { "class": "panel knowledge-panel", "data-view": "knowledge", "hidden": "" }),
         this.createElement("office-memory", { "class": "panel memory-panel", "data-view": "memory", "hidden": "" }),

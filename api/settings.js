@@ -50,9 +50,13 @@ export function createSettingsApiHandlers({
     });
   }
 
-  async function handleConfigApi(req, res) {
+  async function handleConfigApi(req, res, url) {
+    if (req.user && req.user.role !== "admin") return json(res, 403, { ok: false, error: "Administrator access required." });
+    const projectId = url?.searchParams.get("projectId") || "central-office";
+    try { uiStateStore.requireProject(projectId); }
+    catch (error) { return json(res, 404, { ok: false, error: error.message }); }
     if (req.method === "GET") {
-      const content = uiStateStore.getMcpConfig();
+      const content = uiStateStore.getMcpConfig(projectId);
       json(res, 200, { ok: true, exists: content !== undefined, path: "db/ui-state.sqlite", content: content || "" });
       return;
     }
@@ -64,7 +68,7 @@ export function createSettingsApiHandlers({
           json(res, 400, { ok: false, error: "Expected string content." });
           return;
         }
-        uiStateStore.setMcpConfig(body.content);
+        uiStateStore.setMcpConfig(body.content, projectId);
         json(res, 200, {
           ok: true,
           path: "db/ui-state.sqlite",

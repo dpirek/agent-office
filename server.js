@@ -294,7 +294,7 @@ async function createAgentSession({
   ));
   const mcpTools = disabled.has("mcp") ? [] : await loadMcpTools({
       root,
-      configContent: uiStateStore.getMcpConfig() || "",
+      configContent: uiStateStore.getMcpConfig(projectId || DEFAULT_PROJECT_ID) || "",
       approve: approveMcp,
       onInfo,
       autoApprove: true,
@@ -585,6 +585,7 @@ server = http.createServer(async (req, res) => {
     officeChatService,
     sharedWorkspaceRoot,
     workerArtifactStore,
+    isProjectManagerBusy: projectId => officeManagerBoardRunning && officeManagerProjectId === projectId,
     factoryReset: async () => {
       const activeWorkerTasks = subAgentManager.listTasks().filter((task) => (
         !["completed", "failed", "timed_out", "cancelled"].includes(task.state)

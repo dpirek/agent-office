@@ -776,3 +776,21 @@ office-mcp-settings { display: block; flex: 1; min-height: 0; overflow-y: auto; 
 .observability-form .dialog-actions { padding: 12px 0 0; flex-wrap: wrap; }
 .observability-form .dialog-actions button { text-transform: uppercase; }
 .observability-status { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+
+/* Project context and per-section maintenance in the office panel. */
+.project-settings-button { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; padding: 0; background: transparent; border: 1px solid var(--line-dim); color: var(--muted); }
+.project-settings-button:hover { color: var(--text); border-color: var(--line); }
+.office-project-info { flex: 0 0 auto; padding: 12px 16px; border-bottom: 1px solid var(--line-dim); }
+.office-project-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; }
+.office-project-heading strong { font-size: 12px; overflow-wrap: anywhere; }
+.office-project-heading span { font-size: 10px; color: var(--muted); text-transform: capitalize; }
+.office-project-info p { margin: 6px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 66px; overflow-y: auto; }
+.project-settings-dialog { width: min(600px, calc(100% - 24px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
+.project-settings-body { padding: 20px; }
+.project-settings-body > strong { overflow-wrap: anywhere; }
+.project-settings-body p { font-size: 11px; line-height: 1.5; color: var(--muted); }
+.project-clear-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 0; border-top: 1px solid var(--line-dim); }
+.project-clear-row strong { font-size: 12px; }
+.project-clear-row p { margin: 5px 0 0; }
+.project-clear-row button { flex-shrink: 0; }
+@media (max-width: 480px) { .project-clear-row { align-items: stretch; flex-direction: column; gap: 10px; } }

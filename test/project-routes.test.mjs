@@ -26,7 +26,7 @@ test("project routing handles deep links, legacy links, switching projects and b
   let page, tab;
   const router = new Router();
   registerProjectRoutes(router, {
-    pages: Object.fromEntries(["dashboard", "workspace", "chat", "tasks", "operations", "memory", "settings", "account"].map((section) => [section, { path: `/${section}` }])),
+    pages: Object.fromEntries(["dashboard", "workspace", "chat", "tasks", "operations", "memory", "mcp", "settings", "account"].map((section) => [section, { path: `/${section}` }])),
     getProjectId: () => project,
     selectProject: (id) => { project = ["alpha", "beta", "central-office"].includes(id) ? id : "central-office"; return project; },
     renderPage: (section, tabName) => { page = section; tab = tabName; },
@@ -49,6 +49,12 @@ test("project routing handles deep links, legacy links, switching projects and b
   assert.equal(project, "alpha");
   assert.equal(page, "memory");
   router.navigate("/beta/memory");
+  router.navigate("/alpha/mcp");
+  assert.equal(project, "alpha");
+  assert.equal(page, "mcp");
+  router.navigate("/beta/mcp");
+  assert.equal(project, "beta");
+  assert.equal(page, "mcp");
   router.navigate("/settings");
   assert.equal(window.location.pathname, "/settings");
   assert.equal(project, "beta");
@@ -59,8 +65,8 @@ test("project routing handles deep links, legacy links, switching projects and b
   events.get("popstate")();
   assert.equal(page, "account");
   router.navigate('/settings/mcp');
-  assert.equal(page, 'settings');
-  assert.equal(tab, 'mcp');
+  assert.equal(page, 'mcp');
+  assert.equal(window.location.pathname, '/beta/mcp');
   router.navigate('/account/appearance');
   assert.equal(page, 'account');
   assert.equal(tab, 'appearance');
@@ -81,6 +87,8 @@ test("project path helpers distinguish project pages from office-wide pages", ()
   assert.equal(projectIdFromPath("/beta/chat/"), "beta");
   assert.equal(projectIdFromPath("/beta/operations"), "beta");
   assert.equal(projectIdFromPath("/beta/memory"), "beta");
+  assert.equal(projectIdFromPath("/beta/mcp"), "beta");
+  assert.equal(projectPagePath("mcp", "beta"), "/beta/mcp");
   assert.equal(projectIdFromPath("/workspace"), null);
   assert.equal(projectIdFromPath("/beta/settings"), null);
   assert.equal(projectIdFromPath("/%2F/workspace"), null);

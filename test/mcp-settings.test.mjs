@@ -93,3 +93,39 @@ test('stored MCP config supports legacy TOML, JSON arrays, whitespace and empty 
   for (const configContent of ['', '{}', '[]']) assert.deepEqual(await loadMcpTools({ configContent, env: {} }), []);
   await assert.rejects(loadMcpTools({ configContent: '{broken', env: {} }), /Invalid MCP config JSON/);
 });
+
+test('project MCP config remains isolated across saves, reloads and manager tool loading', async t => {
+  const { createUiStateStore } = await import('../lib/ui-state.js');
+  const { loadMcpTools } = await import('../lib/mcp.js');
+  const { mkdtemp, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { Readable } = await import('node:stream');
+  const directory = await mkdtemp(join(tmpdir(), 'project-mcp-config-'));
+  const file = join(directory, 'state.sqlite');
+  let store = createUiStateStore(file);
+  t.after(async () => { store.close(); await rm(directory, { recursive: true, force: true }); });
+  store.setMcpConfig(writeMcpForm({}, [server]));
+  const alpha = store.createProject({ name: 'Alpha' });
+  const beta = store.createProject({ name: 'Beta' });
+  assert.equal(store.getMcpConfig(alpha.id), undefined);
+  async function request(projectId, method = 'GET', content, role = 'admin') {
+    const req = Readable.from([Buffer.from(JSON.stringify({ content }))]);
+    req.method = method; req.user = { role };
+    const res = { writeHead(status) { this.status = status; }, end(body) { this.body = JSON.parse(body); } };
+    await createSettingsApiHandlers({ uiStateStore: store })['/api/config'](req, res, new URL(`http://office.test/api/config?projectId=${projectId}`));
+    return res;
+  }
+  const content = writeMcpForm({}, [{ ...server, server_label: 'alpha', server_url: 'https://alpha.example/mcp' }]);
+  assert.equal((await request(alpha.id, 'PUT', content)).status, 200);
+  assert.equal((await request(beta.id)).body.content, '');
+  assert.equal((await request(alpha.id)).body.content, content);
+  assert.equal((await request(alpha.id, 'GET', undefined, 'member')).status, 403);
+  assert.equal((await request('missing', 'PUT', content)).status, 404);
+  store.close(); store = createUiStateStore(file);
+  assert.equal(store.getMcpConfig(alpha.id), content);
+  assert.equal(store.getMcpConfig(beta.id), undefined);
+  assert.equal((await loadMcpTools({ configContent: store.getMcpConfig(alpha.id), env: {} }))[0].server_label, 'alpha');
+  assert.equal((await loadMcpTools({ configContent: store.getMcpConfig(), env: {} }))[0].server_label, 'gmail');
+  assert.deepEqual(await loadMcpTools({ configContent: store.getMcpConfig(beta.id) || '', env: {} }), []);
+});

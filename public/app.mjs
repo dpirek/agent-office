@@ -59,6 +59,7 @@ const PAGES = {
   tasks: { path: "/tasks", title: "Tasks" },
   workspace: { path: "/workspace", title: "Workspace" },
   operations: { path: "/operations", title: "Operations" },
+  mcp: { path: "/mcp", title: "MCP" },
   memory: { path: "/memory", title: "Memory" },
   knowledge: { path: "/knowledge", title: "Knowledge", icon: "▧", heading: "Knowledge base", description: "Connected sources and selected skills provide shared context to the agent office." },
   account: { path: "/account", title: "Account" },
@@ -100,9 +101,10 @@ shell.addEventListener('file-open', ({ detail: { href } }) => {
 });
 
 function renderPage(section, tabName) {
+  if (section === "settings" && tabName === "mcp") { router.navigate(projectPagePath("mcp", state.projectId), { replace: true }); return; }
   if (["settings", "account"].includes(section)) {
     const tabs = section === "settings"
-      ? (signedInUser.role === "admin" ? ["appearance", "prompts", "tools", "mcp", "provider", "admin"] : ["appearance"])
+      ? (signedInUser.role === "admin" ? ["appearance", "prompts", "tools", "provider", "admin"] : ["appearance"])
       : (signedInUser.role === "admin" ? ["profile", "appearance", "users"] : ["profile", "appearance"]);
     const selected = tabs.includes(tabName) ? tabName : tabs[0];
     const canonical = `/${section}/${selected}`;
@@ -110,7 +112,7 @@ function renderPage(section, tabName) {
     component(section).data = section === "settings" ? { settingsTab: selected } : { tab: selected };
   }
   if (!state.projectId && (PROJECT_PAGES.has(section) || section === 'search')) { router.navigate('/account', { replace: true }); return; }
-  if (section === 'knowledge' && signedInUser.role !== 'admin') {
+  if (['knowledge', 'mcp'].includes(section) && signedInUser.role !== 'admin') {
     router.navigate(projectPagePath('dashboard', state.projectId), { replace: true });
     return;
   }
@@ -614,6 +616,30 @@ shell.addEventListener('agent-select', ({ detail }) => {
   state.selectedAgent = detail.selectionKey || detail.name;
   renderOffice(); renderSelectedAgent();
 });
+handleRequest('project-clear', async ({ projectId, section }) => {
+  const response = await fetch('/api/projects/clear', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ projectId, section }) });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+  if (projectId !== state.projectId) return result;
+  if (section === 'chats') {
+    state.officeChatMessages = []; state.chatMessages = [];
+    chat.clearDraft(); dashboardChat.clearDraft(); managerChat.clearDraft();
+    renderChat(); renderOfficeChat();
+    await loadOfficeChat();
+  } else if (section === 'tasks') {
+    state.officeTasks = []; state.localTasks = []; renderTasks();
+    await refreshDashboard({ quiet: true });
+  } else if (section === 'workspace') {
+    workspace.reset(); await loadSharedWorkspace();
+  } else if (section === 'operations') {
+    state.operations = []; operationsPanel.close(); renderOperations();
+    await refreshDashboard({ quiet: true });
+  } else if (section === 'memory') {
+    memory.data = { memoryRecords: [] }; await loadMemory();
+  }
+  return result;
+});
+
 shell.addEventListener('configuration-change', refreshOrchestratorConnection);
 shell.addEventListener('operations-change', ({ detail }) => { state.operations = detail.operations; });
 shell.addEventListener('worker-token-change', ({ detail }) => {
@@ -673,10 +699,14 @@ void loadMemory();
 if (liveLoggingEnabled) void loadSystemLogs();
 
 function renderProjects() {
+  const project = state.projects.find(project => project.id === state.projectId);
+  component('floor').data = { project, canManageProject: signedInUser.role === 'admin' || Boolean(project?.ownerId && project.ownerId === signedInUser.id) };
+
   navigation.data = { projects: state.projects, projectId: state.projectId };
   topbar.data = { projects: state.projects, projectId: state.projectId };
   workspace.data = { projectId: state.projectId };
   memory.data = { projectId: state.projectId };
+  component('mcp').data = { projectId: state.projectId, userRole: signedInUser.role, projectName: state.projects.find(project => project.id === state.projectId)?.name };
   operationsPanel.data = { projectId: state.projectId };
   renderOfficeChat();
   document.body.dataset.projectId = state.projectId;

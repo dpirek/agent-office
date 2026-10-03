@@ -8,7 +8,7 @@ export async function guardProjectRequest(req, res, url, { uiStateStore, sharedW
   if (req.user?.role !== 'member') return false;
   const route = url.pathname;
   try {
-    if (route === '/api/projects') return false;
+    if (route === '/api/projects' || route === '/api/projects/clear') return false;
     if (route === '/api/project-members' && req.method === 'GET') return false;
     if (['/api/health', '/api/sub-agents', '/api/system-logs'].includes(route) && req.method === 'GET') return false;
     if (route === '/api/system-logs' && req.method === 'POST') return false;

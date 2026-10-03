@@ -1,11 +1,11 @@
-export const PROJECT_PAGES = new Set(["dashboard", "chat", "tasks", "workspace", "operations", "memory"]);
+export const PROJECT_PAGES = new Set(["dashboard", "chat", "tasks", "workspace", "operations", "memory", "mcp"]);
 
 export function projectPagePath(section, projectId = "central-office") {
   return PROJECT_PAGES.has(section) ? `/${encodeURIComponent(projectId)}/${section}` : `/${section}`;
 }
 
 export function projectIdFromPath(pathname) {
-  const match = /^\/([^/]+)\/(dashboard|chat|tasks|workspace|operations|memory)\/?$/.exec(pathname);
+  const match = /^\/([^/]+)\/(dashboard|chat|tasks|workspace|operations|memory|mcp)\/?$/.exec(pathname);
   if (!match) return null;
   try {
     const id = decodeURIComponent(match[1]);
@@ -15,6 +15,7 @@ export function projectIdFromPath(pathname) {
 
 export function registerProjectRoutes(router, { pages, getProjectId, selectProject, renderPage }) {
   router.addRoute("/", () => router.navigate(projectPagePath("dashboard", getProjectId()), { replace: true }));
+  router.addRoute("/settings/mcp", () => router.navigate(projectPagePath("mcp", getProjectId()), { replace: true }));
   for (const [section, page] of Object.entries(pages)) {
     if (!PROJECT_PAGES.has(section)) {
       router.addRoute(page.path, () => renderPage(section));
