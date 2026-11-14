@@ -12,7 +12,7 @@ class OfficeWorkerRegistry extends OfficeComponent {
     this.innerHTML = `
       <header class="panel-header">
         <div>${icon('people')}<h2>AGENT WORKERS</h2></div>
-        <div class="panel-header-actions"><span class="worker-protocol-badge">A2A 1.0</span></div>
+        <div class="panel-header-actions"><span class="worker-protocol-badge">A2A + WebSocket</span></div>
       </header>
       <div class="panel-body registry-body">
         <div class="worker-registry-toolbar" hidden>
@@ -24,7 +24,7 @@ class OfficeWorkerRegistry extends OfficeComponent {
           <h3>No agents connected</h3>
           <p>Connect an agent to delegate tasks<br>and bring its skills to your office.</p>
           <button class="worker-connect-button" type="button" data-connect-agent>${icon('plus-lg')} Connect agent</button>
-          <small>Connect with an Agent Card URL</small>
+          <small>Use an Agent Card URL or a worker token</small>
         </div>
         <div class="worker-registry-table-wrap" hidden>
           <table class="registry-table"><thead><tr><th scope="col">Agent</th><th scope="col">Status</th><th scope="col">Transport</th><th scope="col">Skills</th></tr></thead><tbody></tbody></table>
@@ -47,12 +47,12 @@ class OfficeWorkerRegistry extends OfficeComponent {
       this.querySelector('.worker-registry-table-wrap').hidden = !workers.length;
       this.querySelector('.worker-registry-count').textContent = `${workers.length} ${workers.length === 1 ? 'agent' : 'agents'} registered`;
       for (const button of this.querySelectorAll('[data-connect-agent]')) button.hidden = !isAdmin;
-      this.querySelector('.worker-registry-empty small').textContent = isAdmin ? 'Connect with an Agent Card URL' : 'An administrator can connect agents to your office.';
+      this.querySelector('.worker-registry-empty small').textContent = isAdmin ? 'Use an Agent Card URL or a worker token' : 'An administrator can connect agents to your office.';
       this.querySelector('tbody').innerHTML = workers.map(worker => {
         const skills = (worker.capabilities?.skills || []).map(skill => skill.name).filter(Boolean);
         return `<tr>
-          <td><span class="worker-name">${escapeHtml(worker.name)}</span><small class="worker-description">${escapeHtml(worker.description || 'A2A agent')}</small></td>
-          <td><span class="registry-status ${worker.status === 'connected' ? 'connected' : 'offline'}">${worker.status === 'connected' ? 'Registered' : 'Unavailable'}</span></td>
+          <td><span class="worker-name">${escapeHtml(worker.name)}</span><small class="worker-description">${escapeHtml(worker.description || (worker.protocol === 'websocket' ? 'Office WebSocket worker' : 'A2A agent'))}</small></td>
+          <td><span class="registry-status ${worker.status === 'connected' ? 'connected' : 'offline'}">${worker.status === 'connected' ? (worker.protocol === 'websocket' ? 'Connected' : 'Registered') : 'Offline'}</span></td>
           <td><span class="worker-transport">${escapeHtml(worker.binding || 'A2A')}</span></td>
           <td><span class="worker-skills" title="${escapeHtml(skills.join(', '))}">${escapeHtml(skills.slice(0, 3).join(', ') || '—')}${skills.length > 3 ? ` +${skills.length - 3}` : ''}</span></td>
         </tr>`;

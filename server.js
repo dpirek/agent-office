@@ -28,6 +28,8 @@ import {
   normalizeStoredToolPermissions as normalizeToolPermissions,
 } from "./lib/ui-state.js";
 import { attachWebSocketServer, createWebSocketHandler } from "./lib/ws.js";
+import { createWorkerWebSocketHandler } from "./lib/worker-ws.js";
+import { prepareWorkerTask as prepareLegacyWorkerTask } from "./lib/legacy-worker-task-context.js";
 import { storeA2AArtifacts } from "./lib/a2a-artifacts.js";
 import { createSharedWorkspace } from "./lib/shared-workspace.js";
 import { FAILURE_RECOVERY_POLICY, SEQUENTIAL_ORCHESTRATION_POLICY, TaskReviewTrigger } from "./lib/task-review-trigger.js";
@@ -103,6 +105,14 @@ await workerArtifactStore.clearStaleUploads();
 const subAgentManager = new SubAgentManager({
   getMessageContext: message => workerMessageContext(uiStateStore, message),
   prepareTask: (assignment) => prepareWorkerTask({ uiStateStore, sharedWorkspaceRoot }, assignment),
+  prepareLegacyTask: assignment => prepareLegacyWorkerTask({ uiStateStore, sharedWorkspaceRoot }, assignment),
+  createArtifactUpload: task => workerArtifactStore.issueTaskUpload(task),
+  discardArtifactUploads: taskId => workerArtifactStore.discardTask(taskId),
+  createMcpConnection: (task, upload) => ({ office_project: {
+    type: 'http', url: `/mcp/projects/${task.projectId || DEFAULT_PROJECT_ID}/tasks/${task.taskId}`,
+    headers: { Authorization: `Bearer ${upload.token}` },
+  } }),
+  materializeLegacyArtifacts: (task, ids) => sharedWorkspace.storeTaskArtifacts(task, workerArtifactStore.resolve(task.taskId, ids)),
   prepareParts: (assignment, inputModes) => prepareWorkerParts({ sharedWorkspaceRoot }, assignment, inputModes),
   saveState: state => uiStateStore.saveA2AState(state),
   materializeArtifacts: (task, artifacts, client) => storeA2AArtifacts(sharedWorkspace, task, artifacts, client),
@@ -467,11 +477,12 @@ if (environmentFileDetected) {
 if (process.env.AI_HARNESS_WORKER_TOKEN?.trim() && !uiStateStore.getWorkerToken()) {
   uiStateStore.setWorkerToken(process.env.AI_HARNESS_WORKER_TOKEN, "Environment worker token");
 }
+subAgentManager.restoreLegacyWorkers(uiStateStore.getRegisteredWorkers());
 await subAgentManager.restore(uiStateStore.getA2AState());
 const recoveredAssignments = new Set(subAgentManager.listTasks().map(task => task.messageId));
 for (const task of uiStateStore.getOfficeTasks({ status: 'running', limit: 500 })) {
   if (!recoveredAssignments.has(task.messageId)) uiStateStore.completeOfficeTask(task.id, {
-    status: 'failed', error: 'No recoverable A2A assignment exists. The legacy worker transport has been retired; remote execution is unknown. Register the agent by URL before assigning new work.',
+    status: 'failed', error: 'No recoverable assignment exists after restart; remote execution is unknown. Reconcile work with the worker before assigning it again.',
   });
 }
 const periodicOperationScheduler = new PeriodicOperationScheduler({ uiStateStore, subAgentManager });
@@ -528,9 +539,7 @@ server = http.createServer(async (req, res) => {
         const filesRemoved = await clearManagedDirectory(sharedWorkspaceRoot, {
           protectedPaths: [runtimeRoot, defaultWorkspace, __dirname],
         });
-        subAgentManager.workers.clear();
-        subAgentManager.tasks.clear();
-        subAgentManager.directMessages.clear();
+        subAgentManager.reset();
         const database = uiStateStore.factoryReset();
         return { filesRemoved, database };
       } finally {
@@ -548,6 +557,12 @@ server = http.createServer(async (req, res) => {
   await serveStatic(req, res, publicDir);
 });
 
+const handleWorkerWebSocket = createWorkerWebSocketHandler({
+  subAgentManager,
+  onActivity: entry => uiStateStore.recordSystemActivity(entry),
+  getToken: () => uiStateStore.getWorkerToken(),
+  getTokenName: () => uiStateStore.getWorkerTokenName(),
+});
 attachWebSocketServer(server, (socket, req) => {
   const user = authService.authorizeSocket(req);
   if (!user) { socket.end("HTTP/1.1 401 Unauthorized\r\n\r\n"); return; }
@@ -561,7 +576,7 @@ attachWebSocketServer(server, (socket, req) => {
   socket.once('error', removePresence);
   socket.once('close', removePresence);
   handleWebSocket(socket, req);
-}, "/ws");
+}, "/ws", { "/ws/workers": handleWorkerWebSocket });
 
 server.on("connection", (socket) => {
   connections.add(socket);

@@ -409,6 +409,8 @@ async function refreshDashboard({ quiet = false } = {}) {
     navigation.data = { context: `v${health.version || "0.0.0"} · Workspace ${health.workspace || "—"}`, online: true };
     state.orchestrator = subAgents.orchestrator;
     state.workers = subAgents.workers || [];
+    state.workerTokenName = subAgents.workerTokenName || "";
+    state.workerTokenConfigured = Boolean(subAgents.workerTokenConfigured);
     state.operations = operations.operations || [];
     mergeConfiguredAgents(state.workers);
 

@@ -90,7 +90,7 @@ See [`.env.example`](.env.example) for every supported option. The most useful s
 | `AI_MODEL` | Model used by the office manager | Provider default |
 | `AI_BASE_URL` | Provider API endpoint | Provider default |
 | `AI_API_KEY` | Provider credential | Empty |
-| `AI_HARNESS_WORKER_TOKEN` (legacy optional context APIs; not A2A registration) | Optional bearer credential for legacy Office context/MCP APIs | Not set |
+| `AI_HARNESS_WORKER_TOKEN` (legacy optional context APIs; not A2A registration) | Shared bearer credential for Office WebSocket worker registration and context APIs | Not set |
 | `AI_HARNESS_MAX_TURNS` | Maximum model/tool-loop iterations per Office Manager request; positive integer, restart after changes | `60` |
 | `AI_HARNESS_ALLOW_INSECURE_WEBSOCKET` | Force the dashboard connection to use `ws://`, including from an HTTPS page | `false` |
 | `AI_HARNESS_WEBSOCKET_URL` | Separate public dashboard WebSocket endpoint, accepting HTTP(S) or WS(S) URLs | Page host with `/ws` |
@@ -131,7 +131,9 @@ existing files are not moved automatically.
 
 As an administrator, open **Add member → Add agent**, enter a standard A2A agent's base URL or Agent Card JSON URL, and optionally supply its bearer token. Office discovers the agent's skills and compatible interface, then makes it available for assignments.
 
-Office is an A2A v1.0 client supporting JSON-RPC and HTTP+JSON with streaming, polling, task continuation, cancellation, native artifacts, and task recovery after restart. It uses Node built-ins only. The old `/ws/workers` registration protocol is removed; existing workers must expose A2A endpoints and be registered again.
+Office is an A2A v1.0 client supporting JSON-RPC and HTTP+JSON with streaming, polling, task continuation, cancellation, native artifacts, and task recovery after restart. It uses Node built-ins only. Existing Office WebSocket workers are also supported. In **Add member → Add agent**, choose **Office WebSocket · Worker token**, generate a token, and configure the worker to connect to `/ws/workers`. Generating a token replaces the shared worker credential; update existing worker configurations before reconnecting. Both integrations appear in the same worker list and can receive assignments. See the [WebSocket worker protocol](doc/worker-websocket-api.md).
+
+For teams updating old clients, use the [legacy worker migration specification](doc/legacy-worker-a2a-migration.md).
 
 See [A2A agent integration](doc/sub-agent-spec.md) for supported capabilities and limits, and [Sequential task orchestration](doc/task-orchestration.md) for dependency and review behavior.
 
@@ -220,7 +222,7 @@ Use **Account** in the sidebar (`/account`) to sign out or manage users:
 
 At least one enabled administrator must remain. Disabling an account or changing
 its role revokes its sessions. Browser APIs and `/ws` require an approved account;
-A2A registration requires an administrator. Optional legacy context/upload APIs and project MCP retain their separate bearer authentication.
+A2A registration and WebSocket worker token generation require an administrator. Optional legacy context/upload APIs and project MCP retain their separate bearer authentication.
 
 Passwords require 12–256 characters and are stored using salted scrypt hashes.
 Sessions last seven days and use HttpOnly, SameSite cookies. When serving over

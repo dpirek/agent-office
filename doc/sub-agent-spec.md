@@ -2,6 +2,8 @@
 
 Office is an **A2A client/orchestrator**. Workers are standard A2A servers. Office uses Node built-ins only; there are no npm dependencies. The normative wire contract is the [A2A v1.0 specification](https://a2a-protocol.org/v1.0.0/specification/).
 
+**Migrating a pre-refactor worker?** Give its maintainers the [Legacy worker → A2A v1.0 migration specification](legacy-worker-a2a-migration.md), which includes wire examples, field mappings and acceptance criteria.
+
 ## Connect an agent
 
 An administrator opens **Add member → Add agent**, enters the agent base URL (or a complete Agent Card `.json` URL), and optionally supplies a bearer token. Office fetches `/.well-known/agent-card.json` for a base URL and selects the first compatible advertised interface.
@@ -71,7 +73,7 @@ Agents do not need Office MCP tools, `artifactUpload`, `uploadedArtifactIds`, ca
 
 - Supported: A2A v1.0 JSON-RPC and HTTP+JSON, streaming and polling, direct messages, task continuation, cancellation, native artifacts, configured auth headers, persisted task recovery.
 - Not offered: a public A2A **server** for calling the Office Manager, gRPC-only peers, v0.3 compatibility, automatic OAuth login/refresh, mTLS client certificates, push-notification webhooks, Agent Card signature verification, or application-specific extensions. Required unknown extensions are rejected explicitly. Optional capabilities are not prerequisites for connecting an agent.
-- The old `/ws/workers` transport and `/api/worker-token` registration flow have been removed. Existing socket workers must expose an A2A endpoint and be registered by URL. Legacy socket registry records do not become A2A endpoints automatically.
+- Office WebSocket workers remain supported alongside A2A. Choose **Office WebSocket · Worker token** under **Add member → Add agent**, generate a token, and connect the worker to `/ws/workers`. See the [WebSocket contract](worker-websocket-api.md). Token generation replaces the shared worker credential. Worker names must be unique across both integrations; legacy registry records do not become A2A endpoints automatically.
 - Browser `/ws` remains an internal dashboard connection and is unrelated to the agent protocol.
 
 ## Verification

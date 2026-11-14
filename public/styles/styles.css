@@ -727,7 +727,7 @@ office-shell { display: contents; }
 .chat-add-member svg { order: -1; flex-shrink: 0; }
 .chat-add-member:hover { color: var(--text); }
 .add-member-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
-.add-member-tabs { display: flex; gap: 8px; padding: 12px 20px 0; border-bottom: 1px solid var(--line); }
+.add-member-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px 0; border-bottom: 1px solid var(--line); }
 .add-member-tabs button { padding: 10px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); }
 .add-member-tabs button[aria-selected="true"] { color: var(--green); border-bottom-color: currentColor; }
 .add-member-dialog [hidden] { display: none !important; }
@@ -830,3 +830,6 @@ office-mcp-settings { display: block; flex: 1; min-height: 0; overflow-y: auto; 
 .composer-toolbar { gap: 8px; }
 .dashboard-office-chat-composer { grid-template-columns: auto minmax(0, 1fr) auto; }
 .dashboard-office-chat-composer .chat-image-previews { grid-row: 1; }
+
+
+.add-member-tabs button:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
