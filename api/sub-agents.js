@@ -1,62 +1,28 @@
-import crypto from "node:crypto";
 import { canAccessProject } from '../lib/project-access.js';
-import { json, methodNotAllowed, readRequestBody } from "./http.js";
+import { json, methodNotAllowed, readRequestBody } from './http.js';
 
 export function createSubAgentApiHandlers({ subAgentManager, uiStateStore }) {
-  function handleSubAgentsApi(req, res) {
-    if (req.method !== "GET") {
-      methodNotAllowed(res, "GET");
-      return;
-    }
-    const rigs = uiStateStore?.getRigConfigurations?.();
-    const active = rigs?.configurations?.find((configuration) => configuration.id === rigs.activeConfigurationId);
-    const liveWorkers = subAgentManager?.listWorkers() || [];
-    const workers = new Map((uiStateStore?.getRegisteredWorkers?.() || []).map((worker) => [worker.name, worker]));
-    for (const worker of liveWorkers) workers.set(worker.name, worker);
-    json(res, 200, {
-      ok: true,
-      transport: "websocket",
-      workerSocketPath: "/ws/workers",
-      authentication: "bearer-token",
-      workerTokenConfigured: Boolean(uiStateStore?.getWorkerToken?.()),
-      workerTokenName: uiStateStore?.getWorkerTokenName?.() || "",
-      workers: [...workers.values()].sort((left, right) => (
-        Number(right.status === "connected") - Number(left.status === "connected") || left.name.localeCompare(right.name)
-      )),
-      tasks: (subAgentManager?.listTasks() || []).filter(task => !req.user || canAccessProject(req.user, task.projectId || 'central-office')),
-      orchestrator: active ? {
-        id: active.id,
-        name: active.name,
-        provider: active.providerSettings?.provider,
-        model: active.providerSettings?.model,
-        tools: Object.entries(active.toolPermissions || {}).filter(([, enabled]) => enabled).map(([name]) => name),
-      } : null,
-    });
-  }
-
-  async function handleWorkerTokenApi(req, res) {
-    if (req.method === "GET") {
-      json(res, 200, {
-        ok: true,
-        configured: Boolean(uiStateStore?.getWorkerToken?.()),
-        name: uiStateStore?.getWorkerTokenName?.() || "",
+  return { '/api/sub-agents': async (req, res) => {
+    if (req.method === 'GET') {
+      const rigs = uiStateStore?.getRigConfigurations?.();
+      const active = rigs?.configurations?.find(entry => entry.id === rigs.activeConfigurationId);
+      return json(res, 200, {
+        ok: true, transport: 'a2a', protocolVersion: '1.0', supportedBindings: ['JSONRPC', 'HTTP+JSON'],
+        workers: subAgentManager?.listRegisteredWorkers?.() || subAgentManager?.listWorkers() || [],
+        tasks: (subAgentManager?.listTasks() || []).filter(task => !req.user || canAccessProject(req.user, task.projectId || 'central-office')),
+        orchestrator: active ? { id: active.id, name: active.name, provider: active.providerSettings?.provider, model: active.providerSettings?.model, tools: Object.entries(active.toolPermissions || {}).filter(([, enabled]) => enabled).map(([name]) => name) } : null,
       });
-      return;
     }
-    if (req.method !== "POST") {
-      methodNotAllowed(res, "GET, POST");
-      return;
-    }
-    const body = JSON.parse((await readRequestBody(req)) || "{}");
-    const name = String(body.name || "").trim();
-    if (!name || name.length > 100) {
-      json(res, 400, { ok: false, error: "Token name must be between 1 and 100 characters." });
-      return;
-    }
-    const token = crypto.randomBytes(32).toString("base64url");
-    uiStateStore.setWorkerToken(token, name);
-    json(res, 201, { ok: true, name, token, environmentVariable: `AI_HARNESS_WORKER_TOKEN=${token}` });
-  }
-
-  return { "/api/sub-agents": handleSubAgentsApi, "/api/worker-token": handleWorkerTokenApi };
+    if (!['POST', 'DELETE'].includes(req.method)) return methodNotAllowed(res, 'GET, POST, DELETE');
+    if (req.user?.role !== 'admin') return json(res, 403, { ok: false, error: 'Administrator access required.' });
+    try {
+      const body = JSON.parse(await readRequestBody(req, 32_000) || '{}');
+      if (req.method === 'DELETE') {
+        subAgentManager.removeWorker(String(body.name || ''));
+        return json(res, 200, { ok: true });
+      }
+      const worker = await subAgentManager.registerWorker({ url: String(body.url || ''), ...(body.name ? { name: String(body.name) } : {}), ...(body.cardPath !== undefined ? { cardPath: String(body.cardPath) } : {}), ...(body.token ? { token: String(body.token) } : {}), ...(body.headers ? { headers: body.headers } : {}) });
+      return json(res, 201, { ok: true, worker });
+    } catch (error) { return json(res, 400, { ok: false, error: error.message }); }
+  } };
 }

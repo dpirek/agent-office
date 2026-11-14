@@ -10,15 +10,13 @@ The server starts a new Office Manager review whenever delegated work becomes `c
 
 If a prerequisite fails, dependent work remains pending. The manager must inspect the failure and create a materially different corrective plan rather than retrying identical instructions. The corrective task must not depend on the failed task; replacement downstream tasks form a new dependency chain from the corrective work. Only the first ready corrective task is assigned during the failure review.
 
-## Periodic progress checks
+## A2A progress and interruption
 
-The office checks running tasks after `AI_HARNESS_TASK_PROGRESS_CHECK_INTERVAL_MS` and repeats at that interval while work remains active. The default is `300000` milliseconds (five minutes); accepted values range from `10000` milliseconds to 24 hours.
+Office consumes standard A2A status/artifact streams when advertised and polls `GetTask` for nonstreaming agents or interrupted streams. It does not create separate model requests to ask workers for progress.
 
-For every overdue task, the Office Manager sends the assigned worker a direct status request asking for completed progress, blockers, next step, and ETA. Only one status request can be outstanding for a task. The request and response are posted to Central Office and recorded in Memory. When the worker replies, the manager reviews the status and intervenes only when work is blocked or needs a different approach.
+Input-required and auth-required tasks remain active. Use the task row's Reply action or `manage_office_tasks` action `continue` to resume the same remote task and context. Update agent credentials before resuming an auth-required task.
 
-An operator can stop a running task from `/tasks`. The office sends `task_cancel` to the assigned worker, records the task as `cancelled`, publishes the cancellation to central chat and memory, and triggers an Office Manager review. Cancelled prerequisites do not unlock dependent tasks, and the manager does not recreate or reassign cancelled work unless the operator explicitly requests it.
-
-Cancellation is idempotent and fail-safe. If the worker already reached a terminal state, the office reconciles that result instead of returning an error. If the worker record or socket is already gone, the stale running database record is closed locally as `cancelled`.
+Stopping a running task calls standard `CancelTask`. Office records the returned remote state; an unavailable agent or rejected cancellation does not falsely mark it cancelled. Tasks still in local preparation can be cancelled without submission. A local timeout means Office stopped waiting, not that remote execution ended.
 
 Non-running tasks can be deleted from `/tasks` with the trash icon. Running work must be stopped first. A task referenced by downstream dependencies cannot be deleted until those dependent tasks are removed, preventing an accidental orphaned or incorrectly unlocked chain. Deleting a task removes it from the queue but does not erase existing Central Office or Memory history.
 

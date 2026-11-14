@@ -1,6 +1,9 @@
 import OfficeComponent from './office-component.mjs';
 
+let nextMemberDialog = 0;
+
 class OfficeAddMember extends OfficeComponent {
+  idPrefix = `member-dialog-${++nextMemberDialog}-`;
   model = { projectId: 'central-office', userRole: '', workerTokenName: '' };
 
   render() {
@@ -12,9 +15,9 @@ class OfficeAddMember extends OfficeComponent {
         el('label', { for: `add-member-${kind}-input`, textContent: label }),
         el('input', { id: `add-member-${kind}-input`, required: '', ...inputProps }),
         el('div', { class: 'worker-token-secret', hidden: '', 'data-result': kind, children: [
-          el('label', { for: `add-member-${kind}-result`, textContent: kind === 'person' ? 'Invitation link' : 'AI_HARNESS_WORKER_TOKEN' }),
+          el('label', { for: `add-member-${kind}-result`, textContent: kind === 'person' ? 'Invitation link' : 'Connected agent' }),
           el('textarea', { id: `add-member-${kind}-result`, rows: '3', readonly: '', spellcheck: 'false' }),
-          el('button', { type: 'button', 'data-copy': kind, textContent: kind === 'person' ? 'Copy invitation link' : 'Copy token' })
+          el('button', { type: 'button', 'data-copy': kind, textContent: kind === 'person' ? 'Copy invitation link' : 'Copy agent URL' })
         ] })
       ] }), el('footer', { class: 'dialog-actions', children: [el('button', { type: 'submit', class: 'primary', textContent: title })] })]
     });
@@ -27,14 +30,23 @@ class OfficeAddMember extends OfficeComponent {
         type: 'button', role: 'tab', id: `add-member-tab-${kind}`, 'aria-controls': `add-member-${kind}`, 'data-tab': kind, textContent: `Add ${kind}`
       })) }),
       panel('person', 'Generate invitation link', 'Email address', { type: 'email', maxlength: '254', autocomplete: 'email' }, 'Create a link to join this project. Share it with this person; links expire after 7 days.'),
-      panel('agent', 'Generate token', 'Token name', { maxlength: '100', autocomplete: 'off', placeholder: 'Production workers' }, 'Generate a worker credential, then copy it to your agent. Generating another token replaces it for future registrations.'),
+      panel('agent', 'Connect agent', 'A2A agent URL', { type: 'url', maxlength: '2048', autocomplete: 'off', placeholder: 'https://agent.example.com' }, 'Connect an A2A v1.0 agent using its base URL or Agent Card JSON URL. Office supports JSON-RPC and HTTP+JSON.'),
       el('p', { class: 'add-member-status', role: 'status' })
     ] }));
+    // Multiple panels can host this dialog without duplicate label/ARIA targets.
+    for (const element of this.querySelectorAll('[id]')) element.id = this.idPrefix + element.id;
+    for (const attribute of ['for', 'aria-labelledby', 'aria-controls']) {
+      for (const element of this.querySelectorAll(`[${attribute}]`)) {
+        element.setAttribute(attribute, element.getAttribute(attribute).split(' ').map(id => this.idPrefix + id).join(' '));
+      }
+    }
   }
 
   initialize() {
+    const agentBody = this.querySelector(`#${this.idPrefix}add-member-agent .worker-token-body`);
+    agentBody.append(this.createElement('label', { for: this.idPrefix + 'add-agent-bearer', textContent: 'Bearer token (optional)' }), this.createElement('input', { id: this.idPrefix + 'add-agent-bearer', type: 'password', autocomplete: 'off' }));
     const dialog = this.querySelector('dialog');
-    const $ = selector => this.querySelector(selector);
+    const $ = selector => this.querySelector(selector.replace(/#([\w-]+)/g, (_, id) => '#' + this.idPrefix + id));
     let revision = 0;
     let context = '';
     const status = message => { $('.add-member-status').textContent = message; };
@@ -45,7 +57,7 @@ class OfficeAddMember extends OfficeComponent {
         tab.tabIndex = selected ? 0 : -1;
         $(`#add-member-${tab.dataset.tab}`).hidden = !selected;
       }
-      status(kind === 'agent' && this.model.userRole !== 'admin' ? 'An administrator must generate worker tokens.' : '');
+      status(kind === 'agent' && this.model.userRole !== 'admin' ? 'An administrator must connect agents.' : '');
     };
     const clear = () => {
       revision++;
@@ -58,15 +70,15 @@ class OfficeAddMember extends OfficeComponent {
       }
       status('');
     };
-    this.open = () => {
+    this.open = (kind = 'person') => {
       clear();
       context = `${this.model.projectId}:${this.model.userRole}`;
-      $('#add-member-agent-input').value = this.model.workerTokenName || 'Office workers';
+      $('#add-member-agent-input').value = '';
       $('#add-member-agent-input').disabled = this.model.userRole !== 'admin';
       $('#add-member-agent button[type="submit"]').disabled = this.model.userRole !== 'admin';
-      choose('person');
+      choose(kind === 'agent' ? 'agent' : 'person');
       dialog.showModal();
-      $('#add-member-person-input').focus();
+      $(kind === 'agent' ? '#add-member-agent-input' : '#add-member-person-input').focus();
     };
     $('[data-close]').addEventListener('click', () => dialog.close());
     dialog.addEventListener('close', clear);
@@ -91,20 +103,20 @@ class OfficeAddMember extends OfficeComponent {
         if (!value) { input.focus(); return; }
         const current = revision;
         button.disabled = true;
-        status('Generating…');
+        status(kind === 'person' ? 'Generating…' : 'Discovering agent…');
         try {
-          const response = await fetch(kind === 'person' ? '/api/project-invitations' : '/api/worker-token', {
+          const response = await fetch(kind === 'person' ? '/api/project-invitations' : '/api/sub-agents', {
             method: 'POST', headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(kind === 'person' ? { projectId: this.model.projectId, email: value } : { name: value })
+            body: JSON.stringify(kind === 'person' ? { projectId: this.model.projectId, email: value } : { url: value, token: $('#add-agent-bearer').value })
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-          if (kind === 'agent') this.emit('worker-token-change', { name: data.name, configured: true });
+          if (kind === 'agent') this.emit('workers-change', {});
           if (current !== revision || !dialog.open) return;
-          output.value = kind === 'person' ? new URL(data.invitation.path, location.origin).href : data.token;
+          output.value = kind === 'person' ? new URL(data.invitation.path, location.origin).href : data.worker.url;
           form.querySelector('[data-result]').hidden = false;
           if (kind === 'agent') { button.hidden = true; input.disabled = true; }
-          status(kind === 'person' ? `Share this link with ${data.invitation.email}. It has not been emailed automatically.` : 'Token ready. Copy it now and provide it to the worker.');
+          status(kind === 'person' ? `Share this link with ${data.invitation.email}. It has not been emailed automatically.` : 'Agent connected and available for assignments.');
           output.focus(); output.select();
         } catch (error) {
           if (current === revision && dialog.open) status(error.message);
@@ -115,7 +127,7 @@ class OfficeAddMember extends OfficeComponent {
       form.querySelector('[data-copy]').addEventListener('click', async () => {
         try { await navigator.clipboard.writeText(output.value); }
         catch { output.select(); if (!document.execCommand('copy')) { status('Select and copy the value manually.'); return; } }
-        status(kind === 'person' ? 'Invitation link copied.' : 'Worker token copied.');
+        status(kind === 'person' ? 'Invitation link copied.' : 'Agent URL copied.');
       });
     }
     this.update = () => { if (dialog.open && context !== `${this.model.projectId}:${this.model.userRole}`) { clear(); dialog.close(); } };

@@ -7,7 +7,7 @@ Agent Office is a local web dashboard for coordinating an AI office manager and 
 ## Features
 
 - Chat with an office manager backed by OpenAI, Ollama, or a custom OpenAI-compatible API.
-- Register remote workers over WebSockets and route tasks by capability.
+- Register standard A2A v1.0 agents by URL and delegate tasks over JSON-RPC or HTTP+JSON.
 - Build dependency-aware task queues with progress checks, cancellation, and automatic review.
 - Inspect worker activity, task history, shared files, and durable office memory.
 - Configure provider credentials, model settings, tool permissions, system prompts, skills, and MCP servers from the UI.
@@ -90,8 +90,7 @@ See [`.env.example`](.env.example) for every supported option. The most useful s
 | `AI_MODEL` | Model used by the office manager | Provider default |
 | `AI_BASE_URL` | Provider API endpoint | Provider default |
 | `AI_API_KEY` | Provider credential | Empty |
-| `AI_HARNESS_WORKER_TOKEN` | Shared credential used for worker registration | Not set |
-| `AI_HARNESS_TASK_PROGRESS_CHECK_INTERVAL_MS` | Interval for checking long-running tasks | `300000` (5 minutes) |
+| `AI_HARNESS_WORKER_TOKEN` (legacy optional context APIs; not A2A registration) | Optional bearer credential for legacy Office context/MCP APIs | Not set |
 | `AI_HARNESS_MAX_TURNS` | Maximum model/tool-loop iterations per Office Manager request; positive integer, restart after changes | `60` |
 | `AI_HARNESS_ALLOW_INSECURE_WEBSOCKET` | Force the dashboard connection to use `ws://`, including from an HTTPS page | `false` |
 | `AI_HARNESS_WEBSOCKET_URL` | Separate public dashboard WebSocket endpoint, accepting HTTP(S) or WS(S) URLs | Page host with `/ws` |
@@ -130,15 +129,11 @@ existing files are not moved automatically.
 
 ## Connecting workers
 
-Workers connect to:
+As an administrator, open **Add member → Add agent**, enter a standard A2A agent's base URL or Agent Card JSON URL, and optionally supply its bearer token. Office discovers the agent's skills and compatible interface, then makes it available for assignments.
 
-```text
-ws://HOST:PORT/ws/workers
-```
+Office is an A2A v1.0 client supporting JSON-RPC and HTTP+JSON with streaming, polling, task continuation, cancellation, native artifacts, and task recovery after restart. It uses Node built-ins only. The old `/ws/workers` registration protocol is removed; existing workers must expose A2A endpoints and be registered again.
 
-On **Dashboard → Live Worker Registry**, generate a token, copy the one-time value, and use it in the worker's registration message or as a bearer token. You can alternatively seed the first token with `AI_HARNESS_WORKER_TOKEN` in `.env`.
-
-The complete registration, task, progress, cancellation, artifact, and reconnection protocol is documented in [Agent Worker Integration Specification](doc/sub-agent-spec.md). See [Sequential task orchestration](doc/task-orchestration.md) for dependency and review behavior, and [Worker WebSocket API](doc/worker-websocket-api.md) for the transport-level API reference.
+See [A2A agent integration](doc/sub-agent-spec.md) for supported capabilities and limits, and [Sequential task orchestration](doc/task-orchestration.md) for dependency and review behavior.
 
 ## Development
 
@@ -152,7 +147,7 @@ The browser application is served directly from `public/`; the HTTP/API server s
 
 ## Security
 
-Agent Office can grant models file, shell, network, browser, and MCP access. Keep it bound to localhost unless you have placed it behind appropriate network access controls, enable only the tools you intend to expose, and use `wss://` for workers connecting over an untrusted network. The worker token authenticates worker registration; it does not protect the web dashboard or HTTP API.
+Agent Office can grant models file, shell, network, browser, and MCP access. Keep it bound to localhost unless you have placed it behind appropriate network access controls, enable only the tools you intend to expose, and use HTTPS for remote A2A agents. Agent credentials are configured per endpoint; Office registration requires an administrator session.
 
 ## License
 
@@ -225,17 +220,13 @@ Use **Account** in the sidebar (`/account`) to sign out or manage users:
 
 At least one enabled administrator must remain. Disabling an account or changing
 its role revokes its sessions. Browser APIs and `/ws` require an approved account;
-worker WebSockets, artifact uploads, and project MCP retain their existing worker
-or task token authentication.
+A2A registration requires an administrator. Optional legacy context/upload APIs and project MCP retain their separate bearer authentication.
 
 Passwords require 12–256 characters and are stored using salted scrypt hashes.
 Sessions last seven days and use HttpOnly, SameSite cookies. When serving over
 HTTPS or behind a reverse proxy, set `AI_HARNESS_PUBLIC_ORIGIN` to the exact public
 origin (for example `https://office.example.com`) to enable Secure cookies.
-Workers deliver files by posting raw bytes to the assignment's `artifactUpload`
-endpoint, then returning `uploadedArtifactIds` in their completed update. Office
-stores those uploads; it does not download worker-hosted artifact URLs. See the
-[worker protocol](doc/worker-websocket-api.md#complete-with-deliverables).
+Agents return native A2A artifacts. Office imports text, structured data, base64 files, and URL artifacts into the assigned project. See [file exchange and limits](doc/sub-agent-spec.md#files-and-results).
 HTTP and WebSocket authentication do not validate the Origin or Sec-Fetch-Site
 headers; session and role checks still apply. The app does not trust forwarded headers for rate limiting;
 requests through a proxy share its per-address limit of 20 attempts per endpoint

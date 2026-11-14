@@ -7,7 +7,7 @@ import { workerMessageContext } from './lib/worker-message-context.js';
 import { formatThreadRequest, threadReplyText } from './lib/chat-thread.js';
 import { createUserStore } from "./lib/users.js";
 import { createAuthService, sessionToken } from "./api/auth.js";
-import { prepareWorkerTask } from "./lib/worker-task-context.js";
+import { prepareWorkerTask, prepareWorkerParts } from "./lib/worker-task-context.js";
 import { DEFAULT_PROJECT_ID, projectStore, projectWorkspace, prepareProjectContext } from "./lib/projects.js";
 import fs from "node:fs/promises";
 import http from "node:http";
@@ -28,10 +28,9 @@ import {
   normalizeStoredToolPermissions as normalizeToolPermissions,
 } from "./lib/ui-state.js";
 import { attachWebSocketServer, createWebSocketHandler } from "./lib/ws.js";
-import { createWorkerWebSocketHandler } from "./lib/worker-ws.js";
+import { storeA2AArtifacts } from "./lib/a2a-artifacts.js";
 import { createSharedWorkspace } from "./lib/shared-workspace.js";
 import { FAILURE_RECOVERY_POLICY, SEQUENTIAL_ORCHESTRATION_POLICY, TaskReviewTrigger } from "./lib/task-review-trigger.js";
-import { TaskProgressMonitor, resolveTaskProgressCheckInterval } from "./lib/task-progress-monitor.js";
 import { formatConversationContext } from "./lib/conversation-context.js";
 import { clearManagedDirectory } from "./lib/factory-reset.js";
 import {
@@ -97,27 +96,21 @@ let officeChatService;
 let officeManagerBoardRunning = false;
 let officeManagerQueue = Promise.resolve();
 let taskReviewTrigger;
-let taskProgressMonitor;
 
 const sharedWorkspace = createSharedWorkspace({ root: sharedWorkspaceRoot });
 const workerArtifactStore = createWorkerArtifactStore({ root: sharedWorkspaceRoot, getWorkerToken: () => uiStateStore.getWorkerToken() });
 await workerArtifactStore.clearStaleUploads();
 const subAgentManager = new SubAgentManager({
   getMessageContext: message => workerMessageContext(uiStateStore, message),
-  createMcpConnection: (task, upload) => ({
-    office_project: {
-      type: "http",
-      url: `/mcp/projects/${task.projectId || DEFAULT_PROJECT_ID}/tasks/${task.taskId}`,
-      headers: { Authorization: `Bearer ${upload.token}` },
-    },
-  }),
   prepareTask: (assignment) => prepareWorkerTask({ uiStateStore, sharedWorkspaceRoot }, assignment),
-  createArtifactUpload: (task) => workerArtifactStore.issueTaskUpload(task),
-  discardArtifactUploads: (taskId) => workerArtifactStore.discardTask(taskId),
-  materializeArtifacts: async (task, uploadedArtifactIds) => {
-    const files = await sharedWorkspace.storeTaskArtifacts(task, workerArtifactStore.resolve(task.taskId, uploadedArtifactIds));
-    if (files.length) uiStateStore.recordSystemActivity({ category: 'artifact', source: task.agent || 'Worker', message: `Delivered ${files.length} file(s) to project`, tone: 'success', metadata: { projectId: task.projectId || DEFAULT_PROJECT_ID, taskId: task.taskId, files } });
-    return files;
+  prepareParts: (assignment, inputModes) => prepareWorkerParts({ sharedWorkspaceRoot }, assignment, inputModes),
+  saveState: state => uiStateStore.saveA2AState(state),
+  materializeArtifacts: (task, artifacts, client) => storeA2AArtifacts(sharedWorkspace, task, artifacts, client),
+  onTaskSettled(result, task) {
+    if (task.officeTaskId) uiStateStore.completeOfficeTask(task.officeTaskId, {
+      status: result.ok ? 'completed' : ['timed_out', 'cancelled'].includes(result.status) ? result.status : 'failed',
+      workerTaskId: result.taskId, result: result.text, error: result.error, deliveredWork: result.deliveredWork,
+    });
   },
   onWorkerRegistered(worker) {
     uiStateStore.upsertRegisteredWorker(worker);
@@ -145,12 +138,13 @@ const subAgentManager = new SubAgentManager({
       tone: state === "completed" ? "success" : state === "failed" ? "error" : "",
       metadata: { projectId: message.projectId || DEFAULT_PROJECT_ID, taskId: message.officeTaskId, messageId: message.messageId, text: message.text, error: message.error },
     });
-    officeChatService?.postMessage(state === "completed" ? {
+    officeChatService?.postMessage(["completed", "input_required", "auth_required"].includes(state) ? {
       projectId: message.projectId,
       author: message.agent,
       username: message.agent,
       kind: "agent",
-      text: message.text,
+      text: String(message.text || '').slice(0, 100_000),
+      artifacts: message.deliveredWork || [],
     } : {
       author: "Office Manager",
       username: "office-manager",
@@ -158,7 +152,7 @@ const subAgentManager = new SubAgentManager({
       projectId: message.projectId,
       text: `Direct message to @${String(message.agent || "agent").toLowerCase().replace(/[^a-z0-9]+/g, "-")} failed: ${message.error}`,
     });
-    taskProgressMonitor?.handleDirectMessage(state, message);
+
   },
   onTaskAssigned(task) {
     uiStateStore.recordSystemActivity({
@@ -196,7 +190,7 @@ const subAgentManager = new SubAgentManager({
         finishedAt: task.finishedAt,
       },
     });
-    if (["working", "completed", "failed", "timed_out", "cancelled"].includes(event)) {
+    if (["working", "input_required", "auth_required", "rejected", "completed", "failed", "timed_out", "cancelled"].includes(event)) {
       officeChatService?.postTaskResult(event, task);
     }
     taskReviewTrigger?.notify(event, task);
@@ -465,89 +459,20 @@ taskReviewTrigger = new TaskReviewTrigger({
     });
   },
 });
-const taskProgressCheckIntervalMs = resolveTaskProgressCheckInterval(process.env);
-taskProgressMonitor = new TaskProgressMonitor({
-  uiStateStore,
-  subAgentManager,
-  intervalMs: taskProgressCheckIntervalMs,
-  onCheck({ task, checkedAt }) {
-    officeChatService.postMessage({
-      author: "Office Manager",
-      username: "office-manager",
-      kind: "manager",
-      text: `@${agentUsername(task.agent)} Status check: “${task.title}” has been running longer than ${taskProgressCheckIntervalMs} ms. Please report progress, blockers, next step, and ETA.`,
-      taskId: task.messageId,
-      projectId: task.projectId,
-    });
-    uiStateStore.recordOfficeMemory({
-      projectId: task?.projectId || DEFAULT_PROJECT_ID,
-      kind: "system",
-      status: "requested",
-      title: `Progress check: ${task.title}`,
-      summary: `Requested a progress update from ${task.agent}.`,
-      agent: task.agent,
-      sourceId: task.id,
-      occurredAt: checkedAt,
-      details: { intervalMs: taskProgressCheckIntervalMs, messageId: task.messageId },
-    });
-  },
-  onStatus({ task, message, checkedAt }) {
-    uiStateStore.recordOfficeMemory({
-      projectId: task?.projectId || DEFAULT_PROJECT_ID,
-      kind: "system",
-      status: "completed",
-      title: `Progress update: ${task.title}`,
-      summary: String(message.text || "No status text returned.").slice(0, 20_000),
-      agent: task.agent,
-      sourceId: task.id,
-      occurredAt: checkedAt,
-      details: { intervalMs: taskProgressCheckIntervalMs, messageId: task.messageId },
-    });
-    void enqueueOfficeManager(async () => {
-      const projectId = task.projectId || DEFAULT_PROJECT_ID;
-      const tasks = uiStateStore.getOfficeTasks({ limit: 200, projectId });
-      const recent = officeChatService.list({ limit: 30, projectId }).messages
-        .map((entry) => ({ label: entry.author, text: entry.text, isUser: entry.kind === "user" }));
-      const progressRequest = `A periodic progress check returned for the running task below. Assess whether work is progressing, blocked, or needs a different approach. Do not create a duplicate task merely because it is still running. If it is blocked, explain the intervention and use manage_office_tasks to cancel and replan only when justified.\n\nTask:\n${JSON.stringify(task, null, 2)}\n\nWorker status:\n${message.text}\n\nCurrent task queue:\n${JSON.stringify(tasks, null, 2)}`;
-      const conversation = formatConversationContext(recent, progressRequest);
-      return runOfficeManager(`${SEQUENTIAL_ORCHESTRATION_POLICY}\n\n${FAILURE_RECOVERY_POLICY}\n\n${conversation}`, { refine: false, projectId });
-    }).catch((error) => officeChatService.postMessage({
-      author: "Office Manager",
-      username: "office-manager",
-      kind: "system",
-      projectId: task.projectId,
-      text: `Unable to review the progress update for “${task.title}”: ${error.message}`,
-    }));
-  },
-  onError(error, { task, checkedAt }) {
-    const title = task?.title || "running task";
-    officeChatService.postMessage({
-      author: "Office Manager",
-      username: "office-manager",
-      kind: "system",
-      text: `Progress check for “${title}” failed: ${error.message}`,
-      taskId: task?.messageId,
-      projectId: task?.projectId,
-    });
-    uiStateStore.recordOfficeMemory({
-      projectId: task?.projectId || DEFAULT_PROJECT_ID,
-      kind: "system",
-      status: "failed",
-      title: `Progress check: ${title}`,
-      summary: error.message,
-      agent: task?.agent,
-      sourceId: task?.id,
-      occurredAt: checkedAt,
-      details: { intervalMs: taskProgressCheckIntervalMs },
-    });
-  },
-});
-taskProgressMonitor.start();
+// A2A task status is tracked with standard streaming and GetTask polling.
+
 if (environmentFileDetected) {
   applyEnvironmentSettings(uiStateStore, process.env, __dirname);
 }
 if (process.env.AI_HARNESS_WORKER_TOKEN?.trim() && !uiStateStore.getWorkerToken()) {
   uiStateStore.setWorkerToken(process.env.AI_HARNESS_WORKER_TOKEN, "Environment worker token");
+}
+await subAgentManager.restore(uiStateStore.getA2AState());
+const recoveredAssignments = new Set(subAgentManager.listTasks().map(task => task.messageId));
+for (const task of uiStateStore.getOfficeTasks({ status: 'running', limit: 500 })) {
+  if (!recoveredAssignments.has(task.messageId)) uiStateStore.completeOfficeTask(task.id, {
+    status: 'failed', error: 'No recoverable A2A assignment exists. The legacy worker transport has been retired; remote execution is unknown. Register the agent by URL before assigning new work.',
+  });
 }
 const periodicOperationScheduler = new PeriodicOperationScheduler({ uiStateStore, subAgentManager });
 periodicOperationScheduler.start();
@@ -603,6 +528,9 @@ server = http.createServer(async (req, res) => {
         const filesRemoved = await clearManagedDirectory(sharedWorkspaceRoot, {
           protectedPaths: [runtimeRoot, defaultWorkspace, __dirname],
         });
+        subAgentManager.workers.clear();
+        subAgentManager.tasks.clear();
+        subAgentManager.directMessages.clear();
         const database = uiStateStore.factoryReset();
         return { filesRemoved, database };
       } finally {
@@ -620,12 +548,6 @@ server = http.createServer(async (req, res) => {
   await serveStatic(req, res, publicDir);
 });
 
-const handleWorkerWebSocket = createWorkerWebSocketHandler({
-  subAgentManager,
-  onActivity: entry => uiStateStore.recordSystemActivity(entry),
-  getToken: () => uiStateStore.getWorkerToken(),
-  getTokenName: () => uiStateStore.getWorkerTokenName(),
-});
 attachWebSocketServer(server, (socket, req) => {
   const user = authService.authorizeSocket(req);
   if (!user) { socket.end("HTTP/1.1 401 Unauthorized\r\n\r\n"); return; }
@@ -639,7 +561,7 @@ attachWebSocketServer(server, (socket, req) => {
   socket.once('error', removePresence);
   socket.once('close', removePresence);
   handleWebSocket(socket, req);
-}, "/ws", { "/ws/workers": handleWorkerWebSocket });
+}, "/ws");
 
 server.on("connection", (socket) => {
   connections.add(socket);

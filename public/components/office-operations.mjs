@@ -18,7 +18,7 @@ class OfficeOperations extends OfficeComponent {
       ] }),
       this.createElement("div", { "class": "operations-summary panel-body", children: [
         this.createElement("strong", { "id": "operations-active-count", textContent: "0 ACTIVE" }),
-        this.createElement("span", { textContent: "Schedules are persisted and dispatched to connected WebSocket workers." })
+        this.createElement("span", { textContent: "Schedules are persisted and dispatched to connected A2A agents." })
       ] }),
       this.createElement("div", { "class": "operations-table-wrap panel-body", children: [
         this.createElement("table", { "class": "operations-table", children: [

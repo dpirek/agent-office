@@ -27,7 +27,7 @@ class OfficeSelectedAgent extends OfficeComponent {
               this.createElement("i", { "class": "status-dot empty" }),
               this.createElement("b", { "id": "selected-status", textContent: "unregistered" })
             ] }),
-            this.createElement("small", { "id": "selected-description", textContent: "Waiting for a WebSocket worker to connect" })
+            this.createElement("small", { "id": "selected-description", textContent: "Waiting for a A2A agent to connect" })
           ] })
         ] }),
         this.createElement("div", { "class": "tabs", "role": "tablist", "aria-label": "Selected agent information", children: [
@@ -76,7 +76,7 @@ class OfficeSelectedAgent extends OfficeComponent {
       if (!agent) {
         $("#selected-name").textContent = "No agent selected";
         $("#selected-status").textContent = "unregistered";
-        $("#selected-description").textContent = "Waiting for a WebSocket worker to connect";
+        $("#selected-description").textContent = "Waiting for a A2A agent to connect";
         $("#selected-portrait").innerHTML = "<span>—</span>";
         $(".agent-summary-copy .status-dot").classList.add("empty");
         $("#agent-details").innerHTML = `<div class="detail-row"><label>STATUS</label><span>No registered agents</span></div>`;

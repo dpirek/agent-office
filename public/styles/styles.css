@@ -467,6 +467,31 @@ body:not([data-page="tasks"]) #add-task-button, body:not([data-page="tasks"]) .t
 .registry-table { width: 100%; border-collapse: collapse; font-size: 9px; }
 .registry-table th, .registry-table td { height: 31px; padding: 6px 9px; border-right: 1px solid var(--line-dim); border-bottom: 1px solid var(--line-dim); text-align: left; }
 .registry-table th { color: var(--muted); font-weight: 400; }
+/* Agent registry: a deliberate empty state and a compact populated table. */
+.agent-registry-panel > .panel-header > div:first-child > svg { width: 16px; height: 16px; flex: none; color: var(--muted); }
+.worker-protocol-badge { padding: 4px 7px; border: 1px solid var(--line-dim); border-radius: 4px; color: var(--muted); font-size: 9px; line-height: 1; white-space: nowrap; }
+.agent-registry-panel .registry-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.worker-registry-empty { flex: 1; min-height: 210px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; text-align: center; }
+.worker-empty-icon { width: 42px; height: 42px; display: grid; place-items: center; margin-bottom: 14px; border: 1px solid var(--line-dim); border-radius: 12px; color: var(--muted); background: color-mix(in srgb, var(--muted) 7%, transparent); }
+.worker-empty-icon svg { width: 21px; height: 21px; }
+.worker-registry-empty h3 { margin: 0 0 7px; color: var(--text); font-size: 13px; font-weight: 600; letter-spacing: 0; }
+.worker-registry-empty p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+.worker-registry-empty small { margin-top: 10px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.worker-connect-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; margin-top: 18px; min-height: 32px; padding: 7px 13px; border: 1px solid var(--green); border-radius: 5px; background: color-mix(in srgb, var(--green) 10%, transparent); color: var(--green); font: inherit; font-size: 11px; cursor: pointer; }
+.worker-connect-button svg { width: 12px; height: 12px; }
+.worker-connect-button:hover { background: color-mix(in srgb, var(--green) 18%, transparent); }
+.worker-connect-button:focus-visible, .worker-registry-toolbar button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.worker-registry-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line-dim); }
+.worker-registry-count { color: var(--muted); font-size: 10px; }
+.worker-registry-table-wrap { min-width: 0; overflow-x: auto; }
+.agent-registry-panel .registry-table th { height: 32px; padding: 9px 14px; font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
+.agent-registry-panel .registry-table td { height: 52px; padding: 10px 14px; font-size: 10px; }
+.agent-registry-panel .registry-table :is(th, td) { border-right: 0; }
+.worker-name { display: block; color: var(--text); font-size: 11px; font-weight: 600; }
+.worker-description { display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; color: var(--muted); font-size: 9px; }
+.worker-transport { display: inline-block; padding: 3px 6px; border: 1px solid var(--line-dim); border-radius: 4px; color: var(--muted); font-size: 9px; white-space: nowrap; }
+.worker-skills { display: block; max-width: 180px; color: var(--muted); line-height: 1.5; }
+.agent-registry-panel [hidden] { display: none !important; }
 .registry-status { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
 .registry-status::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
 .registry-status.connected { color: var(--green); }

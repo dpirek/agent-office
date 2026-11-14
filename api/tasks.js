@@ -1,5 +1,5 @@
 import { json, methodNotAllowed, readRequestBody } from "./http.js";
-import { assignOfficeTask, cancelOfficeTask, createOfficeTask, deleteOfficeTask, readOfficeTasks } from "../lib/office-tasks.js";
+import { assignOfficeTask, cancelOfficeTask, continueOfficeTask, createOfficeTask, deleteOfficeTask, readOfficeTasks } from "../lib/office-tasks.js";
 
 export function createTaskApiHandlers({ subAgentManager, uiStateStore }) {
   async function handleTasksApi(req, res, url) {
@@ -31,10 +31,10 @@ export function createTaskApiHandlers({ subAgentManager, uiStateStore }) {
       const task = req.method === "POST"
         ? createOfficeTask(uiStateStore, body)
         : req.method === "PUT"
-          ? assignOfficeTask(uiStateStore, subAgentManager, { id: body.id, agent: body.agent })
+          ? body.action === 'continue' ? await continueOfficeTask(uiStateStore, subAgentManager, { id: body.id, text: body.text }) : assignOfficeTask(uiStateStore, subAgentManager, { id: body.id, agent: body.agent })
           : body.action === "delete"
             ? deleteOfficeTask(uiStateStore, { id: body.id })
-            : cancelOfficeTask(uiStateStore, subAgentManager, { id: body.id, reason: body.reason });
+            : await cancelOfficeTask(uiStateStore, subAgentManager, { id: body.id, reason: body.reason });
       json(res, req.method === "POST" ? 201 : req.method === "PUT" ? 202 : 200, { ok: true, task });
     } catch (error) {
       json(res, 400, { ok: false, error: error.message });

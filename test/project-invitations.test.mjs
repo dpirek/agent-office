@@ -103,7 +103,7 @@ test('existing project invitations require access and grant the invited person t
  assert.equal(joined.status,201);
  assert.equal(joined.body.user.role,'member');
  assert.deepEqual(joined.body.user.projectIds,[projectId]);
- assert.equal((await request('/api/worker-token',{method:'POST',token:owner.token,body:{name:'Forbidden'}})).status,403);
+ assert.equal((await request('/api/sub-agents',{method:'POST',token:owner.token,body:{url:'https://forbidden.example'}})).status,403);
 });
 
 

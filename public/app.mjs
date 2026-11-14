@@ -173,6 +173,11 @@ function allTasks() {
     id: task.id,
     title: task.title,
     description: task.description || "",
+    a2aState: task.a2aState,
+    agentMessage: task.agentMessage,
+    connectionError: task.connectionError,
+    remoteTaskId: task.remoteTaskId,
+    contextId: task.contextId,
     projectId: task.projectId,
     agent: task.agent || "UNASSIGNED",
     status: normalizeTaskStatus(task.status),
@@ -227,9 +232,8 @@ function renderOffice() {
   floor.meta = `1 MANAGER · ${state.workers.length} REMOTE WORKERS · ${agents.filter(agent => agent.human).length} PEOPLE`;
 }
 
-function renderAgentRegistry() { component('worker-registry').data = { workers: state.workers }; }
+function renderAgentRegistry() { component('worker-registry').data = { workers: state.workers, userRole: signedInUser.role, projectId: state.projectId }; }
 
-function renderWorkerTokenState() { component('worker-registry').data = { workerTokenConfigured: state.workerTokenConfigured, workerTokenName: state.workerTokenName }; }
 
 function renderSelectedAgent() {
   component('selected-agent').data = { agent: currentAgent(), agents: officeAgents(), tasks: allTasks(), activity: state.activity, health: state.health, orchestrator: state.orchestrator, chatRunning: state.chatRunning, uptime: formatUptime(), sessionId };
@@ -344,8 +348,8 @@ function mergeConfiguredAgents(workers) {
   }
 }
 
-async function fetchJson(url) {
-  const response = await fetch(url, { cache: "no-store" });
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, { cache: "no-store", ...options });
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
   return data;
@@ -405,12 +409,10 @@ async function refreshDashboard({ quiet = false } = {}) {
     navigation.data = { context: `v${health.version || "0.0.0"} · Workspace ${health.workspace || "—"}`, online: true };
     state.orchestrator = subAgents.orchestrator;
     state.workers = subAgents.workers || [];
-    state.workerTokenConfigured = subAgents.workerTokenConfigured === true;
-    state.workerTokenName = subAgents.workerTokenName || "";
     state.operations = operations.operations || [];
     mergeConfiguredAgents(state.workers);
 
-    renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderTasks();
+    renderOffice(); renderAgentRegistry(); renderOperationAgentOptions(); renderOperations(); renderTasks();
     renderChat();
     if (!quiet) addLog("System", "Agent configuration synchronized", "success");
   } catch (error) {
@@ -642,17 +644,18 @@ handleRequest('project-clear', async ({ projectId, section }) => {
 
 shell.addEventListener('configuration-change', refreshOrchestratorConnection);
 shell.addEventListener('operations-change', ({ detail }) => { state.operations = detail.operations; });
-shell.addEventListener('worker-token-change', ({ detail }) => {
-  state.workerTokenConfigured = detail.configured; state.workerTokenName = detail.name;
-  renderWorkerTokenState();
-  renderOfficeChat();
-});
+shell.addEventListener('workers-change', () => { void refreshDashboard({ quiet: true }); });
 handleRequest('task-create', async ({ title, priority }) => {
   const projectId = state.projectId;
   const result = await createTask({ title, priority });
   if (projectId !== state.projectId) return result;
   state.officeTasks = revealCreatedTask(state.officeTasks, result.task, 'all').officeTasks;
   renderTasks();
+  return result;
+});
+handleRequest('task-continue', async ({ id, text }) => {
+  const result = await fetchJson('/api/tasks', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, text, action: 'continue', projectId: state.projectId }) });
+  await refreshDashboard({ quiet: true });
   return result;
 });
 handleRequest('task-stop', ({ id }) => stopTask(id));
@@ -695,7 +698,7 @@ setInterval(() => {
   if (liveLoggingEnabled && document.body.dataset.page === "dashboard") void loadSystemLogs();
 }, 2000);
 
-renderOffice(); renderAgentRegistry(); renderWorkerTokenState(); renderOperationAgentOptions(); renderOperations(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat();
+renderOffice(); renderAgentRegistry(); renderOperationAgentOptions(); renderOperations(); renderLogs(); renderTasks(); renderSelectedAgent(); renderChat(); renderOfficeChat();
 void settings.load();
 if (signedInUser.role === 'admin') void component("knowledge").load();
 void loadMemory();

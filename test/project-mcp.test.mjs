@@ -95,30 +95,6 @@ test("worker assignments include project description, current files and prerequi
   assert.ok(text.endsWith("# Assignment\nBuild the site."));
 });
 
-test("asynchronous worker preparation preserves receipts and never sends a cancelled task", async () => {
-  let ready;
-  const sent = [];
-  const manager = new SubAgentManager({ prepareTask: () => new Promise((resolve) => { ready = resolve; }), createMcpConnection: () => ({ office_project: { url: "/mcp/projects/alpha/tasks/test" } }) });
-  manager.registerWorker({ name: "Builder", url: "ws://localhost:9999" }, { connectionId: "one", send: (message) => sent.push(message) });
-  const queued = manager.queue({ agent: "Builder", title: "Short title", task: "Task", projectId: "alpha" });
-  assert.equal(queued.task.title, "Short title");
-  ready("Project description\nTask");
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(sent[0].message.parts[0].text, "Project description\nTask");
-  assert.ok(sent[0].mcpServers.office_project);
-  manager.unregisterConnection("one");
-  await queued.completion;
-
-  manager.registerWorker({ name: "Builder", url: "ws://localhost:9999" }, { connectionId: "two", send: (message) => sent.push(message) });
-  const cancelled = manager.queue({ agent: "Builder", task: "Never send" });
-  manager.cancelTask({ messageId: cancelled.task.messageId });
-  ready("Prepared too late");
-  await cancelled.completion;
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(sent.filter((message) => message.type === "task").length, 1);
-  manager.unregisterConnection("two");
-});
-
 test("project MCP works with the existing HTTP MCP client", async (t) => {
   const { default: http } = await import("node:http");
   const { loadMcpTools } = await import("../lib/mcp.js");
