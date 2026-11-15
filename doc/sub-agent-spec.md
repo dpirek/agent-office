@@ -73,9 +73,13 @@ Agents do not need Office MCP tools, `artifactUpload`, `uploadedArtifactIds`, ca
 
 - Supported: A2A v1.0 JSON-RPC and HTTP+JSON, streaming and polling, direct messages, task continuation, cancellation, native artifacts, configured auth headers, persisted task recovery.
 - Not offered: a public A2A **server** for calling the Office Manager, gRPC-only peers, v0.3 compatibility, automatic OAuth login/refresh, mTLS client certificates, push-notification webhooks, Agent Card signature verification, or application-specific extensions. Required unknown extensions are rejected explicitly. Optional capabilities are not prerequisites for connecting an agent.
-- Office WebSocket workers remain supported alongside A2A. Choose **Office WebSocket · Worker token** under **Add member → Add agent**, generate a token, and connect the worker to `/ws/workers`. See the [WebSocket contract](worker-websocket-api.md). Token generation replaces the shared worker credential. Worker names must be unique across both integrations; legacy registry records do not become A2A endpoints automatically.
+- Office WebSocket workers remain supported alongside A2A. Open **Add member → WebSocket agent**, generate a token, and connect the worker to `/ws/workers`. See the [WebSocket contract](worker-websocket-api.md). Token generation replaces the shared worker credential. Worker names must be unique across both integrations; legacy registry records do not become A2A endpoints automatically.
 - Browser `/ws` remains an internal dashboard connection and is unrelated to the agent protocol.
 
 ## Verification
 
 `node --test test/a2a.test.mjs test/worker-registry.test.mjs` exercises both HTTP bindings against standalone protocol fixtures, including native message responses, task polling, SSE chunks, multi-turn continuation, cancellation failures, restart recovery, credentials and artifact conversion. `npm test` runs the complete regression suite. These are implementation tests, not a claim of external A2A certification.
+
+## WebSocket v2 workers
+
+Existing outbound WebSocket workers can opt in to protocol `2.0` for durable task reconciliation, resumable input/auth pauses, confirmed cancellation, project conversation IDs, incremental text/JSON artifacts and duplicate-event handling. See the [worker upgrade guide](websocket-v2-integration.md) for registration, message schemas, recovery, limits and acceptance tests. This is an Office protocol inspired by A2A, not an official A2A transport binding. Unversioned workers retain v1 behavior.

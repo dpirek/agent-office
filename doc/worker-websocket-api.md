@@ -1,8 +1,10 @@
-# Worker WebSocket API
+# Worker WebSocket API (v1)
+
+For opt-in recovery, continuation, confirmed cancellation and structured results, use the [WebSocket v2 upgrade guide](websocket-v2-integration.md). Unversioned workers retain the v1 behavior below.
 
 Workers join the office by connecting to `ws://HOST:PORT/ws/workers` (or `wss://` in production). The office only considers a worker registered and assignable while that socket is connected.
 
-For the normative integration contract, including validation, security, lifecycle, and reconnect requirements, see [Agent Worker Integration Specification](./sub-agent-spec.md).
+For the supported integrations overview, see [Agent integration](./sub-agent-spec.md).
 
 ## Register
 
@@ -27,7 +29,7 @@ The first client message must identify and authenticate the worker:
 }
 ```
 
-Generate the token from **Dashboard → Live Worker Registry → Generate Token** or bootstrap it with the office's `AI_HARNESS_WORKER_TOKEN`. It may instead be supplied as an `Authorization: Bearer …` header. A successful registration returns a `registered` message containing the normalized worker record.
+Generate the token from **Add member → WebSocket agent → Generate worker token** or bootstrap it with the office's `AI_HARNESS_WORKER_TOKEN`. It may instead be supplied as an `Authorization: Bearer …` header. A successful registration returns a `registered` message containing the normalized worker record.
 
 ## Receive a task
 
@@ -66,7 +68,7 @@ Reply on the same socket with:
 
 The office posts the response to Central Office and returns a `direct_message_ack`. Do not include `taskId` or artifacts in a direct response.
 
-Long-running task status checks use the same `direct_message` format. The text identifies the active task and requests progress, blockers, next step, and ETA. Reply normally and continue the assigned work.
+Explicit task status questions can use the same `direct_message` format. The text identifies the active task and requests progress, blockers, next step, and ETA. Reply normally and continue the assigned work.
 
 ## Send updates
 
@@ -179,7 +181,7 @@ replace `127.0.0.1` with the Office host reachable from that worker.
 
 ### Project MCP tools
 
-Task messages include `mcpServers.office_project` with a relative HTTP endpoint and task-scoped authorization header. Resolve it against the Office HTTP origin and connect the assigned agent's MCP client. The tools expose only that project's context, files and conversation summary, plus connected specialists' public capabilities and availability. Credentials expire when the task ends. See [Project context and MCP access](sub-agent-spec.md#project-context-and-mcp-access) for the configuration and tool arguments.
+Task messages include `mcpServers.office_project` with a relative HTTP endpoint and task-scoped authorization header. Resolve it against the Office HTTP origin and connect the assigned agent's MCP client. The tools expose only that project's context, files and conversation summary, plus connected specialists' public capabilities and availability. Credentials expire when the task ends. See [Project MCP API implementation](../api/project-mcp.js) for the configuration and tool arguments.
 
 
 ### Shared functional workspace layout

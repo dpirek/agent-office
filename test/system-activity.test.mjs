@@ -4,7 +4,7 @@ import { instrumentModelClient, sanitizeActivity } from '../lib/system-activity.
 import { createUiStateStore } from '../lib/ui-state.js';
 
 test('activity redacts nested credentials and bounds large payloads', () => {
-  const safe = sanitizeActivity({ headers: { Authorization: 'Bearer secret', Cookie: 'session=secret' }, apiKey: 'secret', nested: { password: 'secret', text: 'Bearer secret https://example.test?token=secret' }, huge: 'x'.repeat(9000) });
+  const safe = sanitizeActivity({ headers: { Authorization: 'Bearer secret', Cookie: 'session=secret' }, apiKey: 'secret', resumeToken: 'secret', nested: { password: 'secret', text: 'Bearer secret https://example.test?token=secret' }, huge: 'x'.repeat(9000) });
   assert.ok(!JSON.stringify(safe).includes('secret'));
   assert.equal(safe.huge.length, 8000);
 });
@@ -34,6 +34,6 @@ test('chat activity retains message and project context and redacts credentials 
     assert.equal(entry.metadata.messageId, message.id);
     assert.equal(entry.metadata.projectId, 'central-office');
     store.recordSystemActivity({ source: 'Test', message: 'Request', metadata: { token: 'private' } });
-    assert.equal(store.getSystemActivity().at(-1).metadata.token, '[redacted]');
+    assert.equal(store.getSystemActivity().find(entry => entry.source === 'Test').metadata.token, '[redacted]');
   } finally { store.close(); }
 });

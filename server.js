@@ -114,6 +114,8 @@ const subAgentManager = new SubAgentManager({
   } }),
   materializeLegacyArtifacts: (task, ids) => sharedWorkspace.storeTaskArtifacts(task, workerArtifactStore.resolve(task.taskId, ids)),
   prepareParts: (assignment, inputModes) => prepareWorkerParts({ sharedWorkspaceRoot }, assignment, inputModes),
+  saveWsState: state => uiStateStore.saveWsState(state),
+  materializeWsArtifacts: (task, artifacts, ids) => storeA2AArtifacts(sharedWorkspace, task, artifacts, null, ids.length ? workerArtifactStore.resolve(task.taskId, ids) : []),
   saveState: state => uiStateStore.saveA2AState(state),
   materializeArtifacts: (task, artifacts, client) => storeA2AArtifacts(sharedWorkspace, task, artifacts, client),
   onTaskSettled(result, task) {
@@ -478,6 +480,7 @@ if (process.env.AI_HARNESS_WORKER_TOKEN?.trim() && !uiStateStore.getWorkerToken(
   uiStateStore.setWorkerToken(process.env.AI_HARNESS_WORKER_TOKEN, "Environment worker token");
 }
 subAgentManager.restoreLegacyWorkers(uiStateStore.getRegisteredWorkers());
+subAgentManager.wsV2.restore(uiStateStore.getWsState());
 await subAgentManager.restore(uiStateStore.getA2AState());
 const recoveredAssignments = new Set(subAgentManager.listTasks().map(task => task.messageId));
 for (const task of uiStateStore.getOfficeTasks({ status: 'running', limit: 500 })) {

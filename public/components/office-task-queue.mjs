@@ -115,7 +115,7 @@ class OfficeTaskQueue extends OfficeComponent {
         const dependencyTitle = dependencies.map((id) => tasksById.get(id)?.title || id).join(", ");
         return `<tr>
         <td>${index + 1}</td><td title="${escapeHtml(task.title)}"><button class="task-expand-button" type="button" data-task-id="${escapeHtml(task.id)}" aria-expanded="${expandedTaskIds.has(task.id)}" aria-controls="task-details-${escapeHtml(task.id)}"><span aria-hidden="true">${expandedTaskIds.has(task.id) ? "▾" : "▸"}</span> ${escapeHtml(task.title)}</button><small class="task-project-label">${escapeHtml(state.projects.find((project) => project.id === task.projectId)?.name || "Central Office")}</small></td><td>${escapeHtml(task.agent)}</td>
-        <td class="status-${task.status}">${escapeHtml(task.a2aState || task.status)}</td><td class="priority-${task.priority}">${escapeHtml(task.priority)}</td>
+        <td class="status-${task.status}">${escapeHtml(task.cancelPending ? 'cancelling' : task.agentState || task.a2aState || task.status)}</td><td class="priority-${task.priority}">${escapeHtml(task.priority)}</td>
         <td title="${escapeHtml(dependencyTitle)}">${dependencyState}</td>
         <td><span class="progress-cell"><span class="progress"><i style="width:${task.progress}%"></i></span>${task.progress}%</span></td><td>${shortTime(task.createdAt)}</td>
         <td class="delivered-work">${task.deliveredWork?.length ? `<a href="/downloads/tasks/${encodeURIComponent(task.projectId || state.projectId)}/${encodeURIComponent(task.id)}.zip" download title="Download all ${task.deliveredWork.length} delivered files">↓ DOWNLOAD ZIP</a>` : "—"}</td>
@@ -124,7 +124,7 @@ class OfficeTaskQueue extends OfficeComponent {
           ${task.status === "running" && task.canStop ? `<button class="task-action-button stop-task" data-task-id="${escapeHtml(task.id)}" type="button" title="Stop task" aria-label="Stop ${escapeHtml(task.title)}">${taskActionIcon("stop")}</button>` : ""}
           ${task.canDelete ? `<button class="task-action-button delete-task" data-task-id="${escapeHtml(task.id)}" type="button" title="${task.status === "running" ? "Stop task before deleting" : "Delete task"}" aria-label="Delete ${escapeHtml(task.title)}" ${task.status === "running" ? "disabled" : ""}>${taskActionIcon("delete")}</button>` : ""}
         </span></td>
-      </tr><tr class="task-details-row" id="task-details-${escapeHtml(task.id)}" ${expandedTaskIds.has(task.id) ? "" : "hidden"}><td colspan="10"><strong>Task description</strong><p>${escapeHtml(task.description || task.title)}</p><p>${escapeHtml(task.agentMessage || task.connectionError || "")}</p></td></tr>`;
+      </tr><tr class="task-details-row" id="task-details-${escapeHtml(task.id)}" ${expandedTaskIds.has(task.id) ? "" : "hidden"}><td colspan="10"><strong>Task description</strong><p>${escapeHtml(task.description || task.title)}</p><p>${escapeHtml(task.cancelError?.message || task.connectionError || task.agentMessage || "")}</p></td></tr>`;
       }).join("") : `<tr class="empty-row"><td colspan="10">NO TASKS IN THIS VIEW</td></tr>`;
     }
     const taskDialog = $("#task-dialog");
@@ -196,8 +196,8 @@ class OfficeTaskQueue extends OfficeComponent {
         if (deleting) await deleteTask(button.dataset.taskId);
         else await stopTask(button.dataset.taskId);
         await refreshDashboard({ quiet: true });
-        addActivity(`${deleting ? "Deleted" : "Stopped"} task: ${task?.title || button.dataset.taskId}`, deleting ? "" : "error");
-        showToast(`Task ${deleting ? "deleted" : "stopped"}.`);
+        addActivity(`${deleting ? "Deleted" : "Requested cancellation of"} task: ${task?.title || button.dataset.taskId}`, deleting ? "" : "error");
+        showToast(deleting ? "Task deleted." : "Cancellation requested.");
       } catch (error) {
         button.disabled = false;
         showToast(error.message, true);
